@@ -76,8 +76,7 @@ personal-app/
 ├─ .github/workflows/        ci.yml, deploy.yml, e2e.yml, backup.yml
 ├─ docs/
 │  ├─ ROADMAP.md
-│  └─ superpowers/specs/     design docs
-│     └─ plans/              per-milestone implementation plans
+│  └─ superpowers/         specs/ (design docs), plans/ (implementation plans)
 ├─ drizzle/                  generated SQL migrations (committed)
 ├─ e2e/                      Playwright tests
 ├─ public/                   icons, manifest assets
@@ -444,7 +443,7 @@ Production auto-deploy is disabled (`git.deploymentEnabled.main: false` in
 
 1. Pick the next item in `docs/ROADMAP.md`. For anything non-trivial,
    write or refresh its implementation plan in
-   `docs/superpowers/specs/plans/`.
+   `docs/superpowers/plans/`.
 2. Create a branch, build it test-first (with Claude Code or by hand), and
    commit.
 3. Open a PR. CI runs, and Vercel posts a **preview URL**. E2E runs

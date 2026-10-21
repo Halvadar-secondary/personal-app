@@ -2,7 +2,7 @@
 
 Development progress for the life goals app. Tick items as they merge to
 `main` (tick in the same PR). Each milestone gets a step-by-step
-implementation plan in `docs/superpowers/specs/plans/` before work starts.
+implementation plan in `docs/superpowers/plans/` before work starts.
 
 - Product design: [specs/2026-10-21-life-goals-app-design.md](superpowers/specs/2026-10-21-life-goals-app-design.md)
 - Technical design: [specs/2026-10-22-life-goals-app-technical-design.md](superpowers/specs/2026-10-22-life-goals-app-technical-design.md)
