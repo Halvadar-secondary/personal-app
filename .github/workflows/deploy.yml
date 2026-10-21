@@ -1,0 +1,58 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  migrate:
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Migrate production
+        run: pnpm db:migrate
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.PROD_MIGRATION_DATABASE_URL }}
+      - name: Migrate seed (so new PR branches start current)
+        run: pnpm db:migrate
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.SEED_MIGRATION_DATABASE_URL }}
+
+  deploy:
+    needs: migrate
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build
+        run: |
+          pnpm dlx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+          APP_BUILD_ID="${{ github.sha }}" pnpm dlx vercel@latest build --prod --token="$VERCEL_TOKEN"
+      - name: Deploy
+        id: deploy
+        run: pnpm dlx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      - name: Smoke
+        run: pnpm smoke "${{ vars.PROD_URL }}" --env production --build "${{ github.sha }}" --expect-no-password
+      - name: Roll back on failure
+        if: failure() && steps.deploy.outcome == 'success'
+        run: |
+          pnpm dlx vercel@latest rollback --yes --token="$VERCEL_TOKEN"
+          exit 1
