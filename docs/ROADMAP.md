@@ -18,21 +18,21 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] ESLint (with import-boundary rule), Prettier, `tsc` scripts
 - [ ] Vitest set up (unit + PGlite integration harness) with a first passing test
 - [ ] Playwright set up with desktop + phone projects
-- [ ] Supabase projects created: `personal-app-staging`, `personal-app-prod`; sign-ups disabled; owner (and staging test owner) accounts created
-- [ ] Supabase CLI local stack for development; `.env.example`
-- [ ] Drizzle wired up; first migration; RLS enabled with no anon/authenticated policies
-- [ ] Login (magic link + Google), `@supabase/ssr` middleware, `requireOwner()` with `OWNER_USER_ID`
-- [ ] Vercel project linked; preview deploys on PRs; production auto-deploy disabled
+- [ ] Local Postgres via Docker Compose; `.env.example`
+- [ ] Drizzle wired up; first migration (settings + Better Auth tables)
+- [ ] Better Auth: Google + passkey sign-in, owner-email creation lock, `requireOwner()`; password sign-in only outside production
+- [ ] Neon project with `main` (prod) and `seed` branches; Data API off; Google OAuth client
+- [ ] Vercel project linked; Git auto-deploys fully disabled (Actions deploys everything)
 - [ ] `ci.yml`: lint, format, typecheck, test + coverage gate, drizzle check, build
-- [ ] `e2e.yml`: migrate + seed staging, Playwright against preview
-- [ ] `deploy.yml`: migrate prod → build → deploy → smoke (`/api/health`) → auto-rollback on failure
+- [ ] `preview.yml`: Neon branch per PR from `seed` → migrate → test owner → preview deploy → Playwright; `preview-cleanup.yml` deletes the branch
+- [ ] `deploy.yml`: migrate prod + seed → build → deploy → smoke (`/api/health`) → auto-rollback on failure
 - [ ] Branch protection on `main`; GitHub secret scanning + push protection on
 - [ ] Security headers (CSP, HSTS, frame-ancestors)
 
 ## M1 — Core data and domain layer
 *Done when: every core action exists in the domain layer, is fully tested against Postgres, and records history.*
 
-- [ ] Schema: areas, achievements, tasks, categories, task_categories, task_completions, practice_entries, change_events, settings
+- [ ] Schema: areas, achievements, tasks, categories, task_categories, task_completions, practice_entries, change_events
 - [ ] `runAction` + `Ctx` (transaction, owner scoping, actor, batch id, injected clock)
 - [ ] Fractional ordering helpers
 - [ ] Areas: create / update / reorder / delete
@@ -83,10 +83,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 ## M5 — MCP server (AI access)
 *Done when: the owner can connect Claude and at least one other AI app, brainstorm, and have it create and organise items, and undo them, safely.*
 
-- [ ] **Spike:** Supabase OAuth server + dynamic client registration with Claude and one other client; decide keep vs. fallback (§7.4)
+- [ ] **Spike:** Better Auth MCP/OAuth-provider plugin + dynamic client registration with Claude and one other client; decide keep vs. fallback (§7.4)
 - [ ] `/.well-known/oauth-protected-resource` metadata; 401 + `WWW-Authenticate` on `/api/mcp`
 - [ ] `/oauth/consent` page (owner-only, Approve / Deny)
-- [ ] Token verification (JWKS, audience, expiry, `sub === OWNER_USER_ID`); actor = `mcp:<client>`
+- [ ] Token validation via Better Auth (unexpired, unrevoked, user is owner); actor = `mcp:<client>`
 - [ ] MCP tools (read, create incl. batch, update, move, complete, capture, file, categories, practice log, history, undo, delete)
 - [ ] Tool descriptions tuned for model use; compact responses
 - [ ] Settings → Connected AI apps (list + revoke)
@@ -99,8 +99,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] PWA manifest, icons, Apple touch icons; verified "Add to Home Screen" on iOS and Android
 - [ ] "New version available" banner
 - [ ] Sentry (client + server, source maps)
-- [ ] Nightly encrypted backup workflow + documented restore drill on staging
-- [ ] Staging keep-alive ping; soft-delete purge job
+- [ ] Nightly encrypted backup workflow + documented restore drill into a scratch Neon branch
+- [ ] Soft-delete purge job
+- [ ] Settings: manage passkeys (list, rename, remove)
 - [ ] Renovate configured
 - [ ] Accessibility pass (axe in E2E clean; keyboard drag works)
 - [ ] Dark mode *(optional)*

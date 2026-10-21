@@ -214,9 +214,11 @@ progress is tracked in [docs/ROADMAP.md](../../ROADMAP.md). Summary:
 - **One web app**, responsive, installable to the phone's home screen
   (PWA). One codebase for desktop and phone.
 - **Next.js + TypeScript.**
-- **Supabase** for Postgres database and authentication. Owner signs in with
-  email and/or Google; public sign-ups disabled; data access locked to the
-  owner at the database level as well as in the app.
+- **Neon** for the Postgres database (each PR gets its own throwaway copy
+  with sample data), and **Better Auth** for login, running inside the app.
+  The owner signs in with a passkey or Google, and only the owner's email
+  can ever have an account. The database is reachable only from the app's
+  server.
 - **Vercel** for hosting.
 - **MCP server** hosted as part of the same app, using the official MCP
   TypeScript SDK, with OAuth tied to the same owner login.
@@ -234,6 +236,6 @@ progress is tracked in [docs/ROADMAP.md](../../ROADMAP.md). Summary:
 - Dark mode, exact palette, typography, icons.
 - Drag-and-drop library, UI component library, state management.
 - Testing strategy and CI.
-- How the MCP OAuth flow is implemented (e.g. Supabase's OAuth server
-  support vs. a small custom authorization server), as long as only the
+- How the MCP OAuth flow is implemented (Better Auth's plugin, or a small
+  authorization server on a maintained OAuth library), as long as only the
   owner can authorise a client.

@@ -41,28 +41,33 @@ pinning numbers that will age; the lockfile pins exact versions.
 | Drag and drop | **dnd-kit** | Works with touch (phone) and mouse; supports board columns and sortable lists |
 | Client data/cache | **TanStack Query** wrapping server actions | Optimistic updates, rollback on error, cache invalidation |
 | Validation | **Zod** | One schema per action, reused for server-action input, MCP tool input schemas, and form validation |
-| Database | **PostgreSQL on Supabase** | Managed Postgres, free tier, daily backups on paid tiers, second free project for staging |
+| Database | **PostgreSQL on Neon** (one project; `main` branch = production) | Plain managed Postgres, free tier, instant copy-on-write **branches** give every PR its own database |
+| DB driver | **node-postgres (`pg`)** pool via `drizzle-orm/node-postgres`, using Neon's pooled connection string at runtime | Works identically against local Docker Postgres and Neon; supports transactions |
 | ORM / migrations | **Drizzle ORM** + **drizzle-kit** (SQL migrations committed to the repo) | Typed queries, real transactions, plain SQL migrations |
-| Auth | **Supabase Auth** via **@supabase/ssr** (cookie sessions) | Magic-link email and Google sign-in; sign-ups disabled |
+| Auth | **Better Auth**, a library running inside the app that stores users and sessions in our own Postgres via its Drizzle adapter | No external auth service. Sign-in with **passkeys** and **Google**, locked to one owner email |
 | MCP | **@modelcontextprotocol/sdk** with Streamable HTTP transport, served from a Next.js route (via Vercel's `mcp-handler` adapter) | Official SDK; works with Claude, ChatGPT, Cursor and other MCP clients |
-| MCP auth | **OAuth 2.1** per the MCP authorization spec; **Supabase Auth's OAuth server** as authorization server (spike first; fallback in §7.4) | Reuses the owner's login; tokens are verifiable JWTs |
+| MCP auth | **OAuth 2.1** per the MCP authorization spec, provided by **Better Auth's MCP / OAuth-provider plugin** (dynamic client registration, consent, token issuance); spike first, fallback in §7.4 | Same login and user table as the web UI; a maintained component instead of a custom auth server |
 | Hosting | **Vercel** (Hobby/free) | First-class Next.js hosting, preview deployment per PR, instant rollback |
 | CI | **GitHub Actions** | Repo already on GitHub |
 | Error tracking | **Sentry** (free tier), added in the polish milestone | Know when something breaks on the phone |
 | Dependency updates | **Renovate** (weekly, grouped, auto-merge patch updates when CI is green) | Keeps the app current without noise |
 
-### Why not supabase-js + Row Level Security for app queries?
-Supabase's usual pattern lets the browser query the database directly,
-protected by Row Level Security (RLS) policies. We deliberately don't do
-that. Mutations need multi-statement transactions (change + history
-record), and the MCP server needs the same logic. Instead:
+### Why Neon + Better Auth (and not a backend-as-a-service)?
+The app has exactly one user, and all data access goes through our server
+code. A hosted auth service and a browser-facing database API would add
+moving parts we don't need. Instead:
 
-- The server connects to Postgres directly with Drizzle (pooled connection
-  string).
-- **RLS is enabled on every table with no policies** for the `anon` and
-  `authenticated` roles. Supabase's public Data API (PostgREST) can
-  therefore read or write nothing, even with a valid user token. This is the
-  "locked at the database level" guarantee.
+- **The database is reachable only with credentials that exist solely in
+  server env vars.** Neon's optional Data API stays **disabled**. No HTTP
+  endpoint exposes the database, and the browser never receives database
+  credentials.
+- **Auth is code in the repo** (Better Auth). Its tables (`user`, `session`,
+  `account`, `verification`, `passkey`, plus the OAuth-provider tables in
+  M5) live in the same Postgres and are migrated with Drizzle like
+  everything else.
+- **Neon branches** replace a separate staging project. Each PR gets a
+  throwaway database branched from a `seed` branch that holds schema and
+  sample data, never personal data (§10).
 - Ownership is enforced in the domain layer (every row carries `owner_id`,
   and every query is scoped by it), behind an explicit owner check on every
   request (§6).
@@ -73,7 +78,7 @@ record), and the MCP server needs the same logic. Instead:
 
 ```
 personal-app/
-├─ .github/workflows/        ci.yml, deploy.yml, e2e.yml, backup.yml
+├─ .github/workflows/        ci.yml, preview.yml, preview-cleanup.yml, deploy.yml, backup.yml
 ├─ docs/
 │  ├─ ROADMAP.md
 │  └─ superpowers/         specs/ (design docs), plans/ (implementation plans)
@@ -227,22 +232,39 @@ export async function completeTask(ctx: Ctx, input: z.infer<typeof completeTaskI
 ## 6. Authentication and access control
 
 ### 6.1 Web UI
-- Supabase Auth with **magic-link email** and **Google** providers.
-  **"Allow new users to sign up" is disabled** in both Supabase projects.
-  The owner's account is created once, by hand, in the Supabase dashboard.
-- `@supabase/ssr` stores the session in HTTP-only cookies. Next.js
-  middleware refreshes the session on each request.
+- **Better Auth** with two sign-in methods:
+  - **Google** (social provider). This is how the owner signs in the first
+    time.
+  - **Passkeys** (Better Auth passkey plugin, WebAuthn). The owner adds one
+    from Settings after the first Google sign-in, then signs in with Face ID,
+    fingerprint or Windows Hello. Passkeys are tied to the production
+    domain.
+- **One-owner lock at account creation:** a Better Auth
+  `databaseHooks.user.create.before` hook rejects any user whose email is
+  not exactly `OWNER_EMAIL` (case-insensitive) **and** verified. Nobody
+  else can ever get a row in the `user` table, whichever sign-in method
+  they try.
+- Sessions are HTTP-only, `Secure`, `SameSite=Lax` cookies managed by Better
+  Auth. The `nextCookies()` plugin covers server actions.
 - **`requireOwner()`** runs at the top of every server action, page and API
-  route. It verifies the session and checks that the user id equals the
-  `OWNER_USER_ID` env var. Anything else gets 404 (pages) or 401 (APIs).
-  This is a second lock behind disabled sign-ups.
-- Everything except `/login`, `/auth/callback` and the OAuth metadata
-  endpoints requires the owner.
+  route. It loads the session (`auth.api.getSession`) and checks
+  `session.user.email === OWNER_EMAIL`. Anything else gets 404 (pages) or
+  401 (APIs). This is a second lock behind the creation hook, and it
+  covers a changed `OWNER_EMAIL` too.
+- The Next.js proxy (middleware) does only a cheap cookie-presence check
+  and redirects to `/login`. It is never the real lock.
+- Everything except `/login`, `/api/auth/*` (Better Auth's own endpoints),
+  `/api/health` and the OAuth metadata endpoints requires the owner.
+- **Email + password sign-in exists only outside production.** It's
+  enabled when `APP_ENV !== "production"` **and**
+  `ENABLE_PASSWORD_LOGIN === "true"`, for E2E tests and for trying preview
+  builds against seed data. The production config can't turn it on.
 
 ### 6.2 Defence in depth
-- RLS is enabled on all tables with no `anon` or `authenticated` policies
-  (§2). The Supabase service-role key is never used by the app. The DB
-  connection string lives only in server env vars.
+- Neon's Data API is disabled; DB credentials live only in server env
+  vars, and migration credentials only in GitHub Actions secrets.
+- `BETTER_AUTH_SECRET` differs per environment, so a preview session cookie
+  is worthless in production.
 - Security headers via Next config: a strict CSP, `frame-ancestors 'none'`,
   HSTS, and `Referrer-Policy`.
 - Rate limiting on `/login` and `/api/mcp` (Vercel's built-in firewall
@@ -284,27 +306,28 @@ Responses are compact JSON plus a one-line human summary.
 1. An AI client calls `/api/mcp` without a token and gets 401 with a
    `WWW-Authenticate` header pointing to
    `/.well-known/oauth-protected-resource`.
-2. That metadata names the authorization server (the Supabase project's
-   OAuth 2.1 server).
+2. That metadata names the authorization server, which is the app itself
+   (Better Auth's OAuth-provider endpoints under `/api/auth/*`, with
+   `/.well-known/oauth-authorization-server` metadata).
 3. The client registers itself (dynamic client registration) and sends the
-   owner to authorize. Supabase redirects to our **`/oauth/consent`** page,
-   which requires the owner's login, shows "*ChatGPT wants to read and
-   change your goals*", and has Approve / Deny.
-4. The client receives an access token (a Supabase-signed JWT). Every MCP
-   request verifies it against the project's JWKS: signature, expiry,
-   audience, and `sub === OWNER_USER_ID`. The `client_id` is recorded as
-   the actor (`mcp:<client name>`).
+   owner to authorize. This lands on our **`/oauth/consent`** page, which
+   requires the owner's login, shows "*ChatGPT wants to read and change
+   your goals*", and has Approve / Deny.
+4. The client receives an access token. Every MCP request validates it
+   through Better Auth (the plugin's session-from-token helper, e.g.
+   `withMcpAuth`), checking that it's unexpired and unrevoked and that its
+   user is the owner. The OAuth client's name is recorded as the actor
+   (`mcp:<client name>`).
 5. Settings → **Connected AI apps** lists clients and lets the owner revoke
    them.
 
 ### 7.4 Risk and fallback
-Supabase's OAuth server is newer than the rest of the stack. **Milestone 5
-starts with a spike** to connect Claude and one other client end-to-end. If
-it can't support dynamic client registration and consent the way MCP
-clients expect, the fallback is a minimal authorization server inside the
-app, using a maintained OAuth 2.1 library. It would issue our own JWTs,
-signed with a key in env vars, and keep the same consent page and
-owner-only rule.
+MCP client auth behaviour still varies between AI apps. **Milestone 5
+starts with a spike** to connect Claude and one other client end-to-end
+through Better Auth's plugin. If a client can't complete the flow, the
+fallback is a small authorization server built on a maintained OAuth 2.1
+library (e.g. `oidc-provider`), mounted in the app. It would keep the same
+consent page and owner-only rule.
 
 ---
 
@@ -347,16 +370,17 @@ Development follows **test-first** for domain logic. The pyramid:
 | **Domain integration** | Vitest + **PGlite** (in-process Postgres) with real Drizzle migrations | Every domain action: ownership scoping, transactions, history events, undo (including conflict refusal), inbox filing, completions and XP | Every commit, < 30 s |
 | **Adapter tests** | Vitest | Server actions call `requireOwner()` (unauthenticated or wrong user is rejected). MCP: an in-process MCP SDK client lists tools, calls them with a stubbed verified token, and a bad or foreign token is rejected | Every commit |
 | **Component** | Vitest + Testing Library (jsdom) | Interactive pieces with logic: capture box, recurrence picker, effort picker, board column reorder handlers | Every commit |
-| **End-to-end** | **Playwright**, two projects: Desktop Chrome and a phone profile (Pixel 7 / iPhone 14 emulation) | Golden paths: log in, create area, capture to Inbox, file it, drag achievement Backlog→Active, add tasks, complete task (XP updates), repeating task daily check-off, undo from History, axe accessibility scan | On every PR, against its Vercel **preview deployment** (staging DB) |
-| **MCP smoke** | Script using the MCP SDK client with a long-lived staging token | Connect, `get_overview`, `create_tasks`, `undo_batch` | Nightly and after each production deploy |
+| **End-to-end** | **Playwright**, two projects: Desktop Chrome and a phone profile (Pixel 7 / iPhone 14 emulation) | Golden paths: log in, create area, capture to Inbox, file it, drag achievement Backlog→Active, add tasks, complete task (XP updates), repeating task daily check-off, undo from History, axe accessibility scan | On every PR, against its **preview deployment** and that PR's own Neon branch |
+| **MCP smoke** | Script using the MCP SDK client with a token issued on the PR's branch | Connect, `get_overview`, `create_tasks`, `undo_batch` | On every PR (from M5) |
 
-**Test data:** factories in `src/test/factories.ts`. The staging database is
-reset and re-seeded by the E2E job's setup step, so tests never depend on
-leftovers.
+**Test data:** factories in `src/test/factories.ts`. Each PR's database is a
+fresh branch of `seed`, so E2E never depends on leftovers and never touches
+personal data.
 
-**E2E auth:** the staging project only has email+password sign-in enabled,
-for a dedicated test owner whose id is staging's `OWNER_USER_ID`.
-Production keeps password sign-in disabled.
+**E2E auth:** in preview environments, `OWNER_EMAIL` is a dedicated test
+owner, and email + password sign-in is enabled (§6.1). The test owner is
+created on the PR's branch by a setup script. Production can't enable
+password sign-in.
 
 **Coverage target:** ≥90% lines for `src/lib` and `src/server/domain`,
 enforced in CI. UI coverage is not enforced; E2E covers it.
@@ -367,15 +391,20 @@ enforced in CI. UI coverage is not enforced; E2E covers it.
 
 | Env | App | Database / Auth | Who uses it |
 |---|---|---|---|
-| **Local** | `pnpm dev` on the owner's machine | **Supabase CLI local stack** (Docker, already installed), seeded with sample areas | Development |
-| **Preview / staging** | Vercel preview deployment per PR (unique URL) | Supabase project **`personal-app-staging`** (free tier) | E2E tests; the owner tries changes on their phone before merging |
-| **Production** | Vercel production (`<project>.vercel.app`; custom domain optional later) | Supabase project **`personal-app-prod`** | The owner, daily |
+| **Local** | `pnpm dev` on the owner's machine | **Postgres 17 in Docker** (`docker compose up -d`, already installed), seeded with sample areas; password login enabled | Development |
+| **Preview** | Vercel preview deployment per PR (unique URL), deployed by GitHub Actions | Neon branch **`pr-<number>`**, created from **`seed`** when the PR opens, deleted when it closes | E2E tests; the owner tries changes on their phone (signing in as the test owner) before merging |
+| **Production** | Vercel production (`<project>.vercel.app`; custom domain optional later) | Neon **`main`** branch | The owner, daily |
+
+Neon's `seed` branch holds the current schema plus sample data. It is never
+branched from production data. `deploy.yml` migrates it after production,
+so new PR branches start current.
 
 Config comes from env vars only. `.env.example` documents each one:
-`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`OWNER_USER_ID`, `SUPABASE_JWKS_URL`, `SENTRY_DSN`, …. Values live in
-Vercel (per environment) and GitHub Actions secrets. Nothing secret is ever
-committed. **The repository is public**, so this matters.
+`DATABASE_URL`, `MIGRATION_DATABASE_URL`, `BETTER_AUTH_SECRET`,
+`BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+`OWNER_EMAIL`, `APP_ENV`, `ENABLE_PASSWORD_LOGIN`, `SENTRY_DSN`, ….
+Values live in Vercel (per environment) and GitHub Actions secrets. Nothing
+secret is ever committed. **The repository is public**, so this matters.
 
 ---
 
@@ -388,7 +417,7 @@ committed. **The repository is public**, so this matters.
 - Work happens on short-lived branches, one per roadmap item or small
   group.
 
-### 11.2 `ci.yml` (every push and PR)
+### 11.2 `ci.yml` (every PR, and called by `deploy.yml`)
 1. Checkout, set up Node from `.nvmrc`, pnpm install with cache.
 2. `pnpm lint` (ESLint, including the import-boundary rule) and
    `pnpm format:check` (Prettier).
@@ -398,26 +427,36 @@ committed. **The repository is public**, so this matters.
    and no uncommitted schema drift.
 6. `pnpm build`.
 
-### 11.3 `e2e.yml` (on Vercel preview `deployment_status: success` for a PR)
-1. Apply pending migrations to **staging** (`drizzle-kit migrate`).
-2. Reset and seed staging.
-3. Run Playwright (desktop + phone) against the preview URL. Upload the
+### 11.3 `preview.yml` (every PR push, after `ci.yml` passes)
+1. Create (or reset) Neon branch `pr-<number>` from `seed`
+   (`neondatabase/create-branch-action`) and apply pending migrations to
+   it.
+2. Create the test owner on that branch.
+3. `vercel build` (preview env pulled from Vercel), then `vercel deploy
+   --prebuilt`, passing this branch's `DATABASE_URL` as a runtime env for
+   this deployment only.
+4. Comment or update the preview URL on the PR.
+5. Run Playwright (desktop + phone) against the preview URL. Upload the
    report and traces as artifacts on failure.
-4. Report status back to the PR; branch protection requires it.
+6. Report status back to the PR; branch protection requires it.
+
+`preview-cleanup.yml` deletes the PR's Neon branch when the PR closes.
 
 ### 11.4 `deploy.yml` (on push to `main`)
 Production deploys run from GitHub Actions, not Vercel's auto-deploy, so
 migrations are guaranteed to run first:
 1. Run CI steps (or require the CI run's success).
-2. **Migrate production** (`drizzle-kit migrate` with prod `DATABASE_URL`).
+2. **Migrate production** (Neon `main`, direct connection string), then
+   migrate the `seed` branch.
 3. `vercel build --prod` then `vercel deploy --prebuilt --prod`.
 4. Post-deploy smoke: `GET /api/health` (checks DB connectivity and schema
    version) and the MCP smoke script. On failure, run `vercel rollback`
    automatically and fail the workflow, which emails the owner.
 
-Vercel's Git integration still creates **preview** deployments for PRs.
-Production auto-deploy is disabled (`git.deploymentEnabled.main: false` in
-`vercel.json`).
+Vercel's Git integration is **fully disabled**
+(`git.deploymentEnabled: false` in `vercel.json`). Every deployment,
+preview and production, comes from Actions, so the database it talks to
+is always chosen explicitly.
 
 ### 11.5 Migration rules
 - Migrations are generated by drizzle-kit, reviewed, and committed. They're
@@ -432,7 +471,9 @@ Production auto-deploy is disabled (`git.deploymentEnabled.main: false` in
   it with `age`** using the owner's public key (the repo is public, so
   artifacts must not be readable), and uploads it as an artifact with
   30-day retention. The owner keeps the private key. A documented restore
-  drill uses the staging project.
+  drill restores into a scratch Neon branch. Neon's own point-in-time
+  restore (short history window on the free plan) covers "undo the last
+  few hours".
 - In-app **Settings → Export**: download all data as JSON at any time.
 - Renovate runs weekly. It groups updates and auto-merges patch updates
   when CI and E2E pass.
@@ -446,10 +487,10 @@ Production auto-deploy is disabled (`git.deploymentEnabled.main: false` in
    `docs/superpowers/plans/`.
 2. Create a branch, build it test-first (with Claude Code or by hand), and
    commit.
-3. Open a PR. CI runs, and Vercel posts a **preview URL**. E2E runs
-   against it.
-4. Open the preview URL on the phone and try it for real (the staging data
-   is sample data).
+3. Open a PR. CI runs, a **preview URL** with its own database branch is
+   posted on the PR, and E2E runs against it.
+4. Open the preview URL on the phone and try it for real. Sign in as the
+   test owner; the data is sample data from `seed`.
 5. Merge. `deploy.yml` migrates the production DB, deploys, and smoke-tests.
    Production is live within a few minutes.
 6. Tick the item in `ROADMAP.md` as part of the PR.
@@ -478,13 +519,12 @@ every few minutes).
 
 ## 14. Cost
 
-Everything fits free tiers for one user: Vercel Hobby, two Supabase free
-projects, GitHub Actions on a public repo, and the Sentry developer tier.
-**Caveat:** Supabase pauses free projects after about a week of no
-activity. Daily use keeps prod awake. A lightweight scheduled ping from
-GitHub Actions keeps staging awake. If the owner wants Supabase's managed
-daily backups or no pausing, the Supabase Pro plan is the upgrade path
-(owner's decision, not required).
+Everything fits free tiers for one user: Vercel Hobby, one Neon free
+project (its branch limit easily covers `main`, `seed` and a few open
+PRs), GitHub Actions on a public repo, and the Sentry developer tier. Neon
+suspends idle compute and wakes it on the next query, usually in well
+under a second, so there is no pausing to manage. A Google Cloud OAuth
+client is free.
 
 ---
 
@@ -492,8 +532,10 @@ daily backups or no pausing, the Supabase Pro plan is the upgrade path
 
 | Risk | Mitigation |
 |---|---|
-| Supabase OAuth server doesn't fit MCP clients' expectations | Spike first in M5; fallback in-app auth server (§7.4) |
+| An MCP client can't complete Better Auth's OAuth flow | Spike first in M5; fallback auth server on a maintained OAuth library (§7.4) |
+| We own the auth code | Maintained library, no hand-rolled crypto; owner lock is tested at both layers (creation hook + `requireOwner`); E2E covers an intruder |
+| Losing the only passkey or Google access | Google and passkey are independent; Settings shows registered passkeys; recovery = set `OWNER_EMAIL` and sign in with Google |
 | Drag-and-drop feel on phones | dnd-kit touch sensors with a long-press to drag; the phone list view also gets "Move to…" menus so drag is never the only way |
-| Serverless + Postgres connection limits | Use Supabase's pooled (transaction-mode) connection string; Drizzle with `prepare: false` |
+| Serverless + Postgres connection limits | Neon's pooled connection string at runtime (direct string only for migrations); a small `pg` pool attached with `@vercel/functions` `attachDatabasePool` |
 | Time-zone bugs in streaks and recurrence | Pure functions with injected clock and time zone; dedicated DST and midnight test cases |
 | Public repo leaks something | Secrets only in env vars; GitHub secret scanning + push protection enabled; encrypted backups |
