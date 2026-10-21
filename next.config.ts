@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  env: {
+    APP_BUILD_ID: process.env.APP_BUILD_ID ?? "dev",
+  },
   turbopack: {
     rules: {
       "*.css": {
