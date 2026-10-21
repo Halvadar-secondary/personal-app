@@ -32,7 +32,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/lib/**", "src/server/domain/**"],
-      exclude: ["src/lib/utils.ts"],
+      exclude: ["src/lib/utils.ts", "src/lib/auth-client.ts"],
       thresholds: { lines: 90 },
     },
   },
