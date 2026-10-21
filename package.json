@@ -18,7 +18,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:check": "drizzle-kit check",
     "e2e:users": "tsx --env-file-if-exists=.env.local scripts/ensure-test-users.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.12",
