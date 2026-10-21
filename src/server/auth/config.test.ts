@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { passwordLoginEnabled } from "./config";
+import { passwordLoginEnabled, rateLimitEnabled } from "./config";
 
 describe("passwordLoginEnabled", () => {
   it.each([
@@ -11,5 +11,16 @@ describe("passwordLoginEnabled", () => {
     [{ APP_ENV: "preview", ENABLE_PASSWORD_LOGIN: "1" }, false],
   ])("passwordLoginEnabled(%j) = %s", (env, r) => {
     expect(passwordLoginEnabled(env)).toBe(r);
+  });
+});
+
+describe("rateLimitEnabled", () => {
+  it.each([
+    [{ APP_ENV: "production" }, true],
+    [{ APP_ENV: "preview" }, false],
+    [{ APP_ENV: "local" }, false],
+    [{}, false],
+  ])("rateLimitEnabled(%j) = %s", (env, r) => {
+    expect(rateLimitEnabled(env)).toBe(r);
   });
 });

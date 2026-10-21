@@ -5,7 +5,7 @@ import { APIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import * as schema from "@/server/db/schema";
 import type { Db } from "@/server/db/types";
-import { passwordLoginEnabled } from "./config";
+import { passwordLoginEnabled, rateLimitEnabled } from "./config";
 import { isOwnerEmail } from "./owner";
 
 type AuthEnv = Record<string, string | undefined>;
@@ -24,6 +24,7 @@ export function createAuth(db: Db, env: AuthEnv) {
     baseURL,
     secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: trustedOrigins(env),
+    rateLimit: { enabled: rateLimitEnabled(env) },
     database: drizzleAdapter(db, { provider: "pg", schema }),
     emailAndPassword: {
       enabled: passwordLoginEnabled(env),

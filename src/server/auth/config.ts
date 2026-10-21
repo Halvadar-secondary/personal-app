@@ -5,3 +5,8 @@ export function passwordLoginEnabled(env: {
 }): boolean {
   return env.APP_ENV !== "production" && env.ENABLE_PASSWORD_LOGIN === "true";
 }
+
+/** Auth rate limiting: on in production; off in local/preview, where E2E signs in repeatedly. */
+export function rateLimitEnabled(env: { APP_ENV?: string }): boolean {
+  return env.APP_ENV === "production";
+}
