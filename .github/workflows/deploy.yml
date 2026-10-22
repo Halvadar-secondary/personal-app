@@ -62,7 +62,8 @@ jobs:
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - name: Promote
-        run: pnpm dlx vercel@latest promote "${{ steps.deploy.outputs.url }}" --yes --token="$VERCEL_TOKEN"
+        # promote does not read the linked project's team; without --scope it looks up a personal account.
+        run: pnpm dlx vercel@latest promote "${{ steps.deploy.outputs.url }}" --yes --scope="$VERCEL_ORG_ID" --token="$VERCEL_TOKEN"
       - name: Smoke production
         run: >
           pnpm smoke "${{ vars.PROD_URL }}" --env production --build "${{ github.sha }}"
