@@ -25,24 +25,24 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Vercel project linked; Git auto-deploys fully disabled (Actions deploys everything)
 - [x] `ci.yml`: lint, format, typecheck, test + coverage gate, drizzle check, build
 - [x] `preview.yml`: Neon branch per PR from `seed` → migrate → test owner → preview deploy → Playwright; `preview-cleanup.yml` deletes the branch
-- [x] `deploy.yml`: migrate prod + seed → build → deploy → smoke (`/api/health`) → auto-rollback on failure
+- [x] `deploy.yml`: migrate prod + seed → build → deploy (not live) → smoke that deployment → promote → smoke production
 - [x] Branch protection on `main`; GitHub secret scanning + push protection on
 - [x] Security headers (CSP, HSTS, frame-ancestors)
 
 ## M1 — Core data and domain layer
 *Done when: every core action exists in the domain layer, is fully tested against Postgres, and records history.*
 
-- [ ] Schema: areas, achievements, tasks, categories, task_categories, task_completions, practice_entries, change_events
-- [ ] `runAction` + `Ctx` (transaction, owner scoping, actor, batch id, injected clock)
-- [ ] Fractional ordering helpers
-- [ ] Areas: create / update / reorder / delete
-- [ ] Achievements: create / update / move (status, area, position) / delete
-- [ ] Tasks: create (single + batch) / update / move / complete / uncomplete / delete
-- [ ] Categories: create / update / delete / set on task; "used in this area first" query
-- [ ] Inbox: capture, file achievement, file task
-- [ ] Practice log: add / list entries on a task
-- [ ] History: change events on every mutation; undo batch with conflict refusal; undo-of-undo
-- [ ] Seed script with realistic sample data (Guitar, Social confidence, …)
+- [x] Schema: areas, achievements, tasks, categories, task_categories, task_completions, practice_entries, change_events
+- [x] `runAction` + `Ctx` (transaction, owner scoping, actor, batch id, injected clock)
+- [x] Fractional ordering helpers
+- [x] Areas: create / update / reorder / delete
+- [x] Achievements: create / update / move (status, area, position) / delete
+- [x] Tasks: create (single + batch) / update / move / complete / uncomplete / delete
+- [x] Categories: create / update / delete / set on task; "used in this area first" query
+- [x] Inbox: capture, file achievement, file task
+- [x] Practice log: add / list entries on a task
+- [x] History: change events on every mutation; undo batch with conflict refusal; undo-of-undo
+- [x] Seed script with realistic sample data (Guitar, Social confidence, …)
 
 ## M2 — Core UI
 *Done when: the owner can run their goals day-to-day from desktop and phone (without XP and repeats yet).*
