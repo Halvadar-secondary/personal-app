@@ -62,8 +62,17 @@ jobs:
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - name: Promote
-        # promote does not read the linked project's team; without --scope it looks up a personal account.
-        run: pnpm dlx vercel@latest promote "${{ steps.deploy.outputs.url }}" --yes --scope="$VERCEL_ORG_ID" --token="$VERCEL_TOKEN"
+        # REST, not `vercel promote`: the CLI first loads the token's user, which a
+        # team-scoped token can't (404 "User not found").
+        run: |
+          api=https://api.vercel.com
+          auth="Authorization: Bearer $VERCEL_TOKEN"
+          host="${DEPLOY_URL#https://}"
+          id=$(curl -fsS -H "$auth" "$api/v13/deployments/$host?teamId=$VERCEL_ORG_ID" | jq -r .id)
+          curl -fsS -X POST -H "$auth" "$api/v10/projects/$VERCEL_PROJECT_ID/promote/$id?teamId=$VERCEL_ORG_ID" > /dev/null
+          echo "promoted $id"
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
       - name: Smoke production
         run: >
           pnpm smoke "${{ vars.PROD_URL }}" --env production --build "${{ github.sha }}"
