@@ -40,7 +40,7 @@ function column(
         exceptId ? ne(achievements.id, exceptId) : undefined,
       ),
     )
-    .orderBy(asc(achievements.sortKey));
+    .orderBy(asc(achievements.sortKey), asc(achievements.id));
 }
 
 /** The achievement's tasks that aren't deleted, in order. */
@@ -55,7 +55,7 @@ export function liveTasksOf(ctx: Ctx, achievementId: string) {
         isNull(tasks.deletedAt),
       ),
     )
-    .orderBy(asc(tasks.sortKey));
+    .orderBy(asc(tasks.sortKey), asc(tasks.id));
 }
 
 export const createAchievement = defineAction(
@@ -166,7 +166,11 @@ export const listAchievements = defineAction(
           isNull(achievements.deletedAt),
         ),
       )
-      .orderBy(asc(achievements.status), asc(achievements.sortKey)),
+      .orderBy(
+        asc(achievements.status),
+        asc(achievements.sortKey),
+        asc(achievements.id),
+      ),
 );
 
 export const getAchievement = defineAction(

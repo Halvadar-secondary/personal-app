@@ -56,3 +56,26 @@ describe("sortKeyFor", () => {
     }
   });
 });
+
+describe("sortKeyFor with tied keys", () => {
+  const tied = [
+    { id: A, sortKey: "a0" },
+    { id: B, sortKey: "a1" },
+    { id: C, sortKey: "a1" },
+    { id: MISSING, sortKey: "a2" },
+  ];
+
+  it("skips past an equal next key", () => {
+    expect(between(sortKeyFor(tied, { afterId: B }), "a1", "a2")).toBe(true);
+  });
+
+  it("skips back past an equal previous key", () => {
+    expect(between(sortKeyFor(tied, { beforeId: C }), "a0", "a1")).toBe(true);
+  });
+
+  it("refuses to place between two equal keys with a domain error", () => {
+    expect(() => sortKeyFor(tied, { afterId: B, beforeId: C })).toThrow(
+      expect.objectContaining({ code: "conflict" }),
+    );
+  });
+});

@@ -24,15 +24,22 @@ export function sortKeyFor(siblings: Sibling[], pos: Position): string {
     const a = indexOf(pos.afterId);
     const b = indexOf(pos.beforeId);
     if (a >= b) throw new DomainError("invalid_input", { position: pos });
-    return keyBetween(keyAt(a), keyAt(b));
+    const lo = keyAt(a)!;
+    const hi = keyAt(b)!;
+    // Equal keys (a tie from concurrent writes) leave no room between them.
+    if (lo >= hi) throw new DomainError("conflict", { position: pos });
+    return keyBetween(lo, hi);
   }
+  // Single-sided placements skip over neighbours tied with the anchor.
   if (pos.afterId) {
-    const a = indexOf(pos.afterId);
-    return keyBetween(keyAt(a), keyAt(a + 1));
+    const lo = keyAt(indexOf(pos.afterId))!;
+    const next = siblings.find((s) => s.sortKey > lo);
+    return keyBetween(lo, next?.sortKey ?? null);
   }
   if (pos.beforeId) {
-    const b = indexOf(pos.beforeId);
-    return keyBetween(keyAt(b - 1), keyAt(b));
+    const hi = keyAt(indexOf(pos.beforeId))!;
+    const prev = siblings.findLast((s) => s.sortKey < hi);
+    return keyBetween(prev?.sortKey ?? null, hi);
   }
   return keyBetween(keyAt(siblings.length - 1), null);
 }

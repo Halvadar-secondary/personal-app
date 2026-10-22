@@ -49,7 +49,7 @@ function siblings(ctx: Ctx, achievementId: string | null, exceptId?: string) {
         exceptId ? ne(tasks.id, exceptId) : undefined,
       ),
     )
-    .orderBy(asc(tasks.sortKey));
+    .orderBy(asc(tasks.sortKey), asc(tasks.id));
 }
 
 export const createTask = defineAction(

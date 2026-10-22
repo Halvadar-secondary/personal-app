@@ -32,7 +32,7 @@ function siblings(ctx: Ctx, exceptId?: string) {
         exceptId ? ne(areas.id, exceptId) : undefined,
       ),
     )
-    .orderBy(asc(areas.sortKey));
+    .orderBy(asc(areas.sortKey), asc(areas.id));
 }
 
 export const createArea = defineAction(
@@ -105,7 +105,7 @@ export const listAreas = defineAction(z.object({}), (ctx) =>
     .select()
     .from(areas)
     .where(and(eq(areas.ownerId, ctx.ownerId), isNull(areas.deletedAt)))
-    .orderBy(asc(areas.sortKey)),
+    .orderBy(asc(areas.sortKey), asc(areas.id)),
 );
 
 export const getArea = defineAction(z.object({ areaId: z.uuid() }), (ctx, i) =>

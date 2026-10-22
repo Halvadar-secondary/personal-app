@@ -13,6 +13,12 @@ import { readTaskCategories, writeTaskCategories } from "./categories";
 import { type Ctx, defineAction } from "./context";
 import { DomainError } from "./errors";
 import { type EntityType, recordChange } from "./history";
+import {
+  assertCategoryNameFree,
+  assertParentsAndChildren,
+  rekeyIfTaken,
+  resyncTaskAreas,
+} from "./integrity";
 import type { SoftTable } from "./rows";
 
 type Snapshot = Record<string, unknown> | null;
@@ -25,8 +31,17 @@ type Entity = {
 
 type RowTable = SoftTable | typeof taskCompletions;
 
+type Hooks = {
+  beforeApply?: (ctx: Ctx, id: string, snapshot: Snapshot) => Promise<void>;
+  afterApply?: (ctx: Ctx, id: string) => Promise<void>;
+};
+
 /** read/apply over a table; null on a soft table soft-deletes, on a hard one deletes. */
-function tableEntity(table: RowTable, soft: boolean): Entity {
+function tableEntity(
+  table: RowTable,
+  soft: boolean,
+  hooks: Hooks = {},
+): Entity {
   const t = table as SoftTable;
   const columns = getTableColumns(t);
   // jsonb snapshots hold timestamps as ISO strings.
@@ -49,39 +64,53 @@ function tableEntity(table: RowTable, soft: boolean): Entity {
       return (row as Snapshot | undefined) ?? null;
     },
     async apply(ctx, id, snapshot) {
-      if (snapshot === null) {
-        if (soft) {
-          await ctx.db
-            .update(t)
-            .set({ deletedAt: ctx.now(), updatedAt: ctx.now() })
-            .where(mine(ctx, id));
-        } else {
-          await ctx.db.delete(t).where(mine(ctx, id));
-        }
-        return;
-      }
-      const values = {
-        ...hydrate(snapshot),
-        ownerId: ctx.ownerId,
-        ...(soft ? { updatedAt: ctx.now() } : {}),
-      };
-      await ctx.db
-        .insert(t)
-        .values(values as never)
-        .onConflictDoUpdate({
-          target: t.id,
-          set: values as never,
-          setWhere: eq(t.ownerId, ctx.ownerId),
-        });
+      await hooks.beforeApply?.(ctx, id, snapshot);
+      await applySnapshot(ctx, id, snapshot);
+      await hooks.afterApply?.(ctx, id);
     },
   };
+
+  async function applySnapshot(ctx: Ctx, id: string, snapshot: Snapshot) {
+    if (snapshot === null) {
+      if (soft) {
+        await ctx.db
+          .update(t)
+          .set({ deletedAt: ctx.now(), updatedAt: ctx.now() })
+          .where(mine(ctx, id));
+      } else {
+        await ctx.db.delete(t).where(mine(ctx, id));
+      }
+      return;
+    }
+    const values = {
+      ...hydrate(snapshot),
+      ownerId: ctx.ownerId,
+      ...(soft ? { updatedAt: ctx.now() } : {}),
+    };
+    await ctx.db
+      .insert(t)
+      .values(values as never)
+      .onConflictDoUpdate({
+        target: t.id,
+        set: values as never,
+        setWhere: eq(t.ownerId, ctx.ownerId),
+      });
+  }
 }
 
 const registry: Record<EntityType, Entity> = {
-  area: tableEntity(areas, true),
-  achievement: tableEntity(achievements, true),
-  task: tableEntity(tasks, true),
-  category: tableEntity(categories, true),
+  area: tableEntity(areas, true, {
+    afterApply: (ctx, id) => rekeyIfTaken(ctx, areas, id),
+  }),
+  achievement: tableEntity(achievements, true, {
+    afterApply: (ctx, id) => rekeyIfTaken(ctx, achievements, id),
+  }),
+  task: tableEntity(tasks, true, {
+    afterApply: (ctx, id) => rekeyIfTaken(ctx, tasks, id),
+  }),
+  category: tableEntity(categories, true, {
+    beforeApply: assertCategoryNameFree,
+  }),
   practice_entry: tableEntity(practiceEntries, true),
   task_completion: tableEntity(taskCompletions, false),
   task_categories: {
@@ -176,6 +205,13 @@ export const undoBatch = defineAction(
         after: await entity.read(ctx, t.entityId),
       });
     }
+
+    const refs = order.map(({ entityType, entityId }) => ({
+      entityType,
+      entityId,
+    }));
+    await assertParentsAndChildren(ctx, refs);
+    await resyncTaskAreas(ctx, refs);
 
     await ctx.db
       .update(changeEvents)

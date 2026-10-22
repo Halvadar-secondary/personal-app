@@ -10,16 +10,31 @@ import {
 import type { Db } from "@/server/db/types";
 import { createTestDb } from "@/test/db";
 import { createOwner, type Run, runner } from "@/test/factories";
-import { createAchievement, moveAchievement } from "./achievements";
+import {
+  createAchievement,
+  deleteAchievement,
+  moveAchievement,
+} from "./achievements";
 import {
   createArea,
   deleteArea,
   getArea,
   listAreas,
   updateArea,
+  reorderArea,
 } from "./areas";
-import { createCategory, setTaskCategories } from "./categories";
-import { completeTask, createTask, createTasks, uncompleteTask } from "./tasks";
+import {
+  createCategory,
+  deleteCategory,
+  setTaskCategories,
+} from "./categories";
+import {
+  completeTask,
+  createTask,
+  createTasks,
+  deleteTask,
+  uncompleteTask,
+} from "./tasks";
 import { undoBatch } from "./undo";
 
 let db: Db;
@@ -231,5 +246,86 @@ describe("undoBatch", () => {
     const rows = await db.select().from(tasks);
     expect(rows.every((t) => t.deletedAt === null)).toBe(true);
     expect(await db.$count(areas)).toBe(2);
+  });
+
+  // Final-review regressions: undo must keep cross-entity invariants.
+
+  it("undoing a move resyncs tasks added after it", async () => {
+    const p = (await run(createArea, { name: "P" })).id;
+    const q = (await run(createArea, { name: "Q" })).id;
+    const x = await run(createAchievement, { areaId: p, title: "X" });
+    await run(moveAchievement, { achievementId: x.id, areaId: q });
+    const move = await lastBatch();
+    const t2 = await run(createTask, { achievementId: x.id, title: "later" });
+    expect(t2.areaId).toBe(q);
+    await run(undoBatch, { batchId: move });
+    const [row] = await db.select().from(tasks).where(eq(tasks.id, t2.id));
+    expect(row!.areaId).toBe(p);
+  });
+
+  it("undoing a task delete takes the achievement's current area", async () => {
+    const p = (await run(createArea, { name: "P" })).id;
+    const q = (await run(createArea, { name: "Q" })).id;
+    const x = await run(createAchievement, { areaId: p, title: "X" });
+    const t = await run(createTask, { achievementId: x.id, title: "t" });
+    await run(deleteTask, { taskId: t.id });
+    const del = await lastBatch();
+    await run(moveAchievement, { achievementId: x.id, areaId: q });
+    await run(undoBatch, { batchId: del });
+    const [row] = await db.select().from(tasks).where(eq(tasks.id, t.id));
+    expect(row).toMatchObject({ deletedAt: null, areaId: q });
+  });
+
+  it("refuses to undo a create while the row has live children, naming them", async () => {
+    const p = await run(createArea, { name: "P" });
+    const create = await lastBatch();
+    const x = await run(createAchievement, { areaId: p.id, title: "X" });
+    await expect(run(undoBatch, { batchId: create })).rejects.toMatchObject({
+      code: "conflict",
+      details: { changed: [{ entityType: "achievement", entityId: x.id }] },
+    });
+    expect((await run(getArea, { areaId: p.id })).name).toBe("P");
+  });
+
+  it("refuses to revive a row whose parent was deleted since, naming it", async () => {
+    const x = await run(createAchievement, { areaId: null, title: "X" });
+    const [a, b] = await run(createTasks, {
+      achievementId: x.id,
+      tasks: [{ title: "a" }, { title: "b" }],
+    });
+    await run(deleteTask, { taskId: a!.id });
+    const del = await lastBatch();
+    await run(deleteAchievement, { achievementId: x.id });
+    expect(b).toBeDefined();
+    await expect(run(undoBatch, { batchId: del })).rejects.toMatchObject({
+      code: "conflict",
+      details: { changed: [{ entityType: "achievement", entityId: x.id }] },
+    });
+  });
+
+  it("undo rekeys a restored row whose sort key was taken since", async () => {
+    const made = [];
+    for (const name of ["A", "B", "C", "D"]) {
+      made.push(await run(createArea, { name }));
+    }
+    await run(deleteArea, { areaId: made[1]!.id });
+    const del = await lastBatch();
+    await run(reorderArea, { areaId: made[3]!.id, afterId: made[0]!.id });
+    await run(undoBatch, { batchId: del });
+    const keys = (await run(listAreas, {})).map((x) => x.sortKey);
+    expect(new Set(keys).size).toBe(4);
+    await run(reorderArea, { areaId: made[2]!.id, afterId: made[1]!.id });
+    expect(await db.$count(areas)).toBe(4);
+  });
+
+  it("undoing a category delete whose name was taken since is a conflict", async () => {
+    const c1 = await run(createCategory, { name: "Theory", color: "x" });
+    await run(deleteCategory, { categoryId: c1.id });
+    const del = await lastBatch();
+    const c2 = await run(createCategory, { name: "theory", color: "y" });
+    await expect(run(undoBatch, { batchId: del })).rejects.toMatchObject({
+      code: "conflict",
+      details: { changed: [{ entityType: "category", entityId: c2.id }] },
+    });
   });
 });
