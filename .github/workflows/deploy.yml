@@ -46,13 +46,24 @@ jobs:
         run: |
           pnpm dlx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
           APP_BUILD_ID="${{ github.sha }}" pnpm dlx vercel@latest build --prod --token="$VERCEL_TOKEN"
-      - name: Deploy
+      # Deploy without taking the domain, prove that exact deployment, then promote it.
+      # A failed check never serves traffic, so there is no automatic rollback (which would
+      # also pin the domain and make every later deploy fail). Manual undo: `vercel rollback`.
+      - name: Deploy (not yet live)
         id: deploy
-        run: pnpm dlx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
-      - name: Smoke
-        run: pnpm smoke "${{ vars.PROD_URL }}" --env production --build "${{ github.sha }}" --expect-no-password
-      - name: Roll back on failure
-        if: failure() && steps.deploy.outcome == 'success'
         run: |
-          pnpm dlx vercel@latest rollback --yes --token="$VERCEL_TOKEN"
-          exit 1
+          url=$(pnpm dlx vercel@latest deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "schema=$(node -p "require('./drizzle/meta/_journal.json').entries.length")" >> "$GITHUB_OUTPUT"
+      - name: Smoke the new deployment
+        run: >
+          pnpm smoke "${{ steps.deploy.outputs.url }}" --env production --build "${{ github.sha }}"
+          --schema "${{ steps.deploy.outputs.schema }}" --expect-no-password
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      - name: Promote
+        run: pnpm dlx vercel@latest promote "${{ steps.deploy.outputs.url }}" --yes --token="$VERCEL_TOKEN"
+      - name: Smoke production
+        run: >
+          pnpm smoke "${{ vars.PROD_URL }}" --env production --build "${{ github.sha }}"
+          --schema "${{ steps.deploy.outputs.schema }}" --expect-no-password

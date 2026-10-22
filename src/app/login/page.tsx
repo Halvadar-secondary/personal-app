@@ -22,6 +22,7 @@ async function LoginContent({
       next={safeNextPath(typeof next === "string" ? next : null)}
       passwordEnabled={passwordLoginEnabled({
         APP_ENV: process.env.APP_ENV,
+        VERCEL_ENV: process.env.VERCEL_ENV,
         ENABLE_PASSWORD_LOGIN: process.env.ENABLE_PASSWORD_LOGIN,
       })}
     />

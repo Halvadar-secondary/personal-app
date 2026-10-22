@@ -62,13 +62,21 @@ jobs:
         run: |
           pnpm dlx vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
           APP_BUILD_ID="${{ github.sha }}" pnpm dlx vercel@latest build --token="$VERCEL_TOKEN"
-          # Explicit target: a project's first untargeted deploy is promoted to production.
+          # Vercel promotes any deploy to production while the project has none, whatever
+          # the flags; a production deployment must always exist. The next step checks it.
           url=$(pnpm dlx vercel@latest deploy --prebuilt --environment=preview --token="$VERCEL_TOKEN" \
             --env DATABASE_URL="$DATABASE_URL")
           echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "schema=$(node -p "require('./drizzle/meta/_journal.json').entries.length")" >> "$GITHUB_OUTPUT"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           DATABASE_URL: ${{ steps.db.outputs.db_url_with_pooler }}
+      - name: Check the deployment is a preview
+        run: >
+          pnpm smoke "${{ steps.deploy.outputs.url }}" --env preview --build "${{ github.sha }}"
+          --schema "${{ steps.deploy.outputs.schema }}"
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       - uses: marocchino/sticky-pull-request-comment@v3
         with:

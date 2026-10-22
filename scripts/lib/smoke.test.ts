@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateHealth, evaluatePasswordProbe } from "./smoke";
+import { evaluateHealth, evaluatePasswordProbe, smokeHeaders } from "./smoke";
 
 const good = {
   ok: true,
@@ -41,10 +41,41 @@ describe("evaluateHealth", () => {
         .ok,
     ).toBe(false);
   });
+  it("rejects a schema older than the deployed migrations", () => {
+    expect(
+      evaluateHealth(200, good, { environment: "production", minSchema: 3 }).ok,
+    ).toBe(false);
+  });
+  it("accepts a schema at or above the deployed migrations", () => {
+    expect(
+      evaluateHealth(200, good, { environment: "production", minSchema: 2 }).ok,
+    ).toBe(true);
+  });
+  it("rejects a missing schema version when one is expected", () => {
+    expect(
+      evaluateHealth(
+        200,
+        { ...good, schemaVersion: null },
+        { environment: "production", minSchema: 1 },
+      ).ok,
+    ).toBe(false);
+  });
   it("rejects non-JSON / malformed body", () => {
     expect(
       evaluateHealth(200, "<html>", { environment: "production" }).ok,
     ).toBe(false);
+  });
+});
+
+describe("smokeHeaders", () => {
+  it("sends no bypass without a secret", () => {
+    expect(smokeHeaders(undefined)).toEqual({ "cache-control": "no-cache" });
+  });
+  it("sends only the bypass header, never the cookie request fetch would loop on", () => {
+    expect(smokeHeaders("s3cret")).toEqual({
+      "cache-control": "no-cache",
+      "x-vercel-protection-bypass": "s3cret",
+    });
   });
 });
 

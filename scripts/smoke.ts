@@ -1,8 +1,10 @@
-// Post-deploy check: pnpm smoke <url> --env <environment> [--build <sha>] [--expect-no-password]
+// Post-deploy check: pnpm smoke <url> --env <environment> [--build <sha>] [--schema <n>] [--expect-no-password]
+// VERCEL_AUTOMATION_BYPASS_SECRET, when set, gets the probes past deployment protection.
 import { parseArgs } from "node:util";
 import {
   evaluateHealth,
   evaluatePasswordProbe,
+  smokeHeaders,
   type Verdict,
 } from "./lib/smoke";
 
@@ -15,6 +17,7 @@ const { values, positionals } = parseArgs({
   options: {
     env: { type: "string" },
     build: { type: "string" },
+    schema: { type: "string" },
     "expect-no-password": { type: "boolean", default: false },
   },
 });
@@ -22,21 +25,29 @@ const { values, positionals } = parseArgs({
 const baseUrl = positionals[0]?.replace(/\/$/, "");
 if (!baseUrl || !values.env) {
   console.error(
-    "usage: smoke <url> --env <environment> [--build <sha>] [--expect-no-password]",
+    "usage: smoke <url> --env <environment> [--build <sha>] [--schema <n>] [--expect-no-password]",
   );
   process.exit(2);
 }
+const minSchema =
+  values.schema === undefined ? undefined : Number(values.schema);
+if (minSchema !== undefined && !Number.isInteger(minSchema)) {
+  console.error("--schema must be an integer");
+  process.exit(2);
+}
+const headers = smokeHeaders(process.env.VERCEL_AUTOMATION_BYPASS_SECRET);
 
 async function checkHealth(): Promise<Verdict> {
   try {
     const res = await fetch(`${baseUrl}/api/health`, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: { "cache-control": "no-cache" },
+      headers,
     });
     const body: unknown = await res.json().catch(() => null);
     return evaluateHealth(res.status, body, {
       environment: values.env!,
       buildId: values.build,
+      minSchema,
     });
   } catch (e) {
     return {
@@ -50,7 +61,11 @@ async function checkPassword(): Promise<Verdict> {
   const res = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
     method: "POST",
     signal: AbortSignal.timeout(TIMEOUT_MS),
-    headers: { "content-type": "application/json", origin: baseUrl! },
+    headers: {
+      ...headers,
+      "content-type": "application/json",
+      origin: baseUrl!,
+    },
     body: JSON.stringify({
       email: "smoke@invalid.test",
       password: "not-a-real-password",

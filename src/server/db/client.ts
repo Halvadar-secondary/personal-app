@@ -12,6 +12,9 @@ export function getDb(): Db {
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       max: 5,
+      // pg waits forever by default; an unreachable db must fail fast, not hang every request.
+      connectionTimeoutMillis: 5_000,
+      query_timeout: 10_000,
     });
     attachDatabasePool(pool);
     db = drizzle(pool, { schema }) as unknown as Db;

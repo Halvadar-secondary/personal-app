@@ -3,7 +3,7 @@ export type Verdict = { ok: true } | { ok: false; reason: string };
 export function evaluateHealth(
   status: number,
   body: unknown,
-  expect: { environment: string; buildId?: string },
+  expect: { environment: string; buildId?: string; minSchema?: number },
 ): Verdict {
   if (status !== 200) return { ok: false, reason: `health returned ${status}` };
   if (typeof body !== "object" || body === null) {
@@ -24,7 +24,27 @@ export function evaluateHealth(
       reason: `build is ${String(h.buildId)}, expected ${expect.buildId}`,
     };
   }
+  if (
+    expect.minSchema !== undefined &&
+    !(
+      typeof h.schemaVersion === "number" && h.schemaVersion >= expect.minSchema
+    )
+  ) {
+    return {
+      ok: false,
+      reason: `schema is ${String(h.schemaVersion)}, expected at least ${expect.minSchema}`,
+    };
+  }
   return { ok: true };
+}
+
+/** Request headers for smoke probes; the bypass gets through Vercel deployment protection. */
+export function smokeHeaders(
+  bypass: string | undefined,
+): Record<string, string> {
+  return bypass
+    ? { "cache-control": "no-cache", "x-vercel-protection-bypass": bypass }
+    : { "cache-control": "no-cache" };
 }
 
 /** Password sign-in must be switched off: Better Auth answers 400 EMAIL_PASSWORD_DISABLED. */

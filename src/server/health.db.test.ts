@@ -35,4 +35,15 @@ describe("checkHealth", () => {
     });
     expect(JSON.stringify(h)).not.toContain("hunter2");
   });
+
+  it("reports down instead of hanging when the db never answers", async () => {
+    const hung = { execute: () => new Promise(() => {}) } as unknown as Db;
+    const h = await checkHealth(
+      hung,
+      { buildId: "abc", environment: "production" },
+      { timeoutMs: 50 },
+    );
+    expect(h.ok).toBe(false);
+    expect(h.db).toBe("down");
+  });
 });
