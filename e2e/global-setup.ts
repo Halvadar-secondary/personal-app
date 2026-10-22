@@ -3,7 +3,13 @@ import type { FullConfig } from "@playwright/test";
 // Refuse to run against production, or against an app that isn't healthy.
 export default async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0]?.use.baseURL;
-  const headers = config.projects[0]?.use.extraHTTPHeaders;
+  // Only the bypass header: asking Vercel to set the bypass cookie answers with
+  // a redirect that fetch (which keeps no cookies) follows forever.
+  const bypass =
+    config.projects[0]?.use.extraHTTPHeaders?.["x-vercel-protection-bypass"];
+  const headers: Record<string, string> = bypass
+    ? { "x-vercel-protection-bypass": bypass }
+    : {};
   const res = await fetch(`${baseURL}/api/health`, { headers });
   const health = (await res.json()) as { ok?: boolean; environment?: string };
   if (health.environment === "production") {

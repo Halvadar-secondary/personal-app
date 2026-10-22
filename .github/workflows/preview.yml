@@ -62,7 +62,8 @@ jobs:
         run: |
           pnpm dlx vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
           APP_BUILD_ID="${{ github.sha }}" pnpm dlx vercel@latest build --token="$VERCEL_TOKEN"
-          url=$(pnpm dlx vercel@latest deploy --prebuilt --token="$VERCEL_TOKEN" \
+          # Explicit target: a project's first untargeted deploy is promoted to production.
+          url=$(pnpm dlx vercel@latest deploy --prebuilt --environment=preview --token="$VERCEL_TOKEN" \
             --env DATABASE_URL="$DATABASE_URL")
           echo "url=$url" >> "$GITHUB_OUTPUT"
         env:
