@@ -7,6 +7,7 @@ import {
   type Task,
   tasks,
 } from "@/server/db/schema";
+import { categoryIdsByTask } from "./categories";
 import { type Ctx, defineAction } from "./context";
 import { sortKeyFor, zPosition } from "./position";
 import {
@@ -173,8 +174,12 @@ export const getAchievement = defineAction(
   async (ctx, { achievementId }) => {
     const achievement = await findLive(ctx, achievements, achievementId);
     const rows = await liveTasksOf(ctx, achievementId);
+    const ids = await categoryIdsByTask(
+      ctx,
+      rows.map((t) => t.id),
+    );
     const withCategories: (Task & { categoryIds: string[] })[] = rows.map(
-      (t) => ({ ...t, categoryIds: [] }),
+      (t) => ({ ...t, categoryIds: ids.get(t.id)! }),
     );
     return { achievement, tasks: withCategories };
   },
