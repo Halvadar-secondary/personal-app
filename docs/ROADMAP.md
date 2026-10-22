@@ -14,20 +14,20 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 ## M0 — Foundations: an empty app that deploys safely
 *Done when: a locked-down "Hello, owner" page is live in production, reached only after the owner's login, and every PR gets CI, a preview URL and E2E.*
 
-- [ ] Next.js + TypeScript (strict) + pnpm + Node 24 scaffold; Tailwind v4 + shadcn/ui
-- [ ] ESLint (with import-boundary rule), Prettier, `tsc` scripts
-- [ ] Vitest set up (unit + PGlite integration harness) with a first passing test
-- [ ] Playwright set up with desktop + phone projects
-- [ ] Local Postgres via Docker Compose; `.env.example`
-- [ ] Drizzle wired up; first migration (settings + Better Auth tables)
-- [ ] Better Auth: Google + passkey sign-in, owner-email creation lock, `requireOwner()`; password sign-in only outside production
-- [ ] Neon project with `main` (prod) and `seed` branches; Data API off; Google OAuth client
-- [ ] Vercel project linked; Git auto-deploys fully disabled (Actions deploys everything)
-- [ ] `ci.yml`: lint, format, typecheck, test + coverage gate, drizzle check, build
-- [ ] `preview.yml`: Neon branch per PR from `seed` → migrate → test owner → preview deploy → Playwright; `preview-cleanup.yml` deletes the branch
-- [ ] `deploy.yml`: migrate prod + seed → build → deploy → smoke (`/api/health`) → auto-rollback on failure
-- [ ] Branch protection on `main`; GitHub secret scanning + push protection on
-- [ ] Security headers (CSP, HSTS, frame-ancestors)
+- [x] Next.js + TypeScript (strict) + pnpm + Node 24 scaffold; Tailwind v4 + shadcn/ui
+- [x] ESLint (with import-boundary rule), Prettier, `tsc` scripts
+- [x] Vitest set up (unit + PGlite integration harness) with a first passing test
+- [x] Playwright set up with desktop + phone projects
+- [x] Local Postgres via Docker Compose; `.env.example`
+- [x] Drizzle wired up; first migration (settings + Better Auth tables)
+- [x] Better Auth: Google + passkey sign-in, owner-email creation lock, `requireOwner()`; password sign-in only outside production
+- [x] Neon project with `main` (prod) and `seed` branches; Data API off; Google OAuth client
+- [x] Vercel project linked; Git auto-deploys fully disabled (Actions deploys everything)
+- [x] `ci.yml`: lint, format, typecheck, test + coverage gate, drizzle check, build
+- [x] `preview.yml`: Neon branch per PR from `seed` → migrate → test owner → preview deploy → Playwright; `preview-cleanup.yml` deletes the branch
+- [x] `deploy.yml`: migrate prod + seed → build → deploy → smoke (`/api/health`) → auto-rollback on failure
+- [x] Branch protection on `main`; GitHub secret scanning + push protection on
+- [x] Security headers (CSP, HSTS, frame-ancestors)
 
 ## M1 — Core data and domain layer
 *Done when: every core action exists in the domain layer, is fully tested against Postgres, and records history.*
