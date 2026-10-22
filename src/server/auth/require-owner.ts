@@ -6,7 +6,9 @@ import { checkOwner, NotOwnerError } from "./owner";
 
 /** Owner check for pages and server actions (the proxy checks first). */
 export async function requireOwner(): Promise<{ id: string; email: string }> {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  // headers() first: prerendering stops there, before auth is built from runtime-only env.
+  const requestHeaders = await headers();
+  const session = await getAuth().api.getSession({ headers: requestHeaders });
   if (!session) redirect("/login");
   try {
     return checkOwner(session, process.env.OWNER_EMAIL);

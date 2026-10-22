@@ -25,3 +25,5 @@ jobs:
       - run: pnpm build
         env:
           APP_ENV: local
+          # Vercel builds see production secrets as placeholders; the build must never use them.
+          BETTER_AUTH_URL: build-time-placeholder
