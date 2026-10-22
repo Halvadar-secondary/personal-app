@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 
 const eslint = new ESLint({ cwd: process.cwd() });
 
-describe("domain import boundaries", () => {
+// ESLint cold-starts slowly when the db tests load the machine.
+describe("domain import boundaries", { timeout: 30_000 }, () => {
   it("forbids domain code importing adapters", async () => {
     const [r] = await eslint.lintText(
       `import x from "@/server/mcp/tools";\nexport default x;\n`,
