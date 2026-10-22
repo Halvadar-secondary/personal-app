@@ -1,0 +1,102 @@
+name: preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  playwright:
+    needs: checks
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      APP_ENV: preview
+      E2E_OWNER_EMAIL: ${{ secrets.E2E_OWNER_EMAIL }}
+      E2E_OWNER_PASSWORD: ${{ secrets.E2E_OWNER_PASSWORD }}
+      E2E_INTRUDER_EMAIL: ${{ secrets.E2E_INTRUDER_EMAIL }}
+      E2E_INTRUDER_PASSWORD: ${{ secrets.E2E_INTRUDER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+
+      # This PR's own database: a copy of `seed`, never of production.
+      - id: branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: pr-${{ github.event.number }}
+          parent_branch: seed
+          api_key: ${{ secrets.NEON_API_KEY }}
+      - id: db
+        name: Reset branch to seed
+        uses: neondatabase/reset-branch-action@v1
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: pr-${{ github.event.number }}
+          parent: true
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Migrate
+        run: pnpm db:migrate
+        env:
+          MIGRATION_DATABASE_URL: ${{ steps.db.outputs.db_url }}
+      - name: Provision test users
+        run: pnpm e2e:users
+        env:
+          MIGRATION_DATABASE_URL: ${{ steps.db.outputs.db_url }}
+
+      - name: Build and deploy preview
+        id: deploy
+        run: |
+          pnpm dlx vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          APP_BUILD_ID="${{ github.sha }}" pnpm dlx vercel@latest build --token="$VERCEL_TOKEN"
+          # Vercel promotes any deploy to production while the project has none, whatever
+          # the flags; a production deployment must always exist. The next step checks it.
+          url=$(pnpm dlx vercel@latest deploy --prebuilt --environment=preview --token="$VERCEL_TOKEN" \
+            --env DATABASE_URL="$DATABASE_URL")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "schema=$(node -p "require('./drizzle/meta/_journal.json').entries.length")" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DATABASE_URL: ${{ steps.db.outputs.db_url_with_pooler }}
+      - name: Check the deployment is a preview
+        run: >
+          pnpm smoke "${{ steps.deploy.outputs.url }}" --env preview --build "${{ github.sha }}"
+          --schema "${{ steps.deploy.outputs.schema }}"
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+      - uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: preview
+          message: |
+            **Preview:** ${{ steps.deploy.outputs.url }}
+            Database: Neon branch `pr-${{ github.event.number }}` (copy of `seed`). Sign in with the test owner.
+
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: E2E
+        run: pnpm e2e
+        env:
+          CI: "true"
+          E2E_BASE_URL: ${{ steps.deploy.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
