@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AchievementHeader } from "@/components/app/achievement-header";
+import { CaptureDestination } from "@/components/app/capture-context";
 import { TaskList } from "@/components/app/task-list";
 import { read } from "@/server/actions/run";
 import { getAchievement } from "@/server/domain/achievements";
@@ -33,6 +34,7 @@ async function Achievement({
   ]);
   return (
     <>
+      <CaptureDestination name={achievement.title} />
       <AchievementHeader
         key={`${achievement.id}:${achievement.updatedAt.getTime()}`}
         achievement={achievement}

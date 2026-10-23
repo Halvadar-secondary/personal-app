@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { AreaBoard } from "@/components/app/area-board";
 import { AreaHeader } from "@/components/app/area-header";
+import { CaptureDestination } from "@/components/app/capture-context";
 import { read } from "@/server/actions/run";
 import { listCategories } from "@/server/domain/categories";
 import { getAreaBoard } from "@/server/domain/views";
@@ -25,6 +26,7 @@ async function Area({ params }: Pick<PageProps<"/areas/[id]">, "params">) {
   ]);
   return (
     <>
+      <CaptureDestination name={board.area.name} />
       <AreaHeader area={board.area} />
       {/* Keyed by area so client state never carries over between areas. */}
       <AreaBoard

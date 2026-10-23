@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Capture } from "@/components/app/capture";
 import { CaptureProvider } from "@/components/app/capture-context";
 import { Sidebar } from "@/components/app/sidebar";
 import { TabBar } from "@/components/app/tab-bar";
@@ -16,6 +17,10 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         {/* Bottom padding keeps the phone tab bar off the content. */}
         <main className="min-w-0 flex-1 pb-24 md:pb-0">{children}</main>
       </div>
+      {/* Reads the pathname for its context: runtime data needs a boundary. */}
+      <Suspense fallback={null}>
+        <Capture />
+      </Suspense>
       <Toaster position="bottom-center" />
     </CaptureProvider>
   );
