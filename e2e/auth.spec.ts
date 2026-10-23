@@ -12,9 +12,7 @@ test("owner signs in and sees the app", async ({ page }) => {
     process.env.E2E_OWNER_EMAIL!,
     process.env.E2E_OWNER_PASSWORD!,
   );
-  await expect(
-    page.getByRole("heading", { name: "Hello, owner" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your areas" })).toBeVisible();
 });
 
 test("a signed-in non-owner gets 404", async ({ page }) => {
@@ -25,7 +23,7 @@ test("a signed-in non-owner gets 404", async ({ page }) => {
   );
   const res = await page.goto("/");
   expect(res?.status()).toBe(404);
-  await expect(page.getByText("Hello, owner")).toHaveCount(0);
+  await expect(page.getByText("Your areas")).toHaveCount(0);
 });
 
 test("public password sign-up is refused", async ({ request }) => {

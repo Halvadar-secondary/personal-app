@@ -47,16 +47,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 ## M2 — Core UI
 *Done when: the owner can run their goals day-to-day from desktop and phone (without XP and repeats yet).*
 
-- [ ] App shell: desktop sidebar, phone bottom tab bar, theme tokens matching the approved mockup
-- [ ] Overview page: summary strip, area cards (desktop grid / phone list), "+ New area"
-- [ ] Area page: desktop board (Backlog / Active / Done) with drag between and within columns
-- [ ] Area page: phone grouped list with "Move to…" menus
-- [ ] Achievement page: task checklist, inline add, reorder, effort picker, categories, deadline
-- [ ] Global "+ Capture" (Enter saves and stays open), `C` shortcut
-- [ ] Inbox page with filing (drag on desktop, "File to…" on phone)
-- [ ] Optimistic updates with rollback + error toasts
-- [ ] Undo toast after destructive actions
-- [ ] E2E golden paths for the above (desktop + phone)
+- [x] App shell: desktop sidebar, phone bottom tab bar, theme tokens matching the approved mockup
+- [x] Overview page: summary strip, area cards (desktop grid / phone list), "+ New area"
+- [x] Area page: desktop board (Backlog / Active / Done) with drag between and within columns
+- [x] Area page: phone grouped list with "Move to…" menus
+- [x] Achievement page: task checklist, inline add, reorder, effort picker, categories, deadline
+- [x] Global "+ Capture" (Enter saves and stays open), `C` shortcut
+- [x] Inbox page with filing (drag on desktop, "File to…" on phone)
+- [x] Optimistic updates with rollback + error toasts
+- [x] Undo toast after destructive actions
+- [x] E2E golden paths for the above (desktop + phone)
 
 ## M3 — Progress and repeating tasks
 *Done when: completing tasks visibly grows levels and streaks, and daily-practice tasks work.*
