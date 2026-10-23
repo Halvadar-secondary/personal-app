@@ -3,7 +3,7 @@ import { changeEvents } from "@/server/db/schema";
 import type { Db } from "@/server/db/types";
 import { createArea, getArea } from "@/server/domain/areas";
 import { defineAction } from "@/server/domain/context";
-import type { DomainErrorCode } from "@/server/domain/errors";
+import { DomainError, type DomainErrorCode } from "@/server/domain/errors";
 import { createTestDb } from "@/test/db";
 import { createOwner } from "@/test/factories";
 import { z } from "zod";
@@ -92,10 +92,17 @@ describe("read", () => {
     ).rejects.toThrow(/NEXT_HTTP_ERROR_FALLBACK;404|NEXT_NOT_FOUND/);
   });
 
+  it("maps a malformed id (invalid_input) to notFound()", async () => {
+    await expect(read(getArea, { areaId: "nope" })).rejects.toThrow(
+      /NEXT_HTTP_ERROR_FALLBACK;404|NEXT_NOT_FOUND/,
+    );
+  });
+
   it("rethrows other domain errors", async () => {
-    await expect(read(getArea, { areaId: "nope" })).rejects.toMatchObject({
-      code: "invalid_input",
+    const stuck = defineAction(z.object({}), async () => {
+      throw new DomainError("conflict");
     });
+    await expect(read(stuck, {})).rejects.toMatchObject({ code: "conflict" });
   });
 });
 

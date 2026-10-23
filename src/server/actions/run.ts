@@ -71,7 +71,13 @@ export function makeRead(env: Omit<Env, "refresh">) {
         input,
       );
     } catch (e) {
-      if (e instanceof DomainError && e.code === "not_found") notFound();
+      // Reads take ids from the URL: a missing or malformed one is a 404.
+      if (
+        e instanceof DomainError &&
+        (e.code === "not_found" || e.code === "invalid_input")
+      ) {
+        notFound();
+      }
       throw e;
     }
   };
