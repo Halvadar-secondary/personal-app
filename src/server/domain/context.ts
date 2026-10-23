@@ -52,6 +52,8 @@ export type ActionDeps = {
   db: Db;
   ownerId: string;
   actor: Actor;
+  /** Lets the caller know the batch id up front, to offer undo. */
+  batchId?: string;
   now?: () => Date;
 };
 
@@ -71,7 +73,7 @@ export async function runAction<S extends z.ZodType, O>(
       db: tx,
       ownerId: deps.ownerId,
       actor: deps.actor,
-      batchId: crypto.randomUUID(),
+      batchId: deps.batchId ?? crypto.randomUUID(),
       now: deps.now ?? (() => new Date()),
       timeZone: s?.timeZone ?? "UTC",
     };

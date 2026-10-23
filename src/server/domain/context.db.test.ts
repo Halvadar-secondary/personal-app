@@ -97,6 +97,13 @@ describe("runAction", () => {
     expect(r.inner).toBe(r.outer);
   });
 
+  it("uses a caller-supplied batch id for every event", async () => {
+    const batchId = crypto.randomUUID();
+    await runAction({ ...deps(db, owner), batchId }, insertArea, { name: "X" });
+    const events = await db.select().from(changeEvents);
+    expect(events.map((e) => e.batchId)).toEqual([batchId]);
+  });
+
   it("callAction validates its input", async () => {
     const outer = defineAction(z.object({}), (ctx) =>
       callAction(ctx, insertArea, { name: "" }),
