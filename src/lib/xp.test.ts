@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Effort, xpForEffort } from "./xp";
+import { EFFORT_LABELS, type Effort, xpForEffort } from "./xp";
 
 describe("xpForEffort", () => {
   it.each([
@@ -11,4 +11,14 @@ describe("xpForEffort", () => {
   ])("effort %i → %i xp", (effort, xp) => {
     expect(xpForEffort(effort as Effort)).toBe(xp);
   });
+});
+
+it("labels every effort level", () => {
+  expect(Object.values(EFFORT_LABELS)).toEqual([
+    "Trivial",
+    "Easy",
+    "Medium",
+    "Hard",
+    "Brutal",
+  ]);
 });
