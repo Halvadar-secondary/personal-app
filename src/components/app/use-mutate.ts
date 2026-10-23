@@ -10,7 +10,7 @@ const RELOAD = "Couldn't save. Reload the page and try again.";
 
 type Opts = { undoable?: boolean; success?: string };
 
-async function settle(call: () => Promise<Result<unknown>>) {
+async function settle<T>(call: () => Promise<Result<T>>) {
   try {
     return await call();
   } catch {
@@ -22,6 +22,25 @@ async function undo(batchId: string) {
   const r = await settle(() => undoAction({ batchId }));
   if (!r) toast.error(RELOAD);
   else if (!r.ok) toast.error(r.message);
+}
+
+/**
+ * Runs a server call and reports the outcome in a toast: the domain message
+ * on refusal, the reload hint when it threw, Undo when `undoable`.
+ */
+export async function perform<T>(
+  call: () => Promise<Result<T>>,
+  opts: Opts = {},
+): Promise<Result<T> | null> {
+  const r = await settle(call);
+  if (!r) toast.error(RELOAD);
+  else if (!r.ok) toast.error(r.message);
+  else if (opts.undoable) {
+    toast(opts.success ?? "Deleted", {
+      action: { label: "Undo", onClick: () => void undo(r.batchId) },
+    });
+  } else if (opts.success) toast.success(opts.success);
+  return r;
 }
 
 /**
@@ -41,15 +60,7 @@ export function useMutate<O, Op>(reducer: (state: O, op: Op) => O, initial: O) {
     return new Promise((resolve) =>
       startTransition(async () => {
         addOptimistic(op);
-        const r = await settle(call);
-        if (!r) toast.error(RELOAD);
-        else if (!r.ok) toast.error(r.message);
-        else if (opts.undoable) {
-          toast(opts.success ?? "Deleted", {
-            action: { label: "Undo", onClick: () => void undo(r.batchId) },
-          });
-        } else if (opts.success) toast.success(opts.success);
-        resolve(r as Result<T> | null);
+        resolve(await perform(call, opts));
       }),
     );
   }

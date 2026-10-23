@@ -9,3 +9,14 @@ export const COVER_PRESETS: { id: string; value: string }[] = [
   { id: "lagoon", value: "linear-gradient(120deg,#84fab0,#8fd3f4)" },
   { id: "mist", value: "linear-gradient(120deg,#cfd9df,#e2ebf0)" },
 ];
+
+type Cover = { type: "gradient" | "color" | "image"; value: string };
+
+/** A CSS `background` for an area's cover; areas without one get the last preset. */
+export function coverBackground(cover: Cover | null | undefined): string {
+  if (!cover) return COVER_PRESETS[7]!.value;
+  if (cover.type === "image") {
+    return `center / cover url(${JSON.stringify(cover.value)})`;
+  }
+  return cover.value;
+}
