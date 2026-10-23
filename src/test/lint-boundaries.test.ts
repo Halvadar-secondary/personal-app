@@ -1,7 +1,14 @@
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
+import { domainBoundaries } from "../../eslint.boundaries.mjs";
 
-const eslint = new ESLint({ cwd: process.cwd() });
+// Only the boundary rule: loading the full Next config cold takes 30s+ while
+// the db tests run alongside.
+const eslint = new ESLint({
+  cwd: process.cwd(),
+  overrideConfigFile: true,
+  overrideConfig: [{ files: ["**/*.ts"] }, domainBoundaries],
+});
 
 describe("domain import boundaries", () => {
   it("forbids domain code importing adapters", async () => {
@@ -19,8 +26,6 @@ describe("domain import boundaries", () => {
       `import { cn } from "@/lib/utils";\nexport const y = cn;\n`,
       { filePath: "src/server/domain/example.ts" },
     );
-    expect(
-      r!.messages.filter((m) => m.ruleId === "no-restricted-imports"),
-    ).toHaveLength(0);
+    expect(r!.messages).toEqual([]);
   });
 });

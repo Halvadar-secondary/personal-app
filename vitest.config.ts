@@ -24,7 +24,7 @@ export default defineConfig({
         test: {
           name: "db",
           environment: "node",
-          include: ["src/**/*.db.test.ts"],
+          include: ["src/**/*.db.test.ts", "scripts/**/*.db.test.ts"],
           testTimeout: 30_000,
         },
       },
