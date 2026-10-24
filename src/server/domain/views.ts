@@ -53,6 +53,8 @@ export type Overview = {
   activeCount: number;
   dueThisWeek: number;
   bestStreak: number;
+  /** The owner's date, for deadline colours. */
+  today: string;
 };
 
 /** Live tasks under active achievements, in board order, with today's state. */
@@ -279,6 +281,7 @@ export const getOverview = defineAction(
       activeCount,
       dueThisWeek: due.length,
       bestStreak: Math.max(0, ...summaries.map((a) => a.progress.streak)),
+      today,
     };
   },
 );

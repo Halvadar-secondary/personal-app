@@ -70,6 +70,7 @@ describe("getOverview", () => {
       activeCount: 0,
       dueThisWeek: 0,
       bestStreak: 0,
+      today: "2026-03-10",
     });
   });
 
@@ -85,6 +86,7 @@ describe("getOverview", () => {
       activeCount: 0,
       dueThisWeek: 0,
       bestStreak: 0,
+      today: "2026-03-10",
     });
   });
 });

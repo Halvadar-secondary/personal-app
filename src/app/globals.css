@@ -34,6 +34,7 @@
   --color-faint: var(--faint);
   --color-badge: var(--badge);
   --color-badge-foreground: var(--badge-foreground);
+  --color-xp-track: var(--xp-track);
   --shadow-card: var(--shadow-card);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
@@ -71,6 +72,8 @@
   --accent-foreground: #5b3fe0;
   --badge: #efeaff;
   --badge-foreground: #5b3fe0;
+  --xp-track: #eeecf5;
+  --xp-gradient: linear-gradient(90deg, #6d4aff, #c084fc);
   --destructive: #e5484d;
   --border: #ebe8f3;
   --input: #ebe8f3;
