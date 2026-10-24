@@ -7,9 +7,10 @@ import { exportData } from "@/server/domain/export";
 
 /** Settings → Export all data: the owner's rows as a JSON download. */
 export async function GET(req: Request) {
+  // Dynamic first: the build sees auth env as placeholders, so auth must not run while prerendering.
+  await connection();
   const owner = await requireOwnerApi(req);
   if (owner instanceof Response) return owner;
-  await connection();
   const data = await runAction(
     { db: getDb(), ownerId: owner.id, actor: "ui" },
     exportData,
