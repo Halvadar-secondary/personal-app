@@ -127,6 +127,29 @@ it("presets", () => {
   });
 });
 
+it("a span counts from today when the rule started earlier", () => {
+  expect(
+    buildRecurrence(
+      { preset: "daily", span: "week" },
+      "2026-10-01",
+      "2026-10-24",
+    ),
+  ).toEqual({
+    freq: "daily",
+    interval: 1,
+    start: "2026-10-01",
+    end: { type: "until", date: "2026-10-30" },
+  });
+  // A future start still counts from the start.
+  expect(
+    buildRecurrence(
+      { preset: "daily", span: "week" },
+      "2026-11-01",
+      "2026-10-24",
+    ).end,
+  ).toEqual({ type: "until", date: "2026-11-07" });
+});
+
 it("describes", () => {
   expect(describeRecurrence(daily())).toBe("Daily");
   expect(describeRecurrence(daily({ interval: 2 }))).toBe("Every 2 days");

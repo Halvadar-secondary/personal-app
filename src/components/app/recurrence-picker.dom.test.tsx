@@ -110,3 +110,16 @@ it("keeps the original start when editing", async () => {
     }),
   );
 });
+
+it("1 week on an older rule runs a week from today", async () => {
+  const onSave = setup(daily);
+  await userEvent.click(screen.getByRole("button", { name: "Repeat: Daily" }));
+  await choose("1 week");
+  await save();
+  expect(onSave).toHaveBeenCalledWith({
+    freq: "daily",
+    interval: 1,
+    start: "2026-10-01",
+    end: { type: "until", date: "2026-10-30" },
+  });
+});

@@ -326,6 +326,23 @@ describe("repeating tasks", () => {
     expect(await completionsOf(t.id)).toHaveLength(0);
   });
 
+  it("a completion that lands first in a race is refused, not a crash", async () => {
+    // What a concurrent request leaves behind: today's row already exists
+    // although this request's checks saw none.
+    const t = await run(createTask, { achievementId: sweep, title: "Once" });
+    await db.insert(taskCompletions).values({
+      ownerId: owner,
+      taskId: t.id,
+      completedAt: SAT,
+      occurrenceDate: "2026-10-24",
+      xpAwarded: 25,
+    });
+    await expect(at(SAT)(completeTask, { taskId: t.id })).rejects.toThrow(
+      "invalid_state",
+    );
+    expect(await completionsOf(t.id)).toHaveLength(1);
+  });
+
   it("switching kind is refused once completed", async () => {
     const r = await repeating(daily);
     await at(SAT)(completeTask, { taskId: r.id });

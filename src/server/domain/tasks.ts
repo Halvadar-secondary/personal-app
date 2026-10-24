@@ -189,7 +189,12 @@ async function recordCompletion(ctx: Ctx, task: Task, occurrenceDate: string) {
       // Unfiled work earns nothing: XP belongs to an area.
       xpAwarded: task.areaId ? xpForEffort(task.effort as Effort) : 0,
     })
+    // A concurrent request (another tab or device) may have won the race.
+    .onConflictDoNothing({
+      target: [taskCompletions.taskId, taskCompletions.occurrenceDate],
+    })
     .returning();
+  if (!completion) throw new DomainError("invalid_state");
   await recordChange(ctx, {
     entityType: "task_completion",
     entityId: completion!.id,

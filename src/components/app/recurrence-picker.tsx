@@ -114,7 +114,11 @@ export function RecurrencePicker({
       onSave({ ...value!, end: { type: "until", date: today } });
     } else {
       onSave(
-        buildRecurrence({ preset: choice, days, span }, value?.start ?? today),
+        buildRecurrence(
+          { preset: choice, days, span },
+          value?.start ?? today,
+          today,
+        ),
       );
     }
     setOpen(false);

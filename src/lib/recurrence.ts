@@ -86,15 +86,21 @@ const SPAN_DAYS: Record<Exclude<RepeatSpan, "forever">, number> = {
   month: 30,
 };
 
-/** The picker's presets, starting on `start`. */
+/**
+ * The picker's presets, starting on `start`. A span ("for 1 week") runs
+ * from `spanFrom` (today) when the rule started earlier, so editing an old
+ * rule doesn't end it at once; `start` stays, keeping its history.
+ */
 export function buildRecurrence(
   p: { preset: RepeatPreset; days?: number[]; span: RepeatSpan },
   start: string,
+  spanFrom: string = start,
 ): Recurrence {
+  const from = spanFrom > start ? spanFrom : start;
   const end: Recurrence["end"] =
     p.span === "forever"
       ? { type: "never" }
-      : { type: "until", date: addDays(start, SPAN_DAYS[p.span] - 1) };
+      : { type: "until", date: addDays(from, SPAN_DAYS[p.span] - 1) };
   if (p.preset === "daily") return { freq: "daily", interval: 1, start, end };
   const byWeekday =
     p.preset === "weekdays"
