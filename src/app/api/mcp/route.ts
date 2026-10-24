@@ -7,6 +7,7 @@ import { getDb } from "@/server/db/client";
 import { runAction } from "@/server/domain/context";
 import { authorizeMcp } from "@/server/mcp/access";
 import { createLifeGoalsServer } from "@/server/mcp/server";
+import { hitRateLimit } from "@/server/rate-limit";
 
 function refuse(status: 401 | 403, error: string, resource: string): Response {
   const headers = new Headers({ "content-type": "application/json" });
@@ -36,6 +37,23 @@ export async function POST(req: Request) {
       );
       if ("status" in caller)
         return refuse(caller.status, caller.error, resource);
+      // Spec §6.2: 120 requests a minute per owner + client.
+      const limited = await hitRateLimit(
+        db,
+        `mcp:${caller.ownerId}:${caller.clientId}`,
+        120,
+        60_000,
+        new Date(),
+      );
+      if (!limited.ok) {
+        return Response.json(
+          { error: "rate_limited" },
+          {
+            status: 429,
+            headers: { "retry-after": String(limited.retryAfterSeconds) },
+          },
+        );
+      }
       const deps = { db, ownerId: caller.ownerId, actor: caller.actor };
       const handler = createMcpHandler(() =>
         createLifeGoalsServer((action, input) =>
