@@ -10,6 +10,8 @@ import { updateRecorded } from "./rows";
 // the batch touched, so these keep the invariants that span rows.
 
 type Ref = { entityType: EntityType; entityId: string };
+/** A row in the way, named so the message can say which. */
+type Named = Ref & { label: string };
 
 const byId = <T extends typeof areas | typeof achievements | typeof tasks>(
   ctx: Ctx,
@@ -30,16 +32,16 @@ export async function assertParentsAndChildren(
   ctx: Ctx,
   touched: Ref[],
 ): Promise<void> {
-  const changed = new Map<string, Ref>();
-  const add = (entityType: EntityType, entityId: string) =>
-    changed.set(`${entityType}:${entityId}`, { entityType, entityId });
+  const changed = new Map<string, Named>();
+  const add = (entityType: EntityType, entityId: string, label: string) =>
+    changed.set(`${entityType}:${entityId}`, { entityType, entityId, label });
 
   for (const { entityType, entityId } of touched) {
     if (entityType === "area") {
       const area = await byId(ctx, areas, entityId);
       if (!area?.deletedAt) continue;
       const kids = await ctx.db
-        .select({ id: achievements.id })
+        .select({ id: achievements.id, title: achievements.title })
         .from(achievements)
         .where(
           and(
@@ -48,13 +50,13 @@ export async function assertParentsAndChildren(
             isNull(achievements.deletedAt),
           ),
         );
-      for (const k of kids) add("achievement", k.id);
+      for (const k of kids) add("achievement", k.id, k.title);
     } else if (entityType === "achievement") {
       const ach = await byId(ctx, achievements, entityId);
       if (!ach) continue;
       if (ach.deletedAt) {
         const kids = await ctx.db
-          .select({ id: tasks.id })
+          .select({ id: tasks.id, title: tasks.title })
           .from(tasks)
           .where(
             and(
@@ -63,16 +65,16 @@ export async function assertParentsAndChildren(
               isNull(tasks.deletedAt),
             ),
           );
-        for (const k of kids) add("task", k.id);
+        for (const k of kids) add("task", k.id, k.title);
       } else if (ach.areaId) {
         const area = await byId(ctx, areas, ach.areaId);
-        if (area?.deletedAt) add("area", area.id);
+        if (area?.deletedAt) add("area", area.id, area.name);
       }
     } else if (entityType === "task") {
       const task = await byId(ctx, tasks, entityId);
       if (!task || task.deletedAt || !task.achievementId) continue;
       const ach = await byId(ctx, achievements, task.achievementId);
-      if (ach?.deletedAt) add("achievement", ach.id);
+      if (ach?.deletedAt) add("achievement", ach.id, ach.title);
     }
   }
   if (changed.size) {
@@ -172,7 +174,7 @@ export async function assertCategoryNameFree(
 ): Promise<void> {
   if (!snapshot || snapshot.deletedAt) return;
   const [clash] = await ctx.db
-    .select({ id: categories.id })
+    .select({ id: categories.id, name: categories.name })
     .from(categories)
     .where(
       and(
@@ -184,7 +186,9 @@ export async function assertCategoryNameFree(
     );
   if (clash) {
     throw new DomainError("conflict", {
-      changed: [{ entityType: "category", entityId: clash.id }],
+      changed: [
+        { entityType: "category", entityId: clash.id, label: clash.name },
+      ],
     });
   }
 }

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Capture } from "@/components/app/capture";
 import { CaptureProvider } from "@/components/app/capture-context";
+import { CommandPalette } from "@/components/app/command-palette";
 import { Sidebar } from "@/components/app/sidebar";
 import { TabBar } from "@/components/app/tab-bar";
 import { Toaster } from "@/components/ui/sonner";
@@ -32,7 +33,9 @@ async function Nav() {
   return (
     <>
       <Sidebar inboxCount={o.inboxCount} areas={areas} />
-      <TabBar inboxCount={o.inboxCount} />
+      <TabBar />
+      {/* Here, not beside Capture: it lists the areas Nav already read. */}
+      <CommandPalette areas={areas} />
     </>
   );
 }

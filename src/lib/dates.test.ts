@@ -5,6 +5,7 @@ import {
   formatDeadline,
   isOverdue,
   localDate,
+  timeAgo,
   weekdayOf,
   weekStartOf,
 } from "./dates";
@@ -55,5 +56,26 @@ describe("date arithmetic", () => {
     expect(
       localDate(new Date("2026-10-24T11:30:00Z"), "Pacific/Auckland"),
     ).toBe("2026-10-25");
+  });
+});
+
+describe("timeAgo", () => {
+  const now = new Date("2026-10-24T12:00:00Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms);
+  it("says how long ago, in the owner's days", () => {
+    expect(timeAgo(ago(30_000), now, "UTC")).toBe("just now");
+    expect(timeAgo(ago(5 * 60_000), now, "UTC")).toBe("5 min ago");
+    expect(timeAgo(ago(3 * 3_600_000), now, "UTC")).toBe("3 h ago");
+    expect(timeAgo(new Date("2026-10-23T09:00:00Z"), now, "UTC")).toBe(
+      "Yesterday",
+    );
+    expect(timeAgo(new Date("2026-10-03T09:00:00Z"), now, "UTC")).toBe("Oct 3");
+    expect(
+      timeAgo(
+        new Date("2026-10-24T10:30:00Z"),
+        new Date("2026-10-24T11:30:00Z"),
+        "Pacific/Auckland",
+      ),
+    ).toBe("1 h ago");
   });
 });

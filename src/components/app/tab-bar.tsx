@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox, LayoutGrid, ListChecks, Plus, Settings } from "lucide-react";
+import { LayoutGrid, ListChecks, Plus, Search, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -29,8 +29,12 @@ function Tab({
   );
 }
 
-/** Below md: the bottom tab bar. */
-export function TabBar({ inboxCount }: { inboxCount: number }) {
+/**
+ * Below md: the bottom tab bar (spec: Areas, Active, Search, Settings, plus
+ * Capture). The Inbox is one tap away from the overview's "in Inbox" chip,
+ * whose count stands in for a badge here.
+ */
+export function TabBar() {
   const path = usePathname();
   const { setOpen } = useCapture();
   return (
@@ -52,13 +56,8 @@ export function TabBar({ inboxCount }: { inboxCount: number }) {
       >
         <Plus className="size-5" /> Capture
       </button>
-      <Tab href="/inbox" path={path}>
-        <Inbox className="size-5" /> Inbox
-        {inboxCount > 0 && (
-          <span className="absolute top-1 left-1/2 ml-2 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-            {inboxCount}
-          </span>
-        )}
+      <Tab href="/search" path={path}>
+        <Search className="size-5" /> Search
       </Tab>
       <Tab href="/settings" path={path}>
         <Settings className="size-5" /> Settings

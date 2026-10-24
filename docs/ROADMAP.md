@@ -75,10 +75,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 ## M4 — History and search
 *Done when: the owner can see every change, undo any batch, and find anything fast.*
 
-- [ ] History page: batches with actor, summary, time; Undo per batch; conflict message
-- [ ] Search page (titles + notes across areas, achievements, tasks, inbox)
-- [ ] `⌘K` / `Ctrl+K` command palette: jump anywhere, quick actions
-- [ ] Settings → Export all data as JSON
+- [x] History page: batches with actor, summary, time; Undo per batch; conflict message
+- [x] Search page (titles + notes across areas, achievements, tasks, inbox)
+- [x] `⌘K` / `Ctrl+K` command palette: jump anywhere, quick actions
+- [x] Settings → Export all data as JSON
 
 ## M5 — MCP server (AI access)
 *Done when: the owner can connect Claude and at least one other AI app, brainstorm, and have it create and organise items, and undo them, safely.*

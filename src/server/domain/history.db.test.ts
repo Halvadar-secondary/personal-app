@@ -188,8 +188,35 @@ describe("undoBatch", () => {
     const err = await run(undoBatch, { batchId: batchA }).catch((e) => e);
     expect(err).toMatchObject({
       code: "conflict",
-      details: { changed: [{ entityType: "area", entityId: area.id }] },
+      details: {
+        changed: [{ entityType: "area", entityId: area.id, label: "B" }],
+      },
     });
+  });
+
+  it("undoing an untick after a same-day re-tick is a conflict, not a crash", async () => {
+    const area = await run(createArea, { name: "Guitar" });
+    const ach = await run(createAchievement, {
+      areaId: area.id,
+      title: "Sweep",
+    });
+    const task = await run(createTask, {
+      achievementId: ach.id,
+      title: "Scales",
+      recurrence: { freq: "daily", interval: 1, start: "2026-03-01" },
+    });
+    await run(completeTask, { taskId: task.id });
+    await run(uncompleteTask, { taskId: task.id });
+    const untick = await lastBatch();
+    await run(completeTask, { taskId: task.id });
+    await expect(run(undoBatch, { batchId: untick })).rejects.toMatchObject({
+      code: "conflict",
+    });
+    const rows = await db
+      .select()
+      .from(taskCompletions)
+      .where(eq(taskCompletions.taskId, task.id));
+    expect(rows).toHaveLength(1);
   });
 
   it("allows it once the later batch is undone", async () => {
@@ -199,6 +226,19 @@ describe("undoBatch", () => {
     await run(updateArea, { areaId: area.id, name: "B" });
     await undoLast();
     await run(undoBatch, { batchId: batchA });
+    expect((await run(getArea, { areaId: area.id })).name).toBe("Guitar");
+  });
+
+  it("undoing an undo makes the original undoable again", async () => {
+    const area = await run(createArea, { name: "Guitar" });
+    await run(deleteArea, { areaId: area.id });
+    const del = await lastBatch();
+    await run(undoBatch, { batchId: del });
+    await undoLast(); // redo: deleted again
+    await expect(run(getArea, { areaId: area.id })).rejects.toThrow(
+      "not_found",
+    );
+    await run(undoBatch, { batchId: del });
     expect((await run(getArea, { areaId: area.id })).name).toBe("Guitar");
   });
 
@@ -282,7 +322,9 @@ describe("undoBatch", () => {
     const x = await run(createAchievement, { areaId: p.id, title: "X" });
     await expect(run(undoBatch, { batchId: create })).rejects.toMatchObject({
       code: "conflict",
-      details: { changed: [{ entityType: "achievement", entityId: x.id }] },
+      details: {
+        changed: [{ entityType: "achievement", entityId: x.id, label: "X" }],
+      },
     });
     expect((await run(getArea, { areaId: p.id })).name).toBe("P");
   });
@@ -299,7 +341,9 @@ describe("undoBatch", () => {
     expect(b).toBeDefined();
     await expect(run(undoBatch, { batchId: del })).rejects.toMatchObject({
       code: "conflict",
-      details: { changed: [{ entityType: "achievement", entityId: x.id }] },
+      details: {
+        changed: [{ entityType: "achievement", entityId: x.id, label: "X" }],
+      },
     });
   });
 
@@ -325,7 +369,9 @@ describe("undoBatch", () => {
     const c2 = await run(createCategory, { name: "theory", color: "y" });
     await expect(run(undoBatch, { batchId: del })).rejects.toMatchObject({
       code: "conflict",
-      details: { changed: [{ entityType: "category", entityId: c2.id }] },
+      details: {
+        changed: [{ entityType: "category", entityId: c2.id, label: "theory" }],
+      },
     });
   });
 });

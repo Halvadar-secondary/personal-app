@@ -48,14 +48,60 @@ describe("act", () => {
     });
   });
 
-  it("returns a domain error as a message and does not refresh", async () => {
+  it("returns a domain error as a message and refreshes the stale page", async () => {
     const r = await act(getArea, { areaId: crypto.randomUUID() });
     expect(r).toEqual({
       ok: false,
       code: "not_found",
       message: messageFor("not_found"),
     });
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not refresh after invalid input", async () => {
+    const r = await act(getArea, { areaId: "nope" });
+    expect(r).toMatchObject({ ok: false, code: "invalid_input" });
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("names what changed in a conflict", async () => {
+    const clash = defineAction(z.object({}), async () => {
+      throw new DomainError("conflict", {
+        changed: [{ label: "Scales" }, { label: "Guitar" }],
+      });
+    });
+    const r = await act(clash, {});
+    expect(r).toMatchObject({
+      ok: false,
+      code: "conflict",
+      message:
+        "Changed since: “Scales”, “Guitar”. Undo the later change first.",
+    });
+  });
+
+  it("says something depends on it when the conflict names no labels", async () => {
+    const clash = defineAction(z.object({}), async () => {
+      throw new DomainError("conflict", {
+        changed: [{ entityType: "task", entityId: crypto.randomUUID() }],
+      });
+    });
+    const r = await act(clash, {});
+    expect(r).toMatchObject({
+      message: "Something newer depends on this. Undo the later change first.",
+    });
+  });
+
+  it("shortens a long list of changes", async () => {
+    const clash = defineAction(z.object({}), async () => {
+      throw new DomainError("conflict", {
+        changed: ["A", "B", "C", "D", "E"].map((label) => ({ label })),
+      });
+    });
+    const r = await act(clash, {});
+    expect(r).toMatchObject({
+      message:
+        "Changed since: “A”, “B”, “C” and 2 more. Undo the later change first.",
+    });
   });
 
   it("checks the owner before validating input or touching the db", async () => {
@@ -117,7 +163,7 @@ it("has a message for every domain error code", () => {
   expect(codes.map(messageFor)).toEqual([
     "That doesn't look right. Check what you entered.",
     "That item no longer exists. Refresh to see the latest.",
-    "That's already been done.",
+    "This page was out of date. It's been refreshed.",
     "Something changed since. Refresh and try again.",
     "That was already undone.",
   ]);

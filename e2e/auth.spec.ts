@@ -42,3 +42,8 @@ test("health is public and not cached", async ({ request }) => {
   expect(res.status()).toBe(200);
   expect(res.headers()["cache-control"]).toContain("no-store");
 });
+
+test("export refuses a visitor who isn't signed in", async ({ request }) => {
+  const res = await request.get("/api/export");
+  expect(res.status()).toBe(401);
+});

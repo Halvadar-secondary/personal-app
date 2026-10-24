@@ -1,6 +1,14 @@
 "use client";
 
-import { Inbox, LayoutGrid, ListChecks, Plus, Settings } from "lucide-react";
+import {
+  History as HistoryIcon,
+  Inbox,
+  LayoutGrid,
+  ListChecks,
+  Plus,
+  Search,
+  Settings,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -49,6 +57,9 @@ export function Sidebar({ inboxCount, areas }: NavData) {
         <NavLink href="/active">
           <ListChecks className="size-4" /> Active
         </NavLink>
+        <NavLink href="/search">
+          <Search className="size-4" /> Search
+        </NavLink>
         <NavLink href="/inbox">
           <Inbox className="size-4" /> Inbox
           {inboxCount > 0 && (
@@ -73,6 +84,9 @@ export function Sidebar({ inboxCount, areas }: NavData) {
       </nav>
       <NavLink href="/settings">
         <Settings className="size-4" /> Settings
+      </NavLink>
+      <NavLink href="/history">
+        <HistoryIcon className="size-4" /> History
       </NavLink>
       <AccountMenu />
     </aside>

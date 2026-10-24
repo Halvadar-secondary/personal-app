@@ -20,6 +20,7 @@ import {
   getAreaBoard,
   getOverview,
   listFilingTargets,
+  listJumpTargets,
 } from "./views";
 
 let db: Db;
@@ -308,5 +309,22 @@ describe("M3 progress read models", () => {
     await task(a1, "Fresh", { recurrence: daily });
     const fresh = (await at(getAchievement, { achievementId: a1 })).tasks[1]!;
     expect(fresh).toMatchObject({ recentDone: [], hasCompletions: false });
+  });
+});
+
+it("listJumpTargets lists live achievements with their area", async () => {
+  const a = (await run(createArea, { name: "A", emoji: "🎸" })).id;
+  const b = (await run(createArea, { name: "B" })).id;
+  await ach(b, "b-backlog");
+  await ach(a, "a-done", "done");
+  await ach(a, "a-active", "active");
+  await ach(null, "inbox");
+  const gone = await ach(a, "gone");
+  await run(deleteAchievement, { achievementId: gone });
+  const r = await run(listJumpTargets, {});
+  expect(r.map((t) => t.title)).toEqual(["a-active", "a-done", "b-backlog"]);
+  expect(r[0]).toMatchObject({
+    status: "active",
+    area: { id: a, name: "A", emoji: "🎸" },
   });
 });
