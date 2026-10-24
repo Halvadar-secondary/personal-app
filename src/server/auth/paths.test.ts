@@ -11,11 +11,24 @@ describe("isPublicPath", () => {
   it.each([
     "/",
     "/areas/1",
-    "/api/mcp",
+    "/api/mcpx",
+    "/oauth/consent",
+    "/.well-knownx",
     "/loginx",
     "/api/healthz",
     "/api/authx",
   ])("%s is private", (p) => expect(isPublicPath(p)).toBe(false));
+});
+
+it("MCP endpoint and well-known metadata are public; consent is not", () => {
+  // The MCP route authenticates by bearer token, and AI clients must read
+  // the metadata before they have one.
+  expect(isPublicPath("/api/mcp")).toBe(true);
+  expect(isPublicPath("/.well-known/oauth-protected-resource/api/mcp")).toBe(
+    true,
+  );
+  expect(isPublicPath("/.well-known/oauth-authorization-server")).toBe(true);
+  expect(isPublicPath("/oauth/consent")).toBe(false);
 });
 
 describe("safeNextPath", () => {

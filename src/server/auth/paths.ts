@@ -1,5 +1,7 @@
-const PUBLIC_EXACT = new Set(["/login", "/api/health"]);
-const PUBLIC_PREFIXES = ["/api/auth/"];
+// /api/mcp authenticates by bearer token in its own route, and AI clients
+// read /.well-known/* before they have one.
+const PUBLIC_EXACT = new Set(["/login", "/api/health", "/api/mcp"]);
+const PUBLIC_PREFIXES = ["/api/auth/", "/.well-known/"];
 
 export function isPublicPath(pathname: string): boolean {
   return (

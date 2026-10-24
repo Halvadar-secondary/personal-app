@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { passwordLoginEnabled, rateLimitEnabled } from "./config";
+import { appOrigin, passwordLoginEnabled, rateLimitEnabled } from "./config";
 
 describe("passwordLoginEnabled", () => {
   it.each([
@@ -33,5 +33,20 @@ describe("rateLimitEnabled", () => {
     [{ VERCEL_ENV: "production" }, true],
   ])("rateLimitEnabled(%j) = %s", (env, r) => {
     expect(rateLimitEnabled(env)).toBe(r);
+  });
+});
+
+describe("appOrigin", () => {
+  it.each([
+    [{ BETTER_AUTH_URL: "https://goals.example" }, "https://goals.example"],
+    // Previews have no BETTER_AUTH_URL; each deployment has its own URL.
+    [{ VERCEL_URL: "app-git-x.vercel.app" }, "https://app-git-x.vercel.app"],
+    [
+      { BETTER_AUTH_URL: "https://goals.example", VERCEL_URL: "p.vercel.app" },
+      "https://goals.example",
+    ],
+    [{}, "http://localhost:3000"],
+  ])("appOrigin(%j) = %s", (env, origin) => {
+    expect(appOrigin(env)).toBe(origin);
   });
 });

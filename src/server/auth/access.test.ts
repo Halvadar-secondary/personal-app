@@ -13,13 +13,15 @@ describe("decideAccess", () => {
     expect(decideAccess("/", null, "me@x.com")).toBe("login");
   });
   it("answers anonymous API requests with unauthorized", () => {
-    expect(decideAccess("/api/mcp", null, "me@x.com")).toBe("unauthorized");
+    expect(decideAccess("/api/export", null, "me@x.com")).toBe("unauthorized");
   });
   it("hides pages from a signed-in non-owner", () => {
     expect(decideAccess("/", intruder, "me@x.com")).toBe("not-found");
   });
   it("rejects a signed-in non-owner on APIs", () => {
-    expect(decideAccess("/api/mcp", intruder, "me@x.com")).toBe("unauthorized");
+    expect(decideAccess("/api/export", intruder, "me@x.com")).toBe(
+      "unauthorized",
+    );
   });
   it("fails closed when OWNER_EMAIL is unset", () => {
     expect(decideAccess("/", owner, undefined)).toBe("not-found");

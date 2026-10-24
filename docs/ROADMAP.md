@@ -83,15 +83,15 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 ## M5 — MCP server (AI access)
 *Done when: the owner can connect Claude and at least one other AI app, brainstorm, and have it create and organise items, and undo them, safely.*
 
-- [ ] **Spike:** Better Auth MCP/OAuth-provider plugin + dynamic client registration with Claude and one other client; decide keep vs. fallback (§7.4)
-- [ ] `/.well-known/oauth-protected-resource` metadata; 401 + `WWW-Authenticate` on `/api/mcp`
-- [ ] `/oauth/consent` page (owner-only, Approve / Deny)
-- [ ] Token validation via Better Auth (unexpired, unrevoked, user is owner); actor = `mcp:<client>`
-- [ ] MCP tools (read, create incl. batch, update, move, complete, capture, file, categories, practice log, history, undo, delete)
-- [ ] Tool descriptions tuned for model use; compact responses
-- [ ] Settings → Connected AI apps (list + revoke)
-- [ ] Adapter tests + MCP smoke script in nightly and post-deploy
-- [ ] Rate limiting on `/api/mcp` and `/login`
+- [x] **Spike:** Better Auth MCP/OAuth-provider plugin + dynamic client registration with Claude and one other client; decide keep vs. fallback (§7.4)
+- [x] `/.well-known/oauth-protected-resource` metadata; 401 + `WWW-Authenticate` on `/api/mcp`
+- [x] `/oauth/consent` page (owner-only, Approve / Deny)
+- [x] Token validation via Better Auth (unexpired, unrevoked, user is owner); actor = `mcp:<client>`
+- [x] MCP tools (read, create incl. batch, update, move, complete, capture, file, categories, practice log, history, undo, delete)
+- [x] Tool descriptions tuned for model use; compact responses
+- [x] Settings → Connected AI apps (list + revoke)
+- [x] Adapter tests + MCP smoke script in nightly and post-deploy
+- [x] Rate limiting on `/api/mcp` and `/login`
 
 ## M6 — Polish and operations
 *Done when: it feels like a real app on the phone and problems are visible.*
