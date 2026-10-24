@@ -52,3 +52,14 @@ export function weekdayOf(date: string): number {
 export function weekStartOf(date: string, weekStart: number): string {
   return addDays(date, -((weekdayOf(date) - weekStart + 7) % 7));
 }
+
+/** "just now", "5 min ago", "3 h ago", "Yesterday", "Oct 3": days in the owner's zone. */
+export function timeAgo(at: Date, now: Date, timeZone: string): string {
+  const minutes = Math.floor((now.getTime() - at.getTime()) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} h ago`;
+  const day = localDate(at, timeZone);
+  if (day === addDays(localDate(now, timeZone), -1)) return "Yesterday";
+  return formatDeadline(day);
+}
