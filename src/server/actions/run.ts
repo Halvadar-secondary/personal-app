@@ -33,7 +33,14 @@ function changedLabels(details: unknown): string[] {
 
 export function messageFor(code: DomainErrorCode, details?: unknown): string {
   const labels = code === "conflict" ? changedLabels(details) : [];
-  if (labels.length === 0) return MESSAGES[code];
+  if (labels.length === 0) {
+    // Named rows we couldn't label still mean "undo the newer change first":
+    // telling the owner to retry would loop.
+    const blocked = (details as { changed?: unknown[] } | undefined)?.changed;
+    return code === "conflict" && blocked?.length
+      ? "Something newer depends on this. Undo the later change first."
+      : MESSAGES[code];
+  }
   const shown = labels
     .slice(0, 3)
     .map((l) => `“${l}”`)

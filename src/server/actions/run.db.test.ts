@@ -79,6 +79,18 @@ describe("act", () => {
     });
   });
 
+  it("says something depends on it when the conflict names no labels", async () => {
+    const clash = defineAction(z.object({}), async () => {
+      throw new DomainError("conflict", {
+        changed: [{ entityType: "task", entityId: crypto.randomUUID() }],
+      });
+    });
+    const r = await act(clash, {});
+    expect(r).toMatchObject({
+      message: "Something newer depends on this. Undo the later change first.",
+    });
+  });
+
   it("shortens a long list of changes", async () => {
     const clash = defineAction(z.object({}), async () => {
       throw new DomainError("conflict", {

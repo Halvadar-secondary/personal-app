@@ -264,6 +264,20 @@ export const undoBatch = defineAction(
           isNull(changeEvents.undoneAt),
         ),
       );
+    // Undoing an undo puts the original change back in effect, so it can be
+    // undone again. undone_by_batch keeps the link, for History to say what
+    // the undo undid.
+    if (events.every((e) => e.op === "restore")) {
+      await ctx.db
+        .update(changeEvents)
+        .set({ undoneAt: null })
+        .where(
+          and(
+            eq(changeEvents.ownerId, ctx.ownerId),
+            eq(changeEvents.undoneByBatch, batchId),
+          ),
+        );
+    }
     return { batchId: ctx.batchId, restored: order.length };
   },
 );

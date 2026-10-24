@@ -36,7 +36,8 @@ export function CommandPalette({ areas }: { areas: NavData["areas"] }) {
   const { setOpen: setCaptureOpen } = useCapture();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  // Fetched on first open, then kept: the list rarely changes mid-session.
+  // Fetched on every open (achievements come and go); the last list shows
+  // until the new one arrives.
   const [targets, setTargets] = useState<JumpTarget[] | null>(null);
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export function CommandPalette({ areas }: { areas: NavData["areas"] }) {
   }, []);
 
   useEffect(() => {
-    if (!open || targets) return;
+    if (!open) return;
     let live = true;
     jumpTargetsAction()
       .then((t) => live && setTargets(t))
@@ -59,7 +60,7 @@ export function CommandPalette({ areas }: { areas: NavData["areas"] }) {
     return () => {
       live = false;
     };
-  }, [open, targets]);
+  }, [open]);
 
   function go(href: string) {
     setOpen(false);

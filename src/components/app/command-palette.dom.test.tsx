@@ -59,7 +59,7 @@ it("offers searching for the typed text", async () => {
   expect(nav.push).toHaveBeenCalledWith("/search?q=zzz");
 });
 
-it("loads achievements when opened", async () => {
+it("reloads achievements each time it opens", async () => {
   setup();
   expect(actions.jumpTargetsAction).not.toHaveBeenCalled();
   await userEvent.keyboard("{Meta>}k{/Meta}");
@@ -68,5 +68,8 @@ it("loads achievements when opened", async () => {
   ).toBeInTheDocument();
   await userEvent.keyboard("{Escape}");
   await userEvent.keyboard("{Control>}k{/Control}");
-  expect(actions.jumpTargetsAction).toHaveBeenCalledTimes(1);
+  // Achievements change between opens: the list is fetched again, and the
+  // last one shows meanwhile.
+  expect(actions.jumpTargetsAction).toHaveBeenCalledTimes(2);
+  expect(screen.getByRole("option", { name: /Sweep picking/ })).toBeVisible();
 });

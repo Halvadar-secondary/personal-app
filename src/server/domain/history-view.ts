@@ -70,8 +70,17 @@ export const listHistory = defineAction(
     const events = await eventsOf(changeEvents.batchId, ids);
     // The batches the undo batches on this page undid, to say what they undid.
     const undid = await eventsOf(changeEvents.undoneByBatch, ids);
+    // An undo of an undo is a redo: one level further names what came back.
+    const undoneUndos = [...Map.groupBy(undid, (e) => e.batchId)]
+      .filter(([, evs]) => evs.every((e) => e.op === "restore"))
+      .map(([id]) => id)
+      // Those on this page already had their originals fetched above.
+      .filter((id) => !ids.includes(id));
+    const redone = undoneUndos.length
+      ? await eventsOf(changeEvents.undoneByBatch, undoneUndos)
+      : [];
 
-    const all = [...events, ...undid] as (EventRow & {
+    const all = [...events, ...undid, ...redone] as (EventRow & {
       undoneByBatch: string | null;
     })[];
     const taskIds = new Set<string>();
@@ -95,17 +104,23 @@ export const listHistory = defineAction(
     const titles = new Map(titleRows.map((t) => [t.id, t.title]));
 
     const byBatch = Map.groupBy(events, (e) => e.batchId);
-    const undidBy = Map.groupBy(undid, (e) => e.undoneByBatch!);
+    const undidBy = Map.groupBy([...undid, ...redone], (e) => e.undoneByBatch!);
+    const UNDO = "Undid a change";
+    const summaryOf = (batchId: string, evs: EventRow[]): string => {
+      const summary = summarizeBatch(evs, titles);
+      const original = undidBy.get(batchId) as EventRow[] | undefined;
+      if (summary !== UNDO || !original) return summary;
+      const inner = summarizeBatch(original, titles);
+      if (inner !== UNDO) return `Undid: ${inner}`;
+      const first = undidBy.get(original[0]!.batchId) as EventRow[] | undefined;
+      return first ? `Redid: ${summarizeBatch(first, titles)}` : summary;
+    };
     const now = ctx.now();
     const batches: HistoryBatch[] = shown.map((b) => {
-      let summary = summarizeBatch(
+      const summary = summaryOf(
+        b.batchId,
         byBatch.get(b.batchId) as EventRow[],
-        titles,
       );
-      const original = undidBy.get(b.batchId);
-      if (summary === "Undid a change" && original) {
-        summary = `Undid: ${summarizeBatch(original as EventRow[], titles)}`;
-      }
       return {
         batchId: b.batchId,
         actor: b.actor!,

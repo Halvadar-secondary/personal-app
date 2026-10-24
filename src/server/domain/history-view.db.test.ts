@@ -59,6 +59,20 @@ it("marks undone batches and summarises the undo", async () => {
   });
 });
 
+it("an undone undo reads as a redo, and the original can be undone again", async () => {
+  await guitarWithTasks();
+  const [tasksBatch] = (await run(listHistory, {})).batches;
+  await run(undoBatch, { batchId: tasksBatch!.batchId });
+  const [undo] = (await run(listHistory, {})).batches;
+  await run(undoBatch, { batchId: undo!.batchId });
+  const { batches } = await run(listHistory, {});
+  expect(batches.slice(0, 3).map((b) => [b.summary, b.undone])).toEqual([
+    ["Redid: Added 3 tasks", false],
+    ["Undid: Added 3 tasks", true],
+    ["Added 3 tasks", false],
+  ]);
+});
+
 it("names a completion's task even after the task was deleted", async () => {
   const ach = await guitarWithTasks();
   const t = await run(createTask, { achievementId: ach, title: "Scales" });
