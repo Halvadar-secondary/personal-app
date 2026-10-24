@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addAchievements, createArea, uniqueName } from "./helpers/app";
+import { addAchievements, createArea, saved, uniqueName } from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
 
 test.beforeEach(async ({ page }) => {
@@ -26,19 +26,20 @@ test("completing a task grows the area's level and streak", async ({
   await expect(
     page.getByRole("button", { name: "Edit Task title" }),
   ).toHaveCount(1);
-  await page.waitForLoadState("networkidle");
 
   await page.getByRole("button", { name: "Effort: Easy" }).click();
-  await page.getByRole("menuitemradio", { name: "Brutal" }).click();
+  await saved(page, () =>
+    page.getByRole("menuitemradio", { name: "Brutal" }).click(),
+  );
   await expect(
     page.getByRole("button", { name: "Effort: Brutal" }),
   ).toBeVisible();
-  await page.waitForLoadState("networkidle");
-  await page.getByRole("checkbox", { name: "Complete Big one" }).click();
+  await saved(page, () =>
+    page.getByRole("checkbox", { name: "Complete Big one" }).click(),
+  );
   await expect(
     page.getByRole("checkbox", { name: "Complete Big one" }),
   ).toBeChecked();
-  await page.waitForLoadState("networkidle");
 
   // 200 XP: level 2 starts at 100, level 3 at 300.
   await page
@@ -78,8 +79,7 @@ test("a daily task is checked off for today and shows on Active", async ({
     .filter({ visible: true })
     .click();
   await page.getByRole("combobox", { name: "Status" }).click();
-  await page.getByRole("option", { name: "Active" }).click();
-  await page.waitForLoadState("networkidle");
+  await saved(page, () => page.getByRole("option", { name: "Active" }).click());
 
   const add = page.getByLabel("Add task");
   await add.fill(title);
@@ -87,23 +87,20 @@ test("a daily task is checked off for today and shows on Active", async ({
   await expect(
     page.getByRole("button", { name: "Edit Task title" }),
   ).toHaveCount(1);
-  await page.waitForLoadState("networkidle");
 
   await page.getByRole("button", { name: "Repeat: Doesn't repeat" }).click();
   await page.getByRole("radio", { name: "Daily" }).check();
   await page.getByRole("radio", { name: "Forever" }).check();
-  await page.getByRole("button", { name: "Save" }).click();
+  await saved(page, () => page.getByRole("button", { name: "Save" }).click());
   await expect(
     page.getByRole("button", { name: "Repeat: Daily" }),
   ).toBeVisible();
-  await page.waitForLoadState("networkidle");
 
   const tick = page.getByRole("checkbox", {
     name: `Complete ${title} for today`,
   });
-  await tick.click();
+  await saved(page, () => tick.click());
   await expect(tick).toBeChecked();
-  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(tick).toBeChecked();
 
@@ -113,9 +110,8 @@ test("a daily task is checked off for today and shows on Active", async ({
     name: `Complete ${title} for today`,
   });
   await expect(onActive).toBeChecked();
-  await onActive.click();
+  await saved(page, () => onActive.click());
   await expect(onActive).not.toBeChecked();
-  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(onActive).not.toBeChecked();
 });

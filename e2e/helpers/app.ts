@@ -59,3 +59,22 @@ export async function keyboardDrag(page: Page, keys: string[]): Promise<void> {
     await page.waitForTimeout(250);
   }
 }
+
+/**
+ * Runs `act` and waits for the Server Action it sends to answer. Use it
+ * before a reload or navigation that must see the change: the optimistic UI
+ * shows it at once, and `waitForLoadState("networkidle")` returns at once
+ * after the page's first idle, so neither proves the save landed.
+ */
+export async function saved(
+  page: Page,
+  act: () => Promise<unknown>,
+): Promise<void> {
+  const answered = page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      r.request().headers()["next-action"] !== undefined,
+  );
+  await act();
+  await answered;
+}

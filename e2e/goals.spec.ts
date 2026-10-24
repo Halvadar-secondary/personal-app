@@ -5,6 +5,7 @@ import {
   expectNoSideScroll,
   isPhone,
   keyboardDrag,
+  saved,
   uniqueName,
 } from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
@@ -81,13 +82,15 @@ test("add achievements and move one Backlog → Active", async ({
 
   if (isPhone(testInfo)) {
     await page.getByRole("button", { name: "Move to… Bravo" }).click();
-    await page.getByRole("menuitem", { name: "Active" }).click();
+    await saved(page, () =>
+      page.getByRole("menuitem", { name: "Active" }).click(),
+    );
     await expect(
       page.getByRole("heading", { name: "Active · 1" }),
     ).toBeVisible();
   } else {
     await page.getByRole("button", { name: "Move Bravo" }).focus();
-    await keyboardDrag(page, ["ArrowRight"]);
+    await saved(page, () => keyboardDrag(page, ["ArrowRight"]));
     await expect(
       page.locator('[data-column="active"]').getByText("Bravo"),
     ).toBeVisible();
