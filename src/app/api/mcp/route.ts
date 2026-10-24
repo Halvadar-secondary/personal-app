@@ -1,12 +1,12 @@
 import { requireMcpAuth } from "@better-auth/mcp";
-import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
+import { createMcpHandler } from "@modelcontextprotocol/server";
 import { connection } from "next/server";
 import { mcpResource } from "@/server/auth/auth";
 import { getAuth } from "@/server/auth/instance";
 import { getDb } from "@/server/db/client";
 import { runAction } from "@/server/domain/context";
-import { getOverview } from "@/server/domain/views";
 import { authorizeMcp } from "@/server/mcp/access";
+import { createLifeGoalsServer } from "@/server/mcp/server";
 
 function refuse(status: 401 | 403, error: string, resource: string): Response {
   const headers = new Headers({ "content-type": "application/json" });
@@ -36,25 +36,12 @@ export async function POST(req: Request) {
       );
       if ("status" in caller)
         return refuse(caller.status, caller.error, resource);
-      const handler = createMcpHandler(() => {
-        const server = new McpServer({ name: "life-goals", version: "1.0.0" });
-        server.registerTool(
-          "get_overview",
-          {
-            description: "Areas with level, XP, streak, counts and up next.",
-            inputSchema: getOverview.input,
-          },
-          async () => {
-            const o = await runAction(
-              { db, ownerId: caller.ownerId, actor: caller.actor },
-              getOverview,
-              {},
-            );
-            return { content: [{ type: "text", text: JSON.stringify(o) }] };
-          },
-        );
-        return server;
-      });
+      const deps = { db, ownerId: caller.ownerId, actor: caller.actor };
+      const handler = createMcpHandler(() =>
+        createLifeGoalsServer((action, input) =>
+          runAction(deps, action, input),
+        ),
+      );
       return handler.fetch(request);
     },
     { resource, requiredScopes: ["mcp:goals"] },
