@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { SettingsForm } from "@/components/app/settings-form";
 import { read } from "@/server/actions/run";
@@ -12,6 +13,12 @@ export default function SettingsPage() {
       >
         <Settings />
       </Suspense>
+      <section className="flex flex-col gap-2 border-t pt-5">
+        <h2 className="text-sm font-semibold">Your data</h2>
+        <Link href="/history" className="text-sm text-primary hover:underline">
+          History
+        </Link>
+      </section>
     </div>
   );
 }
