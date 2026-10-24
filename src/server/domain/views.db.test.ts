@@ -304,5 +304,9 @@ describe("M3 progress read models", () => {
     expect(r.today).toBe("2026-10-24");
     expect(r.weekStart).toBe(1);
     expect(r.tasks[0]!.recentDone).toEqual(["2026-10-01", "2026-10-24"]);
+    expect(r.tasks[0]!.hasCompletions).toBe(true);
+    await task(a1, "Fresh", { recurrence: daily });
+    const fresh = (await at(getAchievement, { achievementId: a1 })).tasks[1]!;
+    expect(fresh).toMatchObject({ recentDone: [], hasCompletions: false });
   });
 });

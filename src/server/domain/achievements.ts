@@ -204,13 +204,31 @@ export const getAchievement = defineAction(
           )
           .orderBy(asc(taskCompletions.occurrenceDate))
       : [];
+    // A task with any completion can't switch between one-off and repeating.
+    const completed = rows.length
+      ? await ctx.db
+          .selectDistinct({ taskId: taskCompletions.taskId })
+          .from(taskCompletions)
+          .where(
+            and(
+              eq(taskCompletions.ownerId, ctx.ownerId),
+              inArray(
+                taskCompletions.taskId,
+                rows.map((t) => t.id),
+              ),
+            ),
+          )
+      : [];
+    const hasCompletions = new Set(completed.map((c) => c.taskId));
     const withCategories: (Task & {
       categoryIds: string[];
       recentDone: string[];
+      hasCompletions: boolean;
     })[] = rows.map((t) => ({
       ...t,
       categoryIds: ids.get(t.id)!,
       recentDone: recent.filter((r) => r.taskId === t.id).map((r) => r.day),
+      hasCompletions: hasCompletions.has(t.id),
     }));
     return {
       achievement,
