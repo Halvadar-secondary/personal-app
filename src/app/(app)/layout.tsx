@@ -32,7 +32,7 @@ async function Nav() {
   return (
     <>
       <Sidebar inboxCount={o.inboxCount} areas={areas} />
-      <TabBar inboxCount={o.inboxCount} />
+      <TabBar />
     </>
   );
 }

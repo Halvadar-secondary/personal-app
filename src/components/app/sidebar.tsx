@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   ListChecks,
   Plus,
+  Search,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -55,6 +56,9 @@ export function Sidebar({ inboxCount, areas }: NavData) {
         </NavLink>
         <NavLink href="/active">
           <ListChecks className="size-4" /> Active
+        </NavLink>
+        <NavLink href="/search">
+          <Search className="size-4" /> Search
         </NavLink>
         <NavLink href="/inbox">
           <Inbox className="size-4" /> Inbox
