@@ -77,3 +77,7 @@ jobs:
         run: >
           pnpm smoke "${{ vars.PROD_URL }}" --env production --build "${{ github.sha }}"
           --schema "${{ steps.deploy.outputs.schema }}" --expect-no-password
+      - name: MCP smoke production
+        # Unauthenticated: 401 + discovery metadata naming the production origin.
+        # The authorized flow is covered by e2e/mcp.spec.ts on every PR.
+        run: pnpm exec tsx scripts/mcp-smoke.ts "${{ vars.PROD_URL }}"
