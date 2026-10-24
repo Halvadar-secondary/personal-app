@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { Recurrence } from "@/lib/recurrence";
 import {
   check,
   date,
@@ -34,17 +35,7 @@ const base = () => ({
 
 export type Cover = { type: "gradient" | "color" | "image"; value: string };
 
-/** Spec §4. No input accepts it until M3. */
-export type Recurrence = {
-  freq: "daily" | "weekly";
-  interval: number;
-  byWeekday?: number[];
-  start: string;
-  end?:
-    | { type: "never" }
-    | { type: "until"; date: string }
-    | { type: "count"; count: number };
-};
+export type { Recurrence };
 
 export const achievementStatus = pgEnum("achievement_status", [
   "backlog",

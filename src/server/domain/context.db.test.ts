@@ -88,6 +88,11 @@ describe("runAction", () => {
     expect(r.timeZone).toBe("UTC");
   });
 
+  it("defaults weekStart to 1 without a settings row", async () => {
+    const weekStart = defineAction(z.object({}), async (ctx) => ctx.weekStart);
+    expect(await runAction(deps(db, owner), weekStart, {})).toBe(1);
+  });
+
   it("callAction runs a nested action in the same batch", async () => {
     const outer = defineAction(z.object({}), async (ctx) => {
       const inner = await callAction(ctx, insertArea, { name: "inner" });

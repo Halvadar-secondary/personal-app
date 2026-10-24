@@ -22,19 +22,27 @@ export default function OverviewPage() {
   );
 }
 
+const chip =
+  "rounded-[10px] border bg-card px-3 py-2 text-xs text-muted-foreground";
+
 async function Overview() {
   const o = await read(getOverview, {});
   return (
     <>
-      <div className="flex gap-2.5">
-        <div className="flex-1 rounded-[10px] border bg-card px-3 py-2 text-xs text-muted-foreground">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+        <div className={chip}>
           <b className="block text-base text-foreground">{o.activeCount}</b>
           active achievements
         </div>
-        <Link
-          href="/inbox"
-          className="flex-1 rounded-[10px] border bg-card px-3 py-2 text-xs text-muted-foreground hover:border-primary"
-        >
+        <Link href="/active" className={`${chip} hover:border-primary`}>
+          <b className="block text-base text-foreground">{o.dueThisWeek}</b>
+          due this week
+        </Link>
+        <div className={chip}>
+          <b className="block text-base text-foreground">🔥 {o.bestStreak}</b>
+          day best streak
+        </div>
+        <Link href="/inbox" className={`${chip} hover:border-primary`}>
           <b className="block text-base text-foreground">{o.inboxCount}</b>
           in Inbox
         </Link>
@@ -42,7 +50,7 @@ async function Overview() {
 
       <div className="hidden grid-cols-2 gap-3 md:grid lg:grid-cols-3">
         {o.areas.map((a) => (
-          <AreaCard key={a.id} area={a} />
+          <AreaCard key={a.id} area={a} today={o.today} />
         ))}
         <NewArea variant="tile" />
       </div>

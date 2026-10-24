@@ -12,22 +12,32 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { isOverdue } from "@/lib/dates";
+import { completionStrip, hasEnded, isDueOn } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
 import type { Effort } from "@/lib/xp";
 import type { Task } from "@/server/db/goals";
-import { CategoryChip, type ChipCategory, today } from "./achievement-card";
+import { CategoryChip, type ChipCategory } from "./achievement-card";
 import { CategoryPicker, type PickerCategory } from "./category-picker";
+import { CompletionStrip } from "./completion-strip";
 import { DateField } from "./date-field";
 import { EffortPicker } from "./effort-picker";
 import { InlineText } from "./inline-text";
+import { RecurrencePicker } from "./recurrence-picker";
 
-export type TaskItem = Task & { categoryIds: string[] };
+export type TaskItem = Task & {
+  categoryIds: string[];
+  /** Repeating tasks: completed days inside the 4-week strip. */
+  recentDone: string[];
+  hasCompletions: boolean;
+};
 
 export type TaskRowHandlers = {
   onToggle: (task: TaskItem) => void;
   onPatch: (
     id: string,
-    patch: Partial<Pick<TaskItem, "title" | "effort" | "deadline">>,
+    patch: Partial<
+      Pick<TaskItem, "title" | "effort" | "deadline" | "recurrence">
+    >,
   ) => void;
   onCategories: (id: string, ids: string[]) => void;
   onCreateCategory: (name: string) => Promise<string | null>;
@@ -37,10 +47,15 @@ export type TaskRowHandlers = {
 export function TaskRow({
   task,
   categories,
+  today,
+  weekStart,
   ...on
 }: {
   task: TaskItem;
   categories: PickerCategory[];
+  /** The owner's date. */
+  today: string;
+  weekStart: number;
 } & TaskRowHandlers) {
   const draft = task.id.startsWith("draft-");
   const {
@@ -52,7 +67,12 @@ export function TaskRow({
     transition,
     isDragging,
   } = useSortable({ id: task.id, disabled: draft });
-  const done = task.completedAt !== null;
+  const rule = task.recurrence;
+  // A repeating task is "done" for today only; one-off tasks for good.
+  const done = rule
+    ? task.recentDone.includes(today)
+    : task.completedAt !== null;
+  const notDue = rule !== null && !isDueOn(rule, today);
   const chips = new Map<string, ChipCategory>(categories.map((c) => [c.id, c]));
 
   return (
@@ -76,9 +96,12 @@ export function TaskRow({
         <GripVertical className="size-4" />
       </button>
       <Checkbox
-        aria-label={`Complete ${task.title}`}
+        aria-label={
+          rule ? `Complete ${task.title} for today` : `Complete ${task.title}`
+        }
+        title={notDue ? "Not due today" : undefined}
         checked={done}
-        disabled={draft}
+        disabled={draft || notDue}
         onCheckedChange={() => on.onToggle(task)}
         className="mt-0.5"
       />
@@ -94,7 +117,7 @@ export function TaskRow({
             onSave={(title) => on.onPatch(task.id, { title })}
             className={cn(
               "text-sm",
-              done && "text-muted-foreground line-through",
+              done && !rule && "text-muted-foreground line-through",
             )}
           />
         )}
@@ -120,12 +143,33 @@ export function TaskRow({
               onSave={(deadline) => on.onPatch(task.id, { deadline })}
               className={cn(
                 "h-5 rounded-sm text-[11px] text-muted-foreground",
-                isOverdue(task.deadline, today()) &&
+                isOverdue(task.deadline, today) &&
                   !done &&
                   "font-semibold text-destructive",
               )}
             />
+            <RecurrencePicker
+              value={rule}
+              today={today}
+              locked={task.hasCompletions}
+              // A finished one-off task can't start repeating.
+              disabled={!rule && task.completedAt !== null}
+              onSave={(recurrence) => on.onPatch(task.id, { recurrence })}
+            />
+            {rule && hasEnded(rule, today) && (
+              <span className="text-[11px] text-muted-foreground">Ended</span>
+            )}
           </div>
+        )}
+        {rule && (
+          <CompletionStrip
+            days={completionStrip(
+              rule,
+              new Set(task.recentDone),
+              today,
+              weekStart,
+            )}
+          />
         )}
       </div>
       {!draft && (

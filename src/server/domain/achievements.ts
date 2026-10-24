@@ -1,10 +1,12 @@
-import { and, asc, eq, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
+import { addDays, localDate, weekStartOf } from "@/lib/dates";
 import {
   type AchievementStatus,
   achievements,
   areas,
   type Task,
+  taskCompletions,
   tasks,
 } from "@/server/db/schema";
 import { categoryIdsByTask } from "./categories";
@@ -182,9 +184,57 @@ export const getAchievement = defineAction(
       ctx,
       rows.map((t) => t.id),
     );
-    const withCategories: (Task & { categoryIds: string[] })[] = rows.map(
-      (t) => ({ ...t, categoryIds: ids.get(t.id)! }),
-    );
-    return { achievement, tasks: withCategories };
+    const today = localDate(ctx.now(), ctx.timeZone);
+    // Completions inside the 4-week strip, for repeating tasks' history.
+    const from = addDays(weekStartOf(today, ctx.weekStart), -21);
+    const repeating = rows.filter((t) => t.recurrence).map((t) => t.id);
+    const recent = repeating.length
+      ? await ctx.db
+          .select({
+            taskId: taskCompletions.taskId,
+            day: taskCompletions.occurrenceDate,
+          })
+          .from(taskCompletions)
+          .where(
+            and(
+              eq(taskCompletions.ownerId, ctx.ownerId),
+              inArray(taskCompletions.taskId, repeating),
+              gte(taskCompletions.occurrenceDate, from),
+            ),
+          )
+          .orderBy(asc(taskCompletions.occurrenceDate))
+      : [];
+    // A task with any completion can't switch between one-off and repeating.
+    const completed = rows.length
+      ? await ctx.db
+          .selectDistinct({ taskId: taskCompletions.taskId })
+          .from(taskCompletions)
+          .where(
+            and(
+              eq(taskCompletions.ownerId, ctx.ownerId),
+              inArray(
+                taskCompletions.taskId,
+                rows.map((t) => t.id),
+              ),
+            ),
+          )
+      : [];
+    const hasCompletions = new Set(completed.map((c) => c.taskId));
+    const withCategories: (Task & {
+      categoryIds: string[];
+      recentDone: string[];
+      hasCompletions: boolean;
+    })[] = rows.map((t) => ({
+      ...t,
+      categoryIds: ids.get(t.id)!,
+      recentDone: recent.filter((r) => r.taskId === t.id).map((r) => r.day),
+      hasCompletions: hasCompletions.has(t.id),
+    }));
+    return {
+      achievement,
+      tasks: withCategories,
+      today,
+      weekStart: ctx.weekStart,
+    };
   },
 );

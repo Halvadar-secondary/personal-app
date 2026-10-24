@@ -25,7 +25,7 @@ async function Achievement({
   params,
 }: Pick<PageProps<"/achievements/[id]">, "params">) {
   const { id } = await params;
-  const { achievement, tasks } = await read(getAchievement, {
+  const { achievement, tasks, today, weekStart } = await read(getAchievement, {
     achievementId: id,
   });
   const [areas, categories] = await Promise.all([
@@ -44,6 +44,8 @@ async function Achievement({
         key={achievement.id}
         achievementId={achievement.id}
         tasks={tasks}
+        today={today}
+        weekStart={weekStart}
         categories={categories.map(({ id, name, color, usedInArea }) => ({
           id,
           name,

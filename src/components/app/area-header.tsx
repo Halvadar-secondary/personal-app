@@ -1,6 +1,7 @@
 "use client";
 
 import { MoreHorizontal } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,11 +14,20 @@ import {
 import { coverBackground } from "@/lib/covers";
 import { deleteAreaAction, updateAreaAction } from "@/server/actions/areas";
 import type { Area } from "@/server/db/goals";
+import type { AreaProgress } from "@/server/domain/progress";
 import { AreaForm } from "./area-form";
+import { LevelBadge, Streak, Trophies, XpBar } from "./progress";
 import { perform } from "./use-mutate";
 
-/** Cover, emoji, name and description, with Edit / Delete in a menu. */
-export function AreaHeader({ area }: { area: Area }) {
+/** Cover, emoji, name, level and description, with Edit / Delete in a menu. */
+export function AreaHeader({
+  area,
+  progress,
+}: {
+  area: Area;
+  progress: AreaProgress;
+}) {
+  const { level } = progress;
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   return (
@@ -34,7 +44,28 @@ export function AreaHeader({ area }: { area: Area }) {
           {area.emoji ?? area.name.slice(0, 1).toUpperCase()}
         </span>
         <div className="min-w-0 flex-1 pt-2">
-          <h1 className="text-xl font-bold break-words">{area.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="min-w-0 text-xl font-bold break-words">
+              {area.name}
+            </h1>
+            <LevelBadge level={level.level} />
+          </div>
+          <XpBar progress={level} className="mt-1.5 max-w-xs" />
+          <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+            <span>
+              {progress.xp} XP · {level.span - level.into} to level{" "}
+              {level.level + 1}
+            </span>
+            <Streak days={progress.streak} />
+            {progress.trophies > 0 && (
+              <Link
+                href={`/areas/${area.id}/trophies`}
+                className="hover:text-foreground"
+              >
+                <Trophies count={progress.trophies} />
+              </Link>
+            )}
+          </p>
           {area.description && (
             <p className="mt-0.5 text-sm whitespace-pre-line text-muted-foreground">
               {area.description}

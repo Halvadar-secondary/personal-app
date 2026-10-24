@@ -38,7 +38,14 @@ import { perform, useMutate } from "./use-mutate";
 type Patch = Partial<
   Pick<
     TaskItem,
-    "title" | "effort" | "deadline" | "completedAt" | "categoryIds"
+    | "title"
+    | "effort"
+    | "deadline"
+    | "recurrence"
+    | "completedAt"
+    | "categoryIds"
+    | "recentDone"
+    | "hasCompletions"
   >
 >;
 type Op =
@@ -85,6 +92,8 @@ function draftTask(achievementId: string, title: string): TaskItem {
     updatedAt: now,
     deletedAt: null,
     categoryIds: [],
+    recentDone: [],
+    hasCompletions: false,
   };
 }
 
@@ -93,10 +102,15 @@ export function TaskList({
   achievementId,
   tasks,
   categories,
+  today,
+  weekStart,
 }: {
   achievementId: string;
   tasks: TaskItem[];
   categories: PickerCategory[];
+  /** The owner's date, for repeating tasks and deadlines. */
+  today: string;
+  weekStart: number;
 }) {
   const { state, run } = useMutate(reducer, tasks);
   const [title, setTitle] = useState("");
@@ -125,10 +139,33 @@ export function TaskList({
     );
   }
 
-  const patch = (id: string, p: Patch) =>
+  const patch = (
+    id: string,
+    p: Pick<Patch, "title" | "effort" | "deadline" | "recurrence">,
+  ) =>
     run({ type: "patch", id, patch: p }, () =>
       updateTaskAction({ taskId: id, ...p }),
     );
+
+  /** One-off: done for good. Repeating: done for today only. */
+  function toggle(t: TaskItem) {
+    const undo = t.recurrence
+      ? t.recentDone.includes(today)
+      : t.completedAt !== null;
+    const p: Patch = t.recurrence
+      ? {
+          recentDone: undo
+            ? t.recentDone.filter((d) => d !== today)
+            : [...t.recentDone, today],
+        }
+      : { completedAt: undo ? null : new Date() };
+    if (!undo) p.hasCompletions = true;
+    return run({ type: "patch", id: t.id, patch: p }, () =>
+      undo
+        ? uncompleteTaskAction({ taskId: t.id })
+        : completeTaskAction({ taskId: t.id }),
+    );
+  }
 
   return (
     <section aria-label="Tasks" className="flex flex-col gap-2">
@@ -147,19 +184,9 @@ export function TaskList({
                 key={task.id}
                 task={task}
                 categories={categories}
-                onToggle={(t) =>
-                  run(
-                    {
-                      type: "patch",
-                      id: t.id,
-                      patch: { completedAt: t.completedAt ? null : new Date() },
-                    },
-                    () =>
-                      t.completedAt
-                        ? uncompleteTaskAction({ taskId: t.id })
-                        : completeTaskAction({ taskId: t.id }),
-                  )
-                }
+                today={today}
+                weekStart={weekStart}
+                onToggle={toggle}
                 onPatch={patch}
                 onCategories={(id, categoryIds) =>
                   run({ type: "patch", id, patch: { categoryIds } }, () =>

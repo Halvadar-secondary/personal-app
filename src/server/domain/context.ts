@@ -17,6 +17,8 @@ export type Ctx = {
   batchId: string;
   now: () => Date;
   timeZone: string;
+  /** First day of the owner's week; 0 = Sunday. */
+  weekStart: number;
 };
 
 export type Action<S extends z.ZodType, O> = {
@@ -66,7 +68,7 @@ export async function runAction<S extends z.ZodType, O>(
   const parsed = parse(action.input, input);
   return deps.db.transaction(async (tx) => {
     const [s] = await tx
-      .select({ timeZone: settings.timeZone })
+      .select({ timeZone: settings.timeZone, weekStart: settings.weekStart })
       .from(settings)
       .where(eq(settings.ownerId, deps.ownerId));
     const ctx: Ctx = {
@@ -76,6 +78,7 @@ export async function runAction<S extends z.ZodType, O>(
       batchId: deps.batchId ?? crypto.randomUUID(),
       now: deps.now ?? (() => new Date()),
       timeZone: s?.timeZone ?? "UTC",
+      weekStart: s?.weekStart ?? 1,
     };
     return action.run(ctx, parsed);
   });

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { Recurrence } from "@/lib/recurrence";
 import { tasks } from "@/server/db/schema";
 import type { Db } from "@/server/db/types";
 import { createTestDb } from "@/test/db";
@@ -7,12 +8,19 @@ import { createOwner, type Run, runner } from "@/test/factories";
 import {
   createAchievement,
   deleteAchievement,
+  getAchievement,
   moveAchievement,
 } from "./achievements";
 import { createArea, deleteArea } from "./areas";
 import { createCategory, setTaskCategories } from "./categories";
+import { updateSettings } from "./settings";
 import { completeTask, createTask, deleteTask } from "./tasks";
-import { getAreaBoard, getOverview, listFilingTargets } from "./views";
+import {
+  getActive,
+  getAreaBoard,
+  getOverview,
+  listFilingTargets,
+} from "./views";
 
 let db: Db;
 let close: () => Promise<void>;
@@ -60,6 +68,9 @@ describe("getOverview", () => {
       areas: [],
       inboxCount: 0,
       activeCount: 0,
+      dueThisWeek: 0,
+      bestStreak: 0,
+      today: "2026-03-10",
     });
   });
 
@@ -73,6 +84,9 @@ describe("getOverview", () => {
       areas: [],
       inboxCount: 0,
       activeCount: 0,
+      dueThisWeek: 0,
+      bestStreak: 0,
+      today: "2026-03-10",
     });
   });
 });
@@ -166,5 +180,133 @@ describe("listFilingTargets", () => {
       },
       { id: b, name: "B", emoji: "🎸", achievements: [] },
     ]);
+  });
+});
+
+describe("M3 progress read models", () => {
+  const SAT = new Date("2026-10-24T09:00:00Z"); // week Mon 19 – Sun 25
+  const daily: Recurrence = { freq: "daily", interval: 1, start: "2026-10-01" };
+  let at: Run;
+  beforeEach(() => {
+    at = runner(db, owner, { now: SAT });
+  });
+  const task = async (
+    achievementId: string,
+    title: string,
+    over: { deadline?: string; recurrence?: Recurrence; effort?: number } = {},
+  ) => (await at(createTask, { achievementId, title, ...over })).id;
+
+  it("overview carries progress, up next, due this week and best streak", async () => {
+    const a = (await at(createArea, { name: "A" })).id;
+    const b = (await at(createArea, { name: "B" })).id;
+    const a1 = await ach(a, "a1", "active");
+    const b1 = await ach(b, "b1", "active");
+    const scales = await task(a1, "Scales", { recurrence: daily });
+    for (const day of ["2026-10-22", "2026-10-23", "2026-10-24"]) {
+      await runner(db, owner, { now: new Date(`${day}T09:00:00Z`) })(
+        completeTask,
+        { taskId: scales },
+      );
+    }
+    await task(a1, "No date");
+    await task(a1, "Sunday", { deadline: "2026-10-25" });
+    await task(a1, "Next Monday", { deadline: "2026-10-26" });
+    await task(a1, "Overdue", { deadline: "2026-10-20" });
+    const bTask = await task(b1, "B task", { effort: 3 });
+    await at(completeTask, { taskId: bTask });
+    await at(createAchievement, {
+      areaId: b,
+      title: "Due ach",
+      status: "backlog",
+      deadline: "2026-10-24",
+    });
+    await at(createAchievement, {
+      areaId: b,
+      title: "Done ach",
+      status: "done",
+      deadline: "2026-10-21",
+    });
+
+    const o = await at(getOverview, {});
+    const [ao, bo] = o.areas;
+    expect(ao!.progress.streak).toBe(3);
+    expect(ao!.progress.xp).toBe(75);
+    expect(bo!.progress).toMatchObject({ xp: 50, streak: 1, trophies: 1 });
+    expect(o.bestStreak).toBe(3);
+    // Sunday + Overdue tasks, and the backlog achievement due Saturday.
+    expect(o.dueThisWeek).toBe(3);
+    // Scales is done today, so the earliest deadline wins.
+    expect(ao!.upNext).toMatchObject({ title: "Overdue", achievementId: a1 });
+    expect(bo!.upNext).toBeNull();
+  });
+
+  it("up next is null when nothing is active", async () => {
+    const a = (await at(createArea, { name: "A" })).id;
+    await task(await ach(a, "later"), "Not yet");
+    expect((await at(getOverview, {})).areas[0]!.upNext).toBeNull();
+  });
+
+  it("week start moves the end of 'this week'", async () => {
+    const a = (await at(createArea, { name: "A" })).id;
+    await task(await ach(a, "a1", "active"), "Sunday", {
+      deadline: "2026-10-25",
+    });
+    await at(updateSettings, { weekStart: 0 }); // week Sun 18 – Sat 24
+    expect((await at(getOverview, {})).dueThisWeek).toBe(0);
+  });
+
+  it("getActive lists today's practice, due soon and active groups", async () => {
+    const a = (await at(createArea, { name: "A", emoji: "🎸" })).id;
+    const a1 = await ach(a, "a1", "active");
+    const later = await ach(a, "later");
+    const scales = await task(a1, "Scales", { recurrence: daily });
+    await task(a1, "Ended", {
+      recurrence: { ...daily, end: { type: "until", date: "2026-10-23" } },
+    });
+    await task(later, "Backlog practice", { recurrence: daily });
+    await task(a1, "Soon", { deadline: "2026-10-30" });
+    await task(a1, "Too far", { deadline: "2026-11-02" });
+    await task(a1, "Late", { deadline: "2026-10-01" });
+    await at(completeTask, { taskId: scales });
+
+    const r = await at(getActive, {});
+    expect(r.today).toBe("2026-10-24");
+    expect(r.practice.map((p) => [p.title, p.doneToday])).toEqual([
+      ["Scales", true],
+    ]);
+    expect(r.practice[0]!.area).toEqual({ id: a, name: "A", emoji: "🎸" });
+    expect(r.dueSoon.map((d) => d.title)).toEqual(["Late", "Soon"]);
+    expect(r.groups).toHaveLength(1);
+    expect(r.groups[0]!.achievements).toEqual([
+      {
+        id: a1,
+        title: "a1",
+        deadline: null,
+        taskCount: 3,
+        doneCount: 0,
+        upNext: expect.objectContaining({ title: "Late" }),
+      },
+    ]);
+  });
+
+  it("getAchievement gives recentDone within the strip window and today", async () => {
+    const a = (await at(createArea, { name: "A" })).id;
+    const a1 = await ach(a, "a1", "active");
+    const scales = await task(a1, "Scales", { recurrence: daily });
+    // The strip starts Mon Sep 28 for Sat Oct 24 with a Monday week.
+    for (const day of ["2026-10-01", "2026-10-24"]) {
+      await runner(db, owner, { now: new Date(`${day}T09:00:00Z`) })(
+        completeTask,
+        { taskId: scales },
+      );
+    }
+    const r = await at(getAchievement, { achievementId: a1 });
+    expect(r.today).toBe("2026-10-24");
+    expect(r.weekStart).toBe(1);
+    expect(r.tasks[0]!.recentDone).toEqual(["2026-10-01", "2026-10-24"]);
+    expect(r.tasks[0]!.hasCompletions).toBe(true);
+    await task(a1, "Fresh", { recurrence: daily });
+    const fresh = (await at(getAchievement, { achievementId: a1 })).tasks[1]!;
+    expect(fresh).toMatchObject({ recentDone: [], hasCompletions: false });
   });
 });

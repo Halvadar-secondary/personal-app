@@ -1,16 +1,50 @@
 import Link from "next/link";
 import { coverBackground } from "@/lib/covers";
+import { formatDeadline, isOverdue } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import type { AreaSummary } from "@/server/domain/views";
+import { LevelBadge, Streak, Trophies, XpBar } from "./progress";
 
-function Counts({ counts }: Pick<AreaSummary, "counts">) {
+function Stats({ area }: { area: AreaSummary }) {
   return (
     <p className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-      <span>{counts.active} active</span>
-      <span aria-hidden>·</span>
-      <span>{counts.backlog} backlog</span>
-      <span aria-hidden>·</span>
-      <span>{counts.done} done</span>
+      <span>{area.counts.active} active</span>
+      <span>{area.counts.backlog} backlog</span>
+      <Trophies count={area.progress.trophies} />
+      <Streak days={area.progress.streak} />
     </p>
+  );
+}
+
+function UpNextLine({ area, today }: { area: AreaSummary; today: string }) {
+  const next = area.upNext;
+  return (
+    <div className="mt-1 border-t pt-2 text-xs">
+      <span className="block text-[9px] tracking-wider text-faint uppercase">
+        Up next
+      </span>
+      {next ? (
+        <span className="line-clamp-2">
+          {next.title}
+          {next.deadline && (
+            <span
+              className={cn(
+                "text-muted-foreground",
+                isOverdue(next.deadline, today) &&
+                  "font-semibold text-destructive",
+              )}
+            >
+              {" "}
+              · {formatDeadline(next.deadline)}
+            </span>
+          )}
+        </span>
+      ) : (
+        <span className="text-muted-foreground">
+          Nothing active. Pick from backlog
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -32,7 +66,13 @@ function EmojiTile({
 }
 
 /** md and up: a grid card with the cover across the top. */
-export function AreaCard({ area }: { area: AreaSummary }) {
+export function AreaCard({
+  area,
+  today,
+}: {
+  area: AreaSummary;
+  today: string;
+}) {
   return (
     <Link
       href={`/areas/${area.id}`}
@@ -48,8 +88,13 @@ export function AreaCard({ area }: { area: AreaSummary }) {
         />
       </div>
       <div className="flex flex-col gap-1.5 px-3 pt-6 pb-3">
-        <h2 className="truncate text-sm font-bold">{area.name}</h2>
-        <Counts counts={area.counts} />
+        <h2 className="flex items-center justify-between gap-2 text-sm font-bold">
+          <span className="truncate">{area.name}</span>
+          <LevelBadge level={area.progress.level.level} />
+        </h2>
+        <XpBar progress={area.progress.level} />
+        <Stats area={area} />
+        <UpNextLine area={area} today={today} />
       </div>
     </Link>
   );
@@ -68,9 +113,16 @@ export function AreaRow({ area }: { area: AreaSummary }) {
       >
         <EmojiTile area={area} className="size-9 text-xl" />
       </span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate text-sm font-bold">{area.name}</span>
-        <Counts counts={area.counts} />
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="flex items-center gap-2">
+          <span className="truncate text-sm font-bold">{area.name}</span>
+          <LevelBadge level={area.progress.level.level} />
+        </span>
+        <XpBar progress={area.progress.level} className="h-1" />
+        <span className="flex gap-x-2 text-xs text-muted-foreground">
+          <span>{area.counts.active} active</span>
+          <Streak days={area.progress.streak} />
+        </span>
       </span>
     </Link>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox, LayoutGrid, Plus } from "lucide-react";
+import { Inbox, LayoutGrid, ListChecks, Plus, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,9 @@ export function Sidebar({ inboxCount, areas }: NavData) {
         <NavLink href="/">
           <LayoutGrid className="size-4" /> Your areas
         </NavLink>
+        <NavLink href="/active">
+          <ListChecks className="size-4" /> Active
+        </NavLink>
         <NavLink href="/inbox">
           <Inbox className="size-4" /> Inbox
           {inboxCount > 0 && (
@@ -68,6 +71,9 @@ export function Sidebar({ inboxCount, areas }: NavData) {
           </NavLink>
         ))}
       </nav>
+      <NavLink href="/settings">
+        <Settings className="size-4" /> Settings
+      </NavLink>
       <AccountMenu />
     </aside>
   );
