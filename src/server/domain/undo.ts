@@ -122,6 +122,28 @@ const registry: Record<EntityType, Entity> = {
   },
 };
 
+const FALLBACK_LABELS: Partial<Record<EntityType, string>> = {
+  task_completion: "a completion",
+  task_categories: "categories",
+  practice_entry: "a practice entry",
+};
+
+/** What to call an entity in a message: its title or name, from the first snapshot that has one. */
+function labelOf(entityType: EntityType, ...snapshots: unknown[]): string {
+  for (const s of snapshots) {
+    const v = s as { title?: unknown; name?: unknown } | null;
+    const label = v?.title ?? v?.name;
+    if (typeof label === "string") return label;
+  }
+  return FALLBACK_LABELS[entityType] ?? entityType;
+}
+
+/** Postgres unique_violation, raw or wrapped by the driver. */
+function isUniqueViolation(e: unknown): boolean {
+  const err = e as { code?: string; cause?: { code?: string } } | null;
+  return err?.code === "23505" || err?.cause?.code === "23505";
+}
+
 /** Stable comparison form: JSON with sorted keys, without updatedAt. */
 function normalise(v: Snapshot): string {
   if (v === null) return "null";
@@ -187,7 +209,11 @@ export const undoBatch = defineAction(
     for (const t of touched.values()) {
       const current = await registry[t.entityType].read(ctx, t.entityId);
       if (normalise(current) !== normalise(t.last.after as Snapshot)) {
-        changed.push({ entityType: t.entityType, entityId: t.entityId });
+        changed.push({
+          entityType: t.entityType,
+          entityId: t.entityId,
+          label: labelOf(t.entityType, current, t.last.after, t.last.before),
+        });
       }
     }
     if (changed.length) throw new DomainError("conflict", { changed });
@@ -196,7 +222,22 @@ export const undoBatch = defineAction(
     for (const t of order) {
       const entity = registry[t.entityType];
       const before = await entity.read(ctx, t.entityId);
-      await entity.apply(ctx, t.entityId, t.first.before as Snapshot);
+      try {
+        await entity.apply(ctx, t.entityId, t.first.before as Snapshot);
+      } catch (e) {
+        // A newer row holds the slot this one would take back (e.g. today's
+        // completion after an untick was re-ticked): the batch is stale.
+        if (!isUniqueViolation(e)) throw e;
+        throw new DomainError("conflict", {
+          changed: [
+            {
+              entityType: t.entityType,
+              entityId: t.entityId,
+              label: labelOf(t.entityType, t.first.before, before),
+            },
+          ],
+        });
+      }
       await recordChange(ctx, {
         entityType: t.entityType,
         entityId: t.entityId,

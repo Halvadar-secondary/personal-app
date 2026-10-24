@@ -17,13 +17,29 @@ export type Result<T = undefined> =
 const MESSAGES: Record<DomainErrorCode, string> = {
   invalid_input: "That doesn't look right. Check what you entered.",
   not_found: "That item no longer exists. Refresh to see the latest.",
-  invalid_state: "That's already been done.",
+  invalid_state: "This page was out of date. It's been refreshed.",
   conflict: "Something changed since. Refresh and try again.",
   already_undone: "That was already undone.",
 };
 
-export function messageFor(code: DomainErrorCode): string {
-  return MESSAGES[code];
+/** What changed since, by name, when a conflict says so. */
+function changedLabels(details: unknown): string[] {
+  const changed = (details as { changed?: { label?: unknown }[] } | undefined)
+    ?.changed;
+  return (changed ?? [])
+    .map((c) => c.label)
+    .filter((l): l is string => typeof l === "string");
+}
+
+export function messageFor(code: DomainErrorCode, details?: unknown): string {
+  const labels = code === "conflict" ? changedLabels(details) : [];
+  if (labels.length === 0) return MESSAGES[code];
+  const shown = labels
+    .slice(0, 3)
+    .map((l) => `“${l}”`)
+    .join(", ");
+  const more = labels.length > 3 ? ` and ${labels.length - 3} more` : "";
+  return `Changed since: ${shown}${more}. Undo the later change first.`;
 }
 
 type Env = {
@@ -51,7 +67,13 @@ export function makeAct(env: Env) {
       return { ok: true, data: pick?.(o) as T, batchId };
     } catch (e) {
       if (e instanceof DomainError) {
-        return { ok: false, code: e.code, message: messageFor(e.code) };
+        // A refusal means the page showed something stale; bad input doesn't.
+        if (e.code !== "invalid_input") env.refresh();
+        return {
+          ok: false,
+          code: e.code,
+          message: messageFor(e.code, e.details),
+        };
       }
       throw e;
     }

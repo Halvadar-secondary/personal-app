@@ -188,8 +188,35 @@ describe("undoBatch", () => {
     const err = await run(undoBatch, { batchId: batchA }).catch((e) => e);
     expect(err).toMatchObject({
       code: "conflict",
-      details: { changed: [{ entityType: "area", entityId: area.id }] },
+      details: {
+        changed: [{ entityType: "area", entityId: area.id, label: "B" }],
+      },
     });
+  });
+
+  it("undoing an untick after a same-day re-tick is a conflict, not a crash", async () => {
+    const area = await run(createArea, { name: "Guitar" });
+    const ach = await run(createAchievement, {
+      areaId: area.id,
+      title: "Sweep",
+    });
+    const task = await run(createTask, {
+      achievementId: ach.id,
+      title: "Scales",
+      recurrence: { freq: "daily", interval: 1, start: "2026-03-01" },
+    });
+    await run(completeTask, { taskId: task.id });
+    await run(uncompleteTask, { taskId: task.id });
+    const untick = await lastBatch();
+    await run(completeTask, { taskId: task.id });
+    await expect(run(undoBatch, { batchId: untick })).rejects.toMatchObject({
+      code: "conflict",
+    });
+    const rows = await db
+      .select()
+      .from(taskCompletions)
+      .where(eq(taskCompletions.taskId, task.id));
+    expect(rows).toHaveLength(1);
   });
 
   it("allows it once the later batch is undone", async () => {
