@@ -61,16 +61,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 ## M3 — Progress and repeating tasks
 *Done when: completing tasks visibly grows levels and streaks, and daily-practice tasks work.*
 
-- [ ] XP per effort, frozen at completion; area XP and level curve
-- [ ] Streaks in owner's time zone (settings page: time zone, week start)
-- [ ] Level badge, XP bar, streak and trophy counts on overview and area pages
-- [ ] Trophies view for completed achievements
-- [ ] Recurrence model + pure recurrence functions (with DST tests)
-- [ ] Recurrence picker UI with presets (daily, weekdays, weekly on…, for 1 week / 30 days / forever)
-- [ ] Repeating task check-off for today, 4-week completion strip
-- [ ] "Up next" and "due this week" logic
-- [ ] Active page: everything active or due soon across areas
-- [ ] E2E: complete task → XP/level updates; repeating task daily check-off
+- [x] XP per effort, frozen at completion; area XP and level curve
+- [x] Streaks in owner's time zone (settings page: time zone, week start)
+- [x] Level badge, XP bar, streak and trophy counts on overview and area pages
+- [x] Trophies view for completed achievements
+- [x] Recurrence model + pure recurrence functions (with DST tests)
+- [x] Recurrence picker UI with presets (daily, weekdays, weekly on…, for 1 week / 30 days / forever)
+- [x] Repeating task check-off for today, 4-week completion strip
+- [x] "Up next" and "due this week" logic
+- [x] Active page: everything active or due soon across areas
+- [x] E2E: complete task → XP/level updates; repeating task daily check-off
 
 ## M4 — History and search
 *Done when: the owner can see every change, undo any batch, and find anything fast.*

@@ -171,7 +171,7 @@ test("delete a task and undo it from the toast", async ({ page }) => {
   await createArea(page, uniqueName("Undo"));
   await addAchievements(page, ["Practice"]);
   await page
-    .getByRole("link", { name: "Practice" })
+    .getByRole("link", { name: "Practice", exact: true })
     .filter({ visible: true })
     .click();
   const add = page.getByLabel("Add task");
@@ -260,7 +260,7 @@ test("no page scrolls sideways on a phone", async ({ page }, testInfo) => {
     .click();
   await expect(page.getByLabel("Add task")).toBeVisible();
   await expectNoSideScroll(page);
-  for (const path of ["/", "/inbox"]) {
+  for (const path of ["/", "/inbox", "/active", "/settings"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
     await expectNoSideScroll(page);

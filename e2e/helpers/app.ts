@@ -42,7 +42,9 @@ export async function addAchievements(
     await field.fill(title);
     await field.press("Enter");
     await expect(
-      page.getByRole("link", { name: title }).filter({ visible: true }),
+      page
+        .getByRole("link", { name: title, exact: true })
+        .filter({ visible: true }),
     ).toBeVisible();
   }
 }
