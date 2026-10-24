@@ -21,3 +21,10 @@ Element.prototype.setPointerCapture ??= () => {};
 Element.prototype.releasePointerCapture ??= () => {};
 Element.prototype.hasPointerCapture ??= () => false;
 Element.prototype.scrollIntoView ??= () => {};
+
+// Nor ResizeObserver, which cmdk's list measures with.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};

@@ -486,3 +486,39 @@ export const getActive = defineAction(z.object({}), async (ctx) => {
     groups,
   };
 });
+
+export type JumpTarget = {
+  id: string;
+  title: string;
+  status: AchievementStatus;
+  area: NavArea;
+};
+
+/** Every filed, live achievement, for the command palette to jump to. */
+export const listJumpTargets = defineAction(
+  z.object({}),
+  async (ctx): Promise<JumpTarget[]> =>
+    ctx.db
+      .select({
+        id: achievements.id,
+        title: achievements.title,
+        status: achievements.status,
+        area: { id: areas.id, name: areas.name, emoji: areas.emoji },
+      })
+      .from(achievements)
+      .innerJoin(areas, eq(areas.id, achievements.areaId))
+      .where(
+        and(
+          eq(achievements.ownerId, ctx.ownerId),
+          isNull(achievements.deletedAt),
+          isNull(areas.deletedAt),
+        ),
+      )
+      .orderBy(
+        asc(areas.sortKey),
+        asc(areas.id),
+        asc(achievements.status),
+        asc(achievements.sortKey),
+        asc(achievements.id),
+      ),
+);

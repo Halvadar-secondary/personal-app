@@ -35,6 +35,9 @@ export default defineConfig({
           environment: "node",
           include: ["src/**/*.db.test.ts", "scripts/**/*.db.test.ts"],
           testTimeout: 30_000,
+          // Each test starts its own PGlite; under a full parallel run that
+          // setup alone can pass the default 10s.
+          hookTimeout: 30_000,
         },
       },
     ],
