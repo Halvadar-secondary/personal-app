@@ -6,15 +6,36 @@ import { getAuth } from "@/server/auth/instance";
 import { getDb } from "@/server/db/client";
 import { runAction } from "@/server/domain/context";
 import { getOverview } from "@/server/domain/views";
+import { authorizeMcp } from "@/server/mcp/access";
 
-// Spike: one tool behind Better Auth's token check (spec §7).
+function refuse(status: 401 | 403, error: string, resource: string): Response {
+  const headers = new Headers({ "content-type": "application/json" });
+  if (status === 401) {
+    const url = new URL(resource);
+    headers.set(
+      "www-authenticate",
+      `Bearer error="invalid_token", resource_metadata="${url.origin}/.well-known/oauth-protected-resource${url.pathname}"`,
+    );
+  }
+  return new Response(JSON.stringify({ error }), { status, headers });
+}
+
+// Token check (Better Auth), then owner + live consent (spec §7.3).
 export async function POST(req: Request) {
   await connection();
-  const auth = getAuth();
+  const resource = mcpResource(process.env);
   return requireMcpAuth(
-    auth,
-    (request, claims) => {
-      const ownerId = String(claims.sub);
+    getAuth(),
+    async (request, claims) => {
+      const db = getDb();
+      const caller = await authorizeMcp(
+        db,
+        claims,
+        process.env.OWNER_EMAIL,
+        new Date(),
+      );
+      if ("status" in caller)
+        return refuse(caller.status, caller.error, resource);
       const handler = createMcpHandler(() => {
         const server = new McpServer({ name: "life-goals", version: "1.0.0" });
         server.registerTool(
@@ -25,7 +46,7 @@ export async function POST(req: Request) {
           },
           async () => {
             const o = await runAction(
-              { db: getDb(), ownerId, actor: "mcp:spike" },
+              { db, ownerId: caller.ownerId, actor: caller.actor },
               getOverview,
               {},
             );
@@ -36,6 +57,6 @@ export async function POST(req: Request) {
       });
       return handler.fetch(request);
     },
-    { resource: mcpResource(process.env), requiredScopes: ["mcp:goals"] },
+    { resource, requiredScopes: ["mcp:goals"] },
   )(req);
 }
