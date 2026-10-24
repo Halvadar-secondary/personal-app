@@ -20,6 +20,10 @@ export function ConsentForm({ clientName }: { clientName: string }) {
         <span className="text-primary">{clientName}</span> wants to read and
         change your goals
       </h1>
+      <p className="text-sm text-muted-foreground">
+        It will act as you: create, change, complete and delete. Every change
+        shows in History and can be undone.
+      </p>
       <div className="flex gap-2">
         <Button disabled={busy} onClick={() => answer(true)}>
           Approve

@@ -5,6 +5,7 @@ import {
 } from "@modelcontextprotocol/client";
 import { expect, test } from "@playwright/test";
 import { isPhone } from "./helpers/app";
+import { loginWithPassword } from "./helpers/login";
 
 const b64url = (b: Buffer) => b.toString("base64url");
 
@@ -45,11 +46,13 @@ test("owner approves a client and it calls a tool", async ({
     await request.get("/.well-known/oauth-authorization-server")
   ).json();
   const redirectUri = `${baseURL}/e2e-callback`;
+  // Unique per run: earlier runs leave their own connected clients behind.
+  const clientName = `E2E Client ${Date.now()}`;
 
   // 1. Dynamic client registration, as a 2025-era MCP client does.
   const reg = await request.post(as.registration_endpoint, {
     data: {
-      client_name: "E2E Client",
+      client_name: clientName,
       redirect_uris: [redirectUri],
       token_endpoint_auth_method: "none",
       grant_types: ["authorization_code", "refresh_token"],
@@ -116,4 +119,34 @@ test("owner approves a client and it calls a tool", async ({
   expect(result.isError).toBeFalsy();
   expect(JSON.stringify(result.content)).toContain("areas");
   await client.close();
+
+  // 7. Settings lists it; revoking cuts the same token off at once.
+  await page.goto("/settings");
+  const row = page.getByRole("listitem").filter({ hasText: clientName });
+  await expect(row).toContainText("Last used");
+  await row.getByRole("button", { name: "Revoke" }).click();
+  await expect(row).toHaveCount(0);
+  const after = await request.post("/api/mcp", {
+    data: { jsonrpc: "2.0", id: 2, method: "tools/list" },
+    headers: {
+      accept: "application/json, text/event-stream",
+      authorization: `Bearer ${token}`,
+    },
+  });
+  expect(after.status()).toBe(401);
+});
+
+test("the consent page without valid params offers nothing to approve", async ({
+  page,
+}) => {
+  await loginWithPassword(
+    page,
+    process.env.E2E_OWNER_EMAIL!,
+    process.env.E2E_OWNER_PASSWORD!,
+  );
+  await page.goto("/oauth/consent?client_id=x");
+  await expect(
+    page.getByText("This link has expired or is invalid."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
 });

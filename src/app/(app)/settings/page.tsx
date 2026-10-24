@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ConnectedApps } from "@/components/app/connected-apps";
 import { SettingsForm } from "@/components/app/settings-form";
 import { read } from "@/server/actions/run";
+import { mcpResource } from "@/server/auth/auth";
+import { requireOwner } from "@/server/auth/require-owner";
+import { getDb } from "@/server/db/client";
 import { getSettings } from "@/server/domain/settings";
+import { listConnectedApps } from "@/server/mcp/connected";
 
 export default function SettingsPage() {
   return (
@@ -13,6 +18,14 @@ export default function SettingsPage() {
       >
         <Settings />
       </Suspense>
+      <section className="flex flex-col gap-2 border-t pt-5">
+        <h2 className="text-sm font-semibold">Connected AI apps</h2>
+        <Suspense
+          fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
+        >
+          <Connected />
+        </Suspense>
+      </section>
       <section className="flex flex-col gap-2 border-t pt-5">
         <h2 className="text-sm font-semibold">Your data</h2>
         <Link href="/history" className="text-sm text-primary hover:underline">
@@ -33,4 +46,11 @@ export default function SettingsPage() {
 
 async function Settings() {
   return <SettingsForm initial={await read(getSettings, {})} />;
+}
+
+async function Connected() {
+  const { id } = await requireOwner();
+  const { timeZone } = await read(getSettings, {});
+  const apps = await listConnectedApps(getDb(), id, new Date(), timeZone);
+  return <ConnectedApps apps={apps} mcpUrl={mcpResource(process.env)} />;
 }

@@ -23,8 +23,8 @@ const actions = (
 );
 
 it("found every action", () => {
-  expect(files).toHaveLength(8);
-  expect(actions.length).toBeGreaterThanOrEqual(22);
+  expect(files).toHaveLength(9);
+  expect(actions.length).toBeGreaterThanOrEqual(23);
   for (const [, fn] of actions) expect(typeof fn).toBe("function");
 });
 
