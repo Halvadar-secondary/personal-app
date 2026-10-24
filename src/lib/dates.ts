@@ -21,3 +21,34 @@ export function formatDeadline(deadline: string): string {
   const [, m, d] = deadline.split("-").map(Number);
   return `${MONTHS[m! - 1]} ${d}`;
 }
+
+// Calendar arithmetic on YYYY-MM-DD strings, done in UTC so DST can't shift a day.
+const DAY = 86_400_000;
+
+function toUtc(date: string): number {
+  const [y, m, d] = date.split("-").map(Number);
+  return Date.UTC(y!, m! - 1, d!);
+}
+
+function fromUtc(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+export function addDays(date: string, n: number): string {
+  return fromUtc(toUtc(date) + n * DAY);
+}
+
+/** Whole days from `from` to `to` (negative if `to` is earlier). */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((toUtc(to) - toUtc(from)) / DAY);
+}
+
+/** 0 = Sunday … 6 = Saturday. */
+export function weekdayOf(date: string): number {
+  return new Date(toUtc(date)).getUTCDay();
+}
+
+/** The first day of the week holding `date`, for a week starting on `weekStart`. */
+export function weekStartOf(date: string, weekStart: number): string {
+  return addDays(date, -((weekdayOf(date) - weekStart + 7) % 7));
+}
