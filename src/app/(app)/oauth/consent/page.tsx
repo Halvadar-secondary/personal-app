@@ -5,6 +5,7 @@ import { ConsentForm } from "@/components/app/consent-form";
 import { requireOwner } from "@/server/auth/require-owner";
 import { getDb } from "@/server/db/client";
 import { oauthClient } from "@/server/db/schema";
+import { clientOrigin } from "@/server/mcp/client-origin";
 
 export default function ConsentPage({
   searchParams,
@@ -35,7 +36,10 @@ async function Consent({
   const clientId = typeof params.client_id === "string" ? params.client_id : "";
   const [client] = valid
     ? await getDb()
-        .select({ name: oauthClient.name })
+        .select({
+          name: oauthClient.name,
+          redirectUris: oauthClient.redirectUris,
+        })
         .from(oauthClient)
         .where(eq(oauthClient.clientId, clientId))
     : [];
@@ -47,5 +51,10 @@ async function Consent({
       </p>
     );
   }
-  return <ConsentForm clientName={client.name ?? clientId} />;
+  return (
+    <ConsentForm
+      clientName={client.name ?? clientId}
+      origin={clientOrigin({ clientId, redirectUris: client.redirectUris })}
+    />
+  );
 }

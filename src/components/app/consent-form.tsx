@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
 /** Approve or deny an AI app; Better Auth sends the browser back to it. */
-export function ConsentForm({ clientName }: { clientName: string }) {
+export function ConsentForm({
+  clientName,
+  origin,
+}: {
+  clientName: string;
+  origin: { verified: boolean; host: string };
+}) {
   const [busy, setBusy] = useState(false);
   async function answer(accept: boolean) {
     setBusy(true);
@@ -20,6 +26,16 @@ export function ConsentForm({ clientName }: { clientName: string }) {
         <span className="text-primary">{clientName}</span> wants to read and
         change your goals
       </h1>
+      <p data-testid="client-origin" className="text-sm">
+        {origin.verified ? (
+          <>Identified by {origin.host}.</>
+        ) : (
+          <>
+            Unverified app. After you approve, it continues at{" "}
+            <span className="font-semibold">{origin.host}</span>.
+          </>
+        )}
+      </p>
       <p className="text-sm text-muted-foreground">
         It will act as you: create, change, complete and delete. Every change
         shows in History and can be undone.

@@ -87,6 +87,10 @@ test("owner approves a client and it calls a tool", async ({
     .fill(process.env.E2E_OWNER_PASSWORD!);
   await page.getByTestId("password-submit").click();
   await expect(page.getByRole("heading", { name: /E2E Client/ })).toBeVisible();
+  // The name is self-chosen; the owner also sees where the code would go.
+  await expect(page.getByTestId("client-origin")).toContainText(
+    `Unverified app. After you approve, it continues at ${new URL(redirectUri).host}.`,
+  );
 
   // 4. Approve; the browser is sent back to the client with a code.
   const callback = page.waitForRequest((r) => r.url().startsWith(redirectUri));

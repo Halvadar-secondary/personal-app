@@ -9,7 +9,7 @@ import { nextCookies } from "better-auth/next-js";
 import { jwt } from "better-auth/plugins";
 import * as schema from "@/server/db/schema";
 import type { Db } from "@/server/db/types";
-import { passwordLoginEnabled, rateLimitEnabled } from "./config";
+import { appOrigin, passwordLoginEnabled, rateLimitEnabled } from "./config";
 import { isOwnerEmail } from "./owner";
 
 type AuthEnv = Record<string, string | undefined>;
@@ -24,11 +24,12 @@ function trustedOrigins(env: AuthEnv): string[] {
 
 /** The MCP endpoint, as AI clients address it; tokens are bound to it. */
 export function mcpResource(env: AuthEnv): string {
-  return `${env.BETTER_AUTH_URL ?? "http://localhost:3000"}/api/mcp`;
+  return `${appOrigin(env)}/api/mcp`;
 }
 
 export function createAuth(db: Db, env: AuthEnv) {
-  const baseURL = env.BETTER_AUTH_URL;
+  // Previews have no BETTER_AUTH_URL: MCP needs a fixed base for issuer and audience.
+  const baseURL = appOrigin(env);
   return betterAuth({
     baseURL,
     secret: env.BETTER_AUTH_SECRET,

@@ -16,3 +16,16 @@ export function passwordLoginEnabled(
 export function rateLimitEnabled(env: DeployEnv): boolean {
   return isProduction(env);
 }
+
+/**
+ * The app's public origin: BETTER_AUTH_URL where set (production, local),
+ * else this deployment's own URL (Vercel previews), else local dev.
+ */
+export function appOrigin(env: {
+  BETTER_AUTH_URL?: string;
+  VERCEL_URL?: string;
+}): string {
+  if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL;
+  if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
