@@ -5,7 +5,6 @@ import {
 } from "@modelcontextprotocol/client";
 import { expect, test } from "@playwright/test";
 import { isPhone } from "./helpers/app";
-import { loginWithPassword } from "./helpers/login";
 
 const b64url = (b: Buffer) => b.toString("base64url");
 
@@ -76,13 +75,14 @@ test("owner approves a client and it calls a tool", async ({
     state: "e2e",
   }).toString();
 
-  // 3. The owner signs in and sees the consent page.
-  await loginWithPassword(
-    page,
-    process.env.E2E_OWNER_EMAIL!,
-    process.env.E2E_OWNER_PASSWORD!,
-  );
+  // 3. Signed out, the owner is sent to log in, then on to the consent page.
   await page.goto(authorize.toString());
+  await page.waitForURL((url) => url.pathname === "/login");
+  await page.getByTestId("password-email").fill(process.env.E2E_OWNER_EMAIL!);
+  await page
+    .getByTestId("password-password")
+    .fill(process.env.E2E_OWNER_PASSWORD!);
+  await page.getByTestId("password-submit").click();
   await expect(page.getByRole("heading", { name: /E2E Client/ })).toBeVisible();
 
   // 4. Approve; the browser is sent back to the client with a code.
