@@ -263,7 +263,14 @@ test("no page scrolls sideways on a phone", async ({ page }, testInfo) => {
     .click();
   await expect(page.getByLabel("Add task")).toBeVisible();
   await expectNoSideScroll(page);
-  for (const path of ["/", "/inbox", "/active", "/settings"]) {
+  for (const path of [
+    "/",
+    "/inbox",
+    "/active",
+    "/settings",
+    "/search",
+    "/history",
+  ]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
     await expectNoSideScroll(page);
