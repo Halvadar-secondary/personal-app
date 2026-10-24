@@ -18,6 +18,14 @@ export default function SettingsPage() {
         <Link href="/history" className="text-sm text-primary hover:underline">
           History
         </Link>
+        {/* A plain link: it's a file download from an API route, not a page. */}
+        <a
+          href="/api/export"
+          download
+          className="text-sm text-primary hover:underline"
+        >
+          Export all data
+        </a>
       </section>
     </div>
   );
