@@ -16,7 +16,16 @@ export default defineConfig({
           name: "unit",
           environment: "node",
           include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
-          exclude: ["**/*.db.test.ts", "node_modules/**"],
+          exclude: ["**/*.db.test.ts", "**/*.dom.test.tsx", "node_modules/**"],
+        },
+      },
+      {
+        resolve: { alias },
+        test: {
+          name: "dom",
+          environment: "jsdom",
+          include: ["src/**/*.dom.test.tsx"],
+          setupFiles: ["src/test/dom-setup.ts"],
         },
       },
       {
