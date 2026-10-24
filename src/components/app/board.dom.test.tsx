@@ -113,3 +113,29 @@ it("sends nothing when a card is dropped where it was", async () => {
   await act(async () => {});
   expect(moveAchievementAction).not.toHaveBeenCalled();
 });
+
+it("leaves an unconfirmed card out of the move position", async () => {
+  render(
+    <AreaBoard
+      areaId="area"
+      achievements={[
+        card("x", "backlog", "Sweep picking"),
+        card("p", "active"),
+        card("draft-1", "active"),
+      ]}
+      categories={[]}
+    />,
+  );
+  const list = screen.getByRole("region", { name: "List" });
+  await userEvent.click(
+    within(list).getByRole("button", { name: "Move to… Sweep picking" }),
+  );
+  await userEvent.click(screen.getByRole("menuitem", { name: "Active" }));
+  await act(async () => {});
+  expect(moveAchievementAction).toHaveBeenCalledWith({
+    achievementId: "x",
+    status: "active",
+    afterId: "p",
+    beforeId: null,
+  });
+});

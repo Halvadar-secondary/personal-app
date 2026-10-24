@@ -13,7 +13,7 @@ import { moveBy, type Slot, type Status } from "@/lib/placement";
 import type { AchievementCard } from "@/server/domain/views";
 import { AchievementSummary, type ChipCategory } from "./achievement-card";
 import { AddAchievement } from "./add-achievement";
-import { columnsOf, STATUS_LABELS, STATUSES } from "./board-state";
+import { columnsOf, confirmed, STATUS_LABELS, STATUSES } from "./board-state";
 
 type Props = {
   cards: AchievementCard[];
@@ -45,7 +45,7 @@ export function StatusList({
           </h2>
           {columns[status].map((id) => {
             const card = byId.get(id)!;
-            const ids = columns[status];
+            const ids = confirmed(columns[status]);
             const step = (delta: -1 | 1) => {
               const slot = moveBy(ids, id, delta);
               if (slot) onMove(id, { status, ...slot });
@@ -76,7 +76,7 @@ export function StatusList({
                           onSelect={() =>
                             onMove(id, {
                               status: s,
-                              afterId: columns[s].at(-1) ?? null,
+                              afterId: confirmed(columns[s]).at(-1) ?? null,
                               beforeId: null,
                             })
                           }

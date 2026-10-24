@@ -28,7 +28,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   /** Editing when given; creating otherwise. */
   initial?: AreaValues;
-  onSubmit: (values: AreaValues) => void;
+  onSubmit: (values: AreaValues) => void | Promise<void>;
 };
 
 export function AreaForm({ open, onOpenChange, initial, onSubmit }: Props) {
@@ -52,19 +52,25 @@ function Fields({ initial, onSubmit }: Pick<Props, "initial" | "onSubmit">) {
     initial ? initial.cover?.value : COVER_PRESETS[0]!.value,
   );
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [saving, setSaving] = useState(false);
 
   return (
     <form
       className="grid gap-4"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        if (!name.trim()) return;
-        onSubmit({
-          name: name.trim(),
-          emoji: emoji.trim() || null,
-          cover: cover ? { type: "gradient", value: cover } : null,
-          description: description.trim() || null,
-        });
+        if (!name.trim() || saving) return;
+        setSaving(true);
+        try {
+          await onSubmit({
+            name: name.trim(),
+            emoji: emoji.trim() || null,
+            cover: cover ? { type: "gradient", value: cover } : null,
+            description: description.trim() || null,
+          });
+        } finally {
+          setSaving(false);
+        }
       }}
     >
       <div className="grid gap-1.5">
@@ -121,7 +127,9 @@ function Fields({ initial, onSubmit }: Pick<Props, "initial" | "onSubmit">) {
         />
       </div>
       <DialogFooter>
-        <Button type="submit">{initial ? "Save" : "Create area"}</Button>
+        <Button type="submit" disabled={saving}>
+          {initial ? "Save" : "Create area"}
+        </Button>
       </DialogFooter>
     </form>
   );

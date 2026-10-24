@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import type { AchievementCard } from "@/server/domain/views";
 import { AchievementSummary, type ChipCategory } from "./achievement-card";
 import { AddAchievement } from "./add-achievement";
-import { columnsOf, STATUS_LABELS, STATUSES } from "./board-state";
+import { columnsOf, confirmed, STATUS_LABELS, STATUSES } from "./board-state";
 
 type Props = {
   cards: AchievementCard[];
@@ -50,7 +50,12 @@ export function Board({ cards, categories, onMove, onAdd }: Props) {
     const target = overId.startsWith(COLUMN)
       ? { column: overId.slice(COLUMN.length) as Status, id: null }
       : { column: byId.get(overId)!.status, id: overId };
-    const to = placeOnBoard(columns, String(active.id), target);
+    const real = {
+      backlog: confirmed(columns.backlog),
+      active: confirmed(columns.active),
+      done: confirmed(columns.done),
+    };
+    const to = placeOnBoard(real, String(active.id), target);
     if (to) onMove(String(active.id), to);
   }
 

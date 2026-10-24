@@ -32,6 +32,11 @@ export function boardReducer(
   return [...rest.slice(0, at), moved, ...rest.slice(at)];
 }
 
+/** Ids the server has confirmed: only these can anchor a position. */
+export function confirmed(ids: string[]): string[] {
+  return ids.filter((id) => !id.startsWith("draft-"));
+}
+
 export function columnsOf(cards: AchievementCard[]): Record<Status, string[]> {
   const cols: Record<Status, string[]> = { backlog: [], active: [], done: [] };
   for (const c of cards) cols[c.status].push(c.id);

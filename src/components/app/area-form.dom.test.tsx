@@ -61,3 +61,14 @@ it("prefills every field when editing", async () => {
     description: "Irish trad",
   });
 });
+
+it("submits once while a save is in flight", async () => {
+  const onSubmit = vi.fn(() => new Promise<void>(() => {}));
+  render(<AreaForm open onOpenChange={() => {}} onSubmit={onSubmit} />);
+  await userEvent.type(screen.getByLabelText("Name"), "Guitar");
+  const create = screen.getByRole("button", { name: "Create area" });
+  await userEvent.click(create);
+  await userEvent.click(create);
+  expect(onSubmit).toHaveBeenCalledTimes(1);
+  expect(create).toBeDisabled();
+});

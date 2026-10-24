@@ -30,6 +30,7 @@ import {
   uncompleteTaskAction,
   updateTaskAction,
 } from "@/server/actions/tasks";
+import { confirmed } from "./board-state";
 import { CATEGORY_COLORS, type PickerCategory } from "./category-picker";
 import { type TaskItem, TaskRow } from "./task-row";
 import { perform, useMutate } from "./use-mutate";
@@ -111,7 +112,7 @@ export function TaskList({
 
   function onDragEnd({ active, over }: DragEndEvent) {
     if (!over) return;
-    const ids = state.map((t) => t.id);
+    const ids = confirmed(state.map((t) => t.id));
     const slot = placeInList(
       ids,
       String(active.id),

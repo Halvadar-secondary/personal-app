@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal, X } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
 } from "@/server/actions/achievements";
 import type { Achievement, Area } from "@/server/db/goals";
 import { STATUS_LABELS, STATUSES } from "./board-state";
+import { DateField } from "./date-field";
 import { InlineText } from "./inline-text";
 import { perform, useMutate } from "./use-mutate";
 
@@ -150,23 +151,11 @@ export function AchievementHeader({
           </SelectContent>
         </Select>
         <span className="flex items-center gap-1 rounded-lg border bg-card px-2 py-1 text-sm">
-          <input
-            type="date"
-            aria-label="Achievement deadline"
-            value={state.deadline ?? ""}
-            onChange={(e) => update({ deadline: e.target.value || null })}
-            className="bg-transparent"
+          <DateField
+            label="Achievement deadline"
+            value={state.deadline}
+            onSave={(deadline) => update({ deadline })}
           />
-          {state.deadline && (
-            <button
-              type="button"
-              aria-label="Clear achievement deadline"
-              onClick={() => update({ deadline: null })}
-              className="text-faint hover:text-foreground"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
         </span>
       </div>
       <Textarea

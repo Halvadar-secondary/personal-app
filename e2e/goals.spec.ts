@@ -211,22 +211,37 @@ test("a deleted achievement's page is not found", async ({ page }) => {
   const url = page.url();
   await page.waitForLoadState("networkidle");
 
+  // Deleting the page you're on goes to its area without a not-found flash.
+  await page.evaluate(() => {
+    const w = window as unknown as { sawNotFound: boolean };
+    w.sawNotFound = false;
+    new MutationObserver(() => {
+      if (document.body.innerText.includes("could not be found")) {
+        w.sawNotFound = true;
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   await page.getByRole("button", { name: "Achievement menu" }).click();
   await page.getByRole("menuitem", { name: "Delete" }).click();
   await expect(page.getByRole("heading", { name: area })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { sawNotFound: boolean }).sawNotFound,
+    ),
+  ).toBe(false);
 
   // The page shell has streamed by the time the read fails, so Next keeps
-  // the 200 and renders the not-found UI with noindex. What matters: no 500.
-  const res = await page.goto(url);
-  expect(res?.status()).toBeLessThan(500);
-  await expect(page.getByText("This page could not be found.")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Edit Achievement title" }),
-  ).toHaveCount(0);
-
-  const malformed = await page.goto("/areas/not-an-id");
-  expect(malformed?.status()).toBeLessThan(500);
-  await expect(page.getByText("This page could not be found.")).toBeVisible();
+  // the 200 and renders the not-found UI with noindex. What matters: no 500,
+  // and a way back inside the app.
+  for (const path of [url, "/areas/not-an-id"]) {
+    const res = await page.goto(path);
+    expect(res?.status()).toBeLessThan(500);
+    await expect(page.getByText("That page doesn't exist")).toBeVisible();
+    await page.getByRole("link", { name: "Back to your areas" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Your areas" }),
+    ).toBeVisible();
+  }
 });
 
 test("no page scrolls sideways on a phone", async ({ page }, testInfo) => {

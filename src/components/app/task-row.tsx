@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, MoreHorizontal, X } from "lucide-react";
+import { GripVertical, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -17,6 +17,7 @@ import type { Effort } from "@/lib/xp";
 import type { Task } from "@/server/db/goals";
 import { CategoryChip, type ChipCategory, today } from "./achievement-card";
 import { CategoryPicker, type PickerCategory } from "./category-picker";
+import { DateField } from "./date-field";
 import { EffortPicker } from "./effort-picker";
 import { InlineText } from "./inline-text";
 
@@ -82,16 +83,21 @@ export function TaskRow({
         className="mt-0.5"
       />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <InlineText
-          value={task.title}
-          label="Task title"
-          maxLength={300}
-          onSave={(title) => on.onPatch(task.id, { title })}
-          className={cn(
-            "text-sm",
-            done && "text-muted-foreground line-through",
-          )}
-        />
+        {draft ? (
+          // Not saved yet: there's no id to send an edit to.
+          <span className="text-sm text-muted-foreground">{task.title}</span>
+        ) : (
+          <InlineText
+            value={task.title}
+            label="Task title"
+            maxLength={300}
+            onSave={(title) => on.onPatch(task.id, { title })}
+            className={cn(
+              "text-sm",
+              done && "text-muted-foreground line-through",
+            )}
+          />
+        )}
         {!draft && (
           <div className="flex flex-wrap items-center gap-1.5">
             <EffortPicker
@@ -108,32 +114,17 @@ export function TaskRow({
               onChange={(ids) => on.onCategories(task.id, ids)}
               onCreate={on.onCreateCategory}
             />
-            <span className="flex items-center">
-              <input
-                type="date"
-                aria-label="Deadline"
-                value={task.deadline ?? ""}
-                onChange={(e) =>
-                  on.onPatch(task.id, { deadline: e.target.value || null })
-                }
-                className={cn(
-                  "h-5 rounded-sm bg-transparent text-[11px] text-muted-foreground",
-                  isOverdue(task.deadline, today()) &&
-                    !done &&
-                    "font-semibold text-destructive",
-                )}
-              />
-              {task.deadline && (
-                <button
-                  type="button"
-                  aria-label="Clear deadline"
-                  onClick={() => on.onPatch(task.id, { deadline: null })}
-                  className="text-faint hover:text-foreground"
-                >
-                  <X className="size-3" />
-                </button>
+            <DateField
+              label="Deadline"
+              value={task.deadline}
+              onSave={(deadline) => on.onPatch(task.id, { deadline })}
+              className={cn(
+                "h-5 rounded-sm text-[11px] text-muted-foreground",
+                isOverdue(task.deadline, today()) &&
+                  !done &&
+                  "font-semibold text-destructive",
               )}
-            </span>
+            />
           </div>
         )}
       </div>
