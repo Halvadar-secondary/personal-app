@@ -1,7 +1,7 @@
 # Create dialog: design
 
-Date: 2026-10-25. Status: owner-approved direction (mockup reviewed in the
-visual companion), awaiting approval of this document.
+Date: 2026-10-25. Status: approved by the owner 2026-10-25 (mockup reviewed in the
+visual companion).
 
 ## Why
 
