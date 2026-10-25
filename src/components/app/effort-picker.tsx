@@ -15,16 +15,26 @@ const LEVELS = [1, 2, 3, 4, 5] as const;
 export function EffortPicker({
   value,
   onChange,
+  prefix,
+  className,
 }: {
   value: Effort;
   onChange: (effort: Effort) => void;
+  /** Shown before the label, as the create dialog's chip does. */
+  prefix?: string;
+  /** Replaces the badge look. */
+  className?: string;
 }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Effort: ${EFFORT_LABELS[value]}`}
-        className="rounded-full bg-badge px-2 text-[11px] font-semibold text-badge-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={
+          className ??
+          "rounded-full bg-badge px-2 text-[11px] font-semibold text-badge-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        }
       >
+        {prefix}
         {EFFORT_LABELS[value]}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">

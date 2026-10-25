@@ -93,12 +93,18 @@ export function RecurrencePicker({
   locked,
   disabled,
   onSave,
+  emptyLabel,
+  className,
 }: {
   value: Recurrence | null;
   today: string;
   locked: boolean;
   disabled?: boolean;
   onSave: (r: Recurrence | null) => void;
+  /** The trigger's text when there's no rule (the dialog's "Repeat" chip). */
+  emptyLabel?: string;
+  /** Replaces the inline look. */
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState(() => initial(value));
@@ -135,10 +141,13 @@ export function RecurrencePicker({
       <PopoverTrigger
         disabled={disabled}
         aria-label={`Repeat: ${value ? describeRecurrence(value) : "Doesn't repeat"}`}
-        className="flex items-center gap-1 rounded-full px-1.5 text-[11px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+        className={
+          className ??
+          "flex items-center gap-1 rounded-full px-1.5 text-[11px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+        }
       >
         <Repeat className="size-3" />
-        {value ? describeRecurrence(value) : null}
+        {value ? describeRecurrence(value) : (emptyLabel ?? null)}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 gap-3 p-3">
         <fieldset className="flex flex-col gap-1.5">
