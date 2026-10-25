@@ -389,3 +389,74 @@ it("Ctrl+Enter creates even when focus has slipped out of the fields", async () 
   await submit();
   expect(server.createItemAction).toHaveBeenCalledTimes(1);
 });
+
+it("Ctrl+Enter inside an open picker doesn't save around it", async () => {
+  setup("achievement");
+  await open();
+  await userEvent.type(title(), "Sweeps");
+  await userEvent.click(screen.getByRole("button", { name: /^Repeat/ }));
+  await userEvent.click(screen.getByRole("radio", { name: "Daily" }));
+  await submit();
+  expect(server.createItemAction).not.toHaveBeenCalled();
+  await userEvent.click(destination());
+  await submit();
+  expect(server.createItemAction).not.toHaveBeenCalled();
+});
+
+it("a page that registers after C re-derives the kind as well as the destination", async () => {
+  localStorage.setItem("create-dialog", '{"kind":"achievement","more":false}');
+  const ui = (page: boolean) => (
+    <CaptureProvider>
+      {page && <CaptureDestination area={guitar} achievement={sweep} />}
+      <CreateDialog />
+    </CaptureProvider>
+  );
+  const { rerender } = render(ui(false));
+  await open();
+  expect(screen.getByRole("dialog", { name: "New achievement" })).toBeVisible();
+  rerender(ui(true));
+  expect(await screen.findByRole("dialog", { name: "New task" })).toBeVisible();
+  expect(destination()).toHaveAccessibleName("Destination: 🎸 Guitar › Sweep");
+});
+
+it("a kind flipped by hand survives a late page", async () => {
+  const ui = (page: boolean) => (
+    <CaptureProvider>
+      {page && <CaptureDestination area={guitar} />}
+      <CreateDialog />
+    </CaptureProvider>
+  );
+  const { rerender } = render(ui(false));
+  await open();
+  const kind = screen.getByRole("group", { name: "Kind" });
+  await userEvent.click(
+    within(kind).getByRole("button", { name: "Achievement" }),
+  );
+  await userEvent.click(within(kind).getByRole("button", { name: "Task" }));
+  rerender(ui(true));
+  expect(screen.getByRole("dialog", { name: "New task" })).toBeVisible();
+  expect(destination()).toHaveAccessibleName("Destination: Inbox");
+});
+
+it("on a phone the sheet is as tall as what the keyboard leaves", async () => {
+  const listeners: (() => void)[] = [];
+  const vv = {
+    height: 800,
+    addEventListener: (_: string, f: () => void) => listeners.push(f),
+    removeEventListener: () => {},
+  };
+  Object.defineProperty(window, "visualViewport", {
+    value: vv,
+    configurable: true,
+  });
+  setup();
+  await open();
+  expect(dialog().style.getPropertyValue("--sheet-height")).toBe("800px");
+  vv.height = 420; // the keyboard came up
+  act(() => listeners.forEach((f) => f()));
+  expect(dialog().style.getPropertyValue("--sheet-height")).toBe("420px");
+  Object.defineProperty(window, "visualViewport", {
+    value: undefined,
+    configurable: true,
+  });
+});

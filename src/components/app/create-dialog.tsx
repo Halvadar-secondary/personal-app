@@ -102,6 +102,7 @@ function CreateForm({
     defaultDestination(kind, page),
   );
   const [picked, setPicked] = useState(false);
+  const [kindTouched, setKindTouched] = useState(false);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [effort, setEffort] = useState<Effort>(2);
@@ -122,8 +123,12 @@ function CreateForm({
   const [seenPage, setSeenPage] = useState(page);
   if (seenPage !== page) {
     setSeenPage(page);
-    setDest(destinationFor(kind, dest, picked, page));
+    // The page decides the kind too, unless a button or the owner already did.
+    const k = preset.kind || kindTouched ? kind : kindForPage(page, prefs.kind);
+    setKind(k);
+    setDest(destinationFor(k, dest, picked, page));
   }
+  const sheetHeight = useKeyboardFreeHeight();
 
   const areaId = dest.area?.id;
   useEffect(() => {
@@ -151,6 +156,7 @@ function CreateForm({
   function switchKind(next: Kind) {
     if (next === kind) return;
     setKind(next);
+    setKindTouched(true);
     setDest(destinationFor(next, dest, picked, page));
     remember({ kind: next });
   }
@@ -214,10 +220,16 @@ function CreateForm({
     });
   }
 
-  // Ctrl/⌘+Enter wherever focus is, even after a picker hands it back.
+  // Ctrl/⌘+Enter wherever focus is, even after a picker hands it back; but
+  // not inside an open picker, whose choice isn't applied yet.
   const saveNow = useEffectEvent(() => void save());
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (e.defaultPrevented) return;
+      const inPicker =
+        e.target instanceof Element &&
+        e.target.closest("[data-radix-popper-content-wrapper]");
+      if (inPicker) return;
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         saveNow();
@@ -249,7 +261,14 @@ function CreateForm({
 
   return (
     <Dialog open onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent className="inset-0 flex h-dvh max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-none md:inset-auto md:top-[15%] md:left-1/2 md:h-auto md:max-w-[620px] md:-translate-x-1/2 md:rounded-xl">
+      <DialogContent
+        style={
+          sheetHeight
+            ? ({ "--sheet-height": `${sheetHeight}px` } as React.CSSProperties)
+            : undefined
+        }
+        className="inset-0 flex h-[var(--sheet-height,100dvh)] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-none md:inset-auto md:top-[15%] md:left-1/2 md:h-auto md:max-w-[620px] md:-translate-x-1/2 md:rounded-xl"
+      >
         <DialogTitle className="sr-only">New {noun}</DialogTitle>
         <DialogDescription className="sr-only">
           Ctrl+Enter creates it.
@@ -466,6 +485,23 @@ function CreateForm({
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * The visible height above the phone keyboard. iOS overlays the keyboard on
+ * the page (dvh doesn't shrink), so the sheet sizes itself from this.
+ */
+function useKeyboardFreeHeight(): number | null {
+  const [height, setHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setHeight(vv.height);
+    update();
+    vv.addEventListener("resize", update);
+    return () => vv.removeEventListener("resize", update);
+  }, []);
+  return height;
 }
 
 /** "Deadline" until set; then the date, with a clear button. */
