@@ -93,3 +93,16 @@ still points at is kept until a later run. Undoing a change older than that
 may refuse with "Something changed since", because what it would restore is
 gone. Run it by hand with `gh workflow run purge.yml`; the log shows counts
 only.
+
+## Dependency updates (Renovate)
+
+`renovate.json` asks Renovate for one weekly batch (Monday before 6am UTC)
+of non-major updates, plus a monthly lockfile refresh. New releases wait 3
+days first. Patch updates merge on their own once the required checks pass
+(branch protection on `main`); minor and major updates wait for review.
+Better Auth packages and Next.js each move as one group. Node majors are
+off: Node 24 is pinned by `engines` and `.nvmrc`.
+
+One-time setup (owner): install the [Renovate GitHub
+App](https://github.com/apps/renovate) on this repository only. Its first
+PR ("Configure Renovate") confirms it sees `renovate.json`; merge it.

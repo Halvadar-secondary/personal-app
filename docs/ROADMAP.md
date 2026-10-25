@@ -102,7 +102,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Nightly encrypted backup workflow + documented restore drill into a scratch Neon branch
 - [x] Soft-delete purge job
 - [x] Settings: manage passkeys (list, rename, remove)
-- [ ] Renovate configured
+- [x] Renovate configured
 - [ ] Accessibility pass (axe in E2E clean; keyboard drag works)
 - [ ] Dark mode *(optional)*
 
