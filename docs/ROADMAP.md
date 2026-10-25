@@ -101,7 +101,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Sentry (client + server, source maps)
 - [x] Nightly encrypted backup workflow + documented restore drill into a scratch Neon branch
 - [x] Soft-delete purge job
-- [ ] Settings: manage passkeys (list, rename, remove)
+- [x] Settings: manage passkeys (list, rename, remove)
 - [ ] Renovate configured
 - [ ] Accessibility pass (axe in E2E clean; keyboard drag works)
 - [ ] Dark mode *(optional)*
