@@ -1,12 +1,16 @@
 // /api/mcp authenticates by bearer token in its own route, and AI clients
 // read /.well-known/* before they have one. /monitoring is Sentry's tunnel.
+// Phones fetch the manifest and icons for Add to Home Screen without cookies.
 const PUBLIC_EXACT = new Set([
   "/login",
   "/api/health",
   "/api/mcp",
   "/monitoring",
+  "/manifest.webmanifest",
+  "/apple-icon.png",
+  "/icon.png",
 ]);
-const PUBLIC_PREFIXES = ["/api/auth/", "/.well-known/"];
+const PUBLIC_PREFIXES = ["/api/auth/", "/.well-known/", "/icons/"];
 
 export function isPublicPath(pathname: string): boolean {
   return (

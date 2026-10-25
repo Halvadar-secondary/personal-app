@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Life Goals",
   description: "Personal life goals tracker",
+  // Add to Home Screen on iOS opens full-screen (spec §8).
+  appleWebApp: {
+    capable: true,
+    title: "Life Goals",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f7f6fb",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
