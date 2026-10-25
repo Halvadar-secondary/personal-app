@@ -82,3 +82,14 @@ stack traces show the original TypeScript; builds without the token skip it.
 Signed in on production, open `/api/debug/error`. Within a minute Sentry
 shows "Sentry test error", environment `production`, release = the commit
 sha, and a stack trace pointing at `src/app/api/debug/error/route.ts`.
+
+## Purge of deleted items
+
+Deleting anything in the app is a soft delete, so it can be undone from
+History. `purge.yml` runs every Sunday at 04:00 UTC (after that night's
+backup) and permanently removes rows deleted more than 90 days ago, together
+with the History entries that name them. A deleted item that something live
+still points at is kept until a later run. Undoing a change older than that
+may refuse with "Something changed since", because what it would restore is
+gone. Run it by hand with `gh workflow run purge.yml`; the log shows counts
+only.

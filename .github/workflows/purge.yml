@@ -1,0 +1,26 @@
+name: purge
+
+# Weekly (spec §5.5): hard-deletes rows soft-deleted over 90 days ago, and
+# their history. Sunday 04:00 UTC, an hour after that night's backup.
+on:
+  schedule:
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: purge
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm purge
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.PROD_MIGRATION_DATABASE_URL }}

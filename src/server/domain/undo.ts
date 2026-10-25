@@ -138,11 +138,15 @@ function labelOf(entityType: EntityType, ...snapshots: unknown[]): string {
   return FALLBACK_LABELS[entityType] ?? entityType;
 }
 
-/** Postgres unique_violation, raw or wrapped by the driver. */
-function isUniqueViolation(e: unknown): boolean {
+/** Postgres error code, raw or wrapped by the driver. */
+function pgCode(e: unknown): string | undefined {
   const err = e as { code?: string; cause?: { code?: string } } | null;
-  return err?.code === "23505" || err?.cause?.code === "23505";
+  return err?.code ?? err?.cause?.code;
 }
+
+// unique_violation: a newer row holds the slot. foreign_key_violation: the
+// snapshot names a row the weekly purge has since removed.
+const STALE_CODES = new Set(["23505", "23503"]);
 
 /** Stable comparison form: JSON with sorted keys, without updatedAt. */
 function normalise(v: Snapshot): string {
@@ -226,8 +230,9 @@ export const undoBatch = defineAction(
         await entity.apply(ctx, t.entityId, t.first.before as Snapshot);
       } catch (e) {
         // A newer row holds the slot this one would take back (e.g. today's
-        // completion after an untick was re-ticked): the batch is stale.
-        if (!isUniqueViolation(e)) throw e;
+        // completion after an untick was re-ticked), or a row it points at
+        // was purged: the batch is stale.
+        if (!STALE_CODES.has(pgCode(e) ?? "")) throw e;
         throw new DomainError("conflict", {
           changed: [
             {
