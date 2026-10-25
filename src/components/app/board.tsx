@@ -17,6 +17,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
+import { dragAnnouncements } from "@/lib/drag-announcements";
 import { placeOnBoard, type Slot, type Status } from "@/lib/placement";
 import { cn } from "@/lib/utils";
 import type { AchievementCard } from "@/server/domain/views";
@@ -63,6 +65,14 @@ export function Board({ cards, categories, onMove, onAdd }: Props) {
     <section aria-label="Board" className="hidden gap-4 md:grid md:grid-cols-3">
       <DndContext
         sensors={sensors}
+        accessibility={{
+          announcements: dragAnnouncements((id) => {
+            const key = String(id);
+            return key.startsWith(COLUMN)
+              ? STATUS_LABELS[key.slice(COLUMN.length) as Status]
+              : byId.get(key)?.title;
+          }),
+        }}
         collisionDetection={closestCorners}
         onDragEnd={onDragEnd}
       >
@@ -129,23 +139,33 @@ function SortableCard({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({ id: card.id, disabled: card.id.startsWith("draft-") });
   return (
+    // The whole card drags with a pointer; the keyboard (and screen readers)
+    // use the handle, so no button wraps the card's link.
     <div
       ref={setNodeRef}
       data-card
-      {...attributes}
       {...listeners}
-      aria-label={`Move ${card.title}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        "cursor-grab touch-none rounded-[10px] border bg-card p-2.5 shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex cursor-grab touch-none items-start gap-1.5 rounded-[10px] border bg-card p-2.5 shadow-card",
         isDragging && "z-10 opacity-80 shadow-md",
       )}
     >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        {...attributes}
+        aria-label={`Move ${card.title}`}
+        className="mt-0.5 shrink-0 rounded-sm text-faint outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <GripVertical className="size-4" />
+      </button>
       <AchievementSummary card={card} categories={categories} />
     </div>
   );

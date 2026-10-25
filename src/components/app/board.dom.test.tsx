@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import type { AchievementCard } from "@/server/domain/views";
@@ -138,4 +138,42 @@ it("leaves an unconfirmed card out of the move position", async () => {
     afterId: "p",
     beforeId: null,
   });
+});
+
+it("the drag handle is its own button, not a wrapper around the link", () => {
+  render(
+    <AreaBoard
+      areaId="area"
+      achievements={[card("x", "backlog", "Sweep picking")]}
+      categories={[]}
+    />,
+  );
+  const board = screen.getByRole("region", { name: "Board" });
+  const handle = within(board).getByRole("button", {
+    name: "Move Sweep picking",
+  });
+  // A button wrapping a link is nested-interactive (axe, WCAG 4.1.2).
+  expect(within(handle).queryByRole("link")).toBeNull();
+  expect(
+    within(board).getByRole("link", { name: "Sweep picking" }),
+  ).toBeInTheDocument();
+});
+
+it("screen readers hear the card's title, not its id", async () => {
+  render(
+    <AreaBoard
+      areaId="area"
+      achievements={[card("x", "backlog", "Sweep picking")]}
+      categories={[]}
+    />,
+  );
+  within(screen.getByRole("region", { name: "Board" }))
+    .getByRole("button", { name: "Move Sweep picking" })
+    .focus();
+  await userEvent.keyboard(" ");
+  // dnd-kit's live region: it names the card, never its id.
+  const live = document.querySelector('[id^="DndLiveRegion"]');
+  await waitFor(() => expect(live).toHaveTextContent(/Sweep picking/));
+  expect(live).not.toHaveTextContent(/x/);
+  await userEvent.keyboard("{Escape}");
 });

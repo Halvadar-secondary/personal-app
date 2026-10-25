@@ -18,6 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { dragAnnouncements } from "@/lib/drag-announcements";
 import { cn } from "@/lib/utils";
 import { deleteAchievementAction } from "@/server/actions/achievements";
 import { fileAchievementAction, fileTaskAction } from "@/server/actions/inbox";
@@ -61,6 +62,17 @@ export function InboxList({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
   );
+
+  // Draggables are "<kind>:<id>", targets "<kind>-target:<id>".
+  const names = new Map<string, string>([
+    ...state.achievements.map((a) => [`achievement:${a.id}`, a.title] as const),
+    ...state.tasks.map((t) => [`task:${t.id}`, t.title] as const),
+    ...targets.flatMap((a) => [
+      [`achievement-target:${a.id}`, a.name] as const,
+      ...a.achievements.map((x) => [`task-target:${x.id}`, x.title] as const),
+    ]),
+  ]);
+  const nameOf = (id: string | number) => names.get(String(id));
 
   const file = (kind: Kind, id: string, targetId: string) =>
     run({ kind, id }, () =>
@@ -111,6 +123,7 @@ export function InboxList({
   return (
     <DndContext
       sensors={sensors}
+      accessibility={{ announcements: dragAnnouncements(nameOf) }}
       collisionDetection={collision}
       // A long File-to panel scrolls; only its very edges should scroll it.
       autoScroll={{ threshold: { x: 0, y: 0.05 } }}
@@ -227,8 +240,10 @@ function FilePanel({
   dragging: Kind | null;
 }) {
   return (
+    // Focusable so keyboard users can scroll a long list of targets.
     <aside
       aria-label="File to"
+      tabIndex={0}
       className="sticky top-6 hidden max-h-[calc(100dvh-3rem)] w-64 shrink-0 flex-col gap-2 overflow-y-auto self-start rounded-[12px] border bg-card p-3 md:flex"
     >
       <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

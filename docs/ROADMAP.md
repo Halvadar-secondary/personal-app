@@ -103,7 +103,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Soft-delete purge job
 - [x] Settings: manage passkeys (list, rename, remove)
 - [x] Renovate configured
-- [ ] Accessibility pass (axe in E2E clean; keyboard drag works)
+- [x] Accessibility pass (axe in E2E clean; keyboard drag works)
 - [ ] Dark mode *(optional)*
 
 ---

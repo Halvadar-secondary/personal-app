@@ -66,8 +66,9 @@
   --secondary: #efeaff;
   --secondary-foreground: #5b3fe0;
   --muted: #f0eef6;
-  --muted-foreground: #7a7590;
-  --faint: #a19cb5;
+  /* Darkened from the mockup's #7a7590 / #a19cb5 for WCAG AA contrast. */
+  --muted-foreground: #625d76;
+  --faint: #6e6985;
   --accent: #efeaff;
   --accent-foreground: #5b3fe0;
   --badge: #efeaff;
