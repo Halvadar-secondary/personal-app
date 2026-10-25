@@ -54,3 +54,31 @@ Follow the drill into a fresh branch, check it, then make that branch the
 project's primary branch in the Neon console and point
 `DATABASE_URL`/`MIGRATION_DATABASE_URL` at it (Vercel env and GitHub
 secrets). Redeploy by re-running the latest `deploy` workflow.
+
+## Errors (Sentry)
+
+Browser, server and MCP errors go to Sentry, in production only (only
+production has a DSN). Events are scrubbed before they leave the app: no
+cookies, request bodies, query strings, auth headers or user details, so goal
+titles and search terms stay out of Sentry. No performance tracing and no
+session replay. Reports reach Sentry through the app's own `/monitoring`
+route, so the CSP stays same-origin. `deploy.yml` uploads source maps so
+stack traces show the original TypeScript; builds without the token skip it.
+
+### One-time setup (owner)
+
+1. In Sentry, create a project with platform **Next.js**. Note the org slug,
+   project slug and the DSN.
+2. `vercel env add NEXT_PUBLIC_SENTRY_DSN production` and paste the DSN.
+3. Create an auth token (Settings → Auth Tokens, scope
+   `project:releases` + `org:read`) and pipe it in:
+   `gh secret set SENTRY_AUTH_TOKEN` (paste at the prompt).
+4. `gh variable set SENTRY_ORG --body <org-slug>` and
+   `gh variable set SENTRY_PROJECT --body <project-slug>`.
+5. Redeploy (re-run the latest `deploy` workflow).
+
+### Check it works
+
+Signed in on production, open `/api/debug/error`. Within a minute Sentry
+shows "Sentry test error", environment `production`, release = the commit
+sha, and a stack trace pointing at `src/app/api/debug/error/route.ts`.

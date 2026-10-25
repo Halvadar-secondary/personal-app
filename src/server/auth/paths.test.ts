@@ -7,6 +7,8 @@ describe("isPublicPath", () => {
     "/api/health",
     "/api/auth/sign-in/social",
     "/api/auth/callback/google",
+    // Sentry's tunnel: the browser posts error reports without a session.
+    "/monitoring",
   ])("%s is public", (p) => expect(isPublicPath(p)).toBe(true));
   it.each([
     "/",
@@ -17,6 +19,7 @@ describe("isPublicPath", () => {
     "/loginx",
     "/api/healthz",
     "/api/authx",
+    "/monitoringx",
   ])("%s is private", (p) => expect(isPublicPath(p)).toBe(false));
 });
 

@@ -15,8 +15,14 @@ const failed = (text: string) => ({
   content: [{ type: "text" as const, text }],
 });
 
-/** The MCP server: every tool in TOOLS, run through the caller's `run`. */
-export function createLifeGoalsServer(run: RunAction): McpServer {
+/**
+ * The MCP server: every tool in TOOLS, run through the caller's `run`.
+ * `onUnexpected` hears about errors the model is only told "went wrong".
+ */
+export function createLifeGoalsServer(
+  run: RunAction,
+  onUnexpected?: (error: unknown, tool: string) => void,
+): McpServer {
   const server = new McpServer({ name: "life-goals", version: "1.0.0" });
   for (const tool of TOOLS) {
     server.registerTool(
@@ -40,6 +46,7 @@ export function createLifeGoalsServer(run: RunAction): McpServer {
             return failed(messageFor(e.code, e.details));
           // Nothing unexpected leaks to the model.
           console.error("mcp tool failed", tool.name, e);
+          onUnexpected?.(e, tool.name);
           return failed("Something went wrong. Try again.");
         }
       },
