@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import { Capture } from "@/components/app/capture";
 import { CaptureProvider } from "@/components/app/capture-context";
 import { CommandPalette } from "@/components/app/command-palette";
-import { Sidebar } from "@/components/app/sidebar";
-import { TabBar } from "@/components/app/tab-bar";
+import { Sidebar, SidebarSkeleton } from "@/components/app/sidebar";
+import { TabBar, TabBarView } from "@/components/app/tab-bar";
 import { VersionBanner } from "@/components/app/version-banner";
 import { Toaster } from "@/components/ui/sonner";
 import { read } from "@/server/actions/run";
@@ -13,7 +13,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <CaptureProvider>
       <div className="flex min-h-dvh">
-        <Suspense fallback={<div className="hidden w-[220px] md:block" />}>
+        <Suspense fallback={<NavSkeleton />}>
           <Nav />
         </Suspense>
         {/* Bottom padding keeps the phone tab bar off the content. */}
@@ -26,6 +26,16 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       <Toaster position="bottom-center" />
       <VersionBanner current={process.env.APP_BUILD_ID ?? "dev"} />
     </CaptureProvider>
+  );
+}
+
+/** Navigation stays usable while the area list and Inbox count load. */
+function NavSkeleton() {
+  return (
+    <>
+      <SidebarSkeleton />
+      <TabBarView path={null} />
+    </>
   );
 }
 

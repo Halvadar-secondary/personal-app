@@ -15,7 +15,7 @@ function Tab({
   children,
 }: {
   href: string;
-  path: string;
+  path: string | null;
   children: React.ReactNode;
 }) {
   return (
@@ -35,7 +35,11 @@ function Tab({
  * whose count stands in for a badge here.
  */
 export function TabBar() {
-  const path = usePathname();
+  return <TabBarView path={usePathname()} />;
+}
+
+/** The bar itself; `path: null` (no tab current) while the page loads. */
+export function TabBarView({ path }: { path: string | null }) {
   const { setOpen } = useCapture();
   return (
     <nav
