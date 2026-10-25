@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import type { Recurrence } from "@/lib/recurrence";
 import {
   check,
+  customType,
   date,
   index,
   integer,
@@ -19,6 +20,14 @@ import {
 import { user } from "./auth-schema";
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
+
+/**
+ * Fractional-index keys compare by byte ("Zz" < "a0"). COLLATE "C" makes
+ * Postgres order them the same way whatever the database's default collation.
+ */
+const sortKey = customType<{ data: string }>({
+  dataType: () => 'text COLLATE "C"',
+});
 
 const ownerId = () =>
   text("owner_id")
@@ -49,7 +58,7 @@ export const areas = pgTable("areas", {
   emoji: text("emoji"),
   cover: jsonb("cover").$type<Cover>(),
   description: text("description"),
-  sortKey: text("sort_key").notNull(),
+  sortKey: sortKey("sort_key").notNull(),
 });
 
 export const achievements = pgTable(
@@ -63,7 +72,7 @@ export const achievements = pgTable(
     status: achievementStatus("status").notNull().default("backlog"),
     deadline: date("deadline", { mode: "string" }),
     completedAt: timestamptz("completed_at"),
-    sortKey: text("sort_key").notNull(),
+    sortKey: sortKey("sort_key").notNull(),
   },
   (t) => [index().on(t.ownerId, t.areaId, t.status, t.sortKey)],
 );
@@ -81,7 +90,7 @@ export const tasks = pgTable(
     deadline: date("deadline", { mode: "string" }),
     recurrence: jsonb("recurrence").$type<Recurrence>(),
     completedAt: timestamptz("completed_at"),
-    sortKey: text("sort_key").notNull(),
+    sortKey: sortKey("sort_key").notNull(),
   },
   (t) => [
     check("tasks_effort_range", sql`${t.effort} between 1 and 5`),
