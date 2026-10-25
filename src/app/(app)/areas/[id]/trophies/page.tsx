@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ListSkeleton } from "@/components/app/page-skeletons";
 import { formatDeadline, localDate } from "@/lib/dates";
 import { read } from "@/server/actions/run";
 import { getSettings } from "@/server/domain/settings";
@@ -10,9 +11,7 @@ export default function TrophiesPage({
 }: PageProps<"/areas/[id]/trophies">) {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 md:p-6">
-      <Suspense
-        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
-      >
+      <Suspense fallback={<ListSkeleton testId="skeleton-trophies" rows={4} />}>
         <Trophies params={params} />
       </Suspense>
     </div>

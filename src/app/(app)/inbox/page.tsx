@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ListSkeleton } from "@/components/app/page-skeletons";
 import { CaptureButton } from "@/components/app/capture-button";
 import { InboxList } from "@/components/app/inbox-list";
 import { read } from "@/server/actions/run";
@@ -12,9 +13,7 @@ export default function InboxPage() {
         <h1 className="text-xl font-bold md:text-2xl">Inbox</h1>
         <CaptureButton />
       </header>
-      <Suspense
-        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
-      >
+      <Suspense fallback={<ListSkeleton testId="skeleton-inbox" />}>
         <Inbox />
       </Suspense>
     </div>

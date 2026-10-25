@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { AchievementSkeleton } from "@/components/app/page-skeletons";
 import { AchievementHeader } from "@/components/app/achievement-header";
 import { CaptureDestination } from "@/components/app/capture-context";
 import { TaskList } from "@/components/app/task-list";
@@ -12,9 +13,7 @@ export default function AchievementPage({
 }: PageProps<"/achievements/[id]">) {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 p-4 md:p-6">
-      <Suspense
-        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
-      >
+      <Suspense fallback={<AchievementSkeleton />}>
         <Achievement params={params} />
       </Suspense>
     </div>

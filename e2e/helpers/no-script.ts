@@ -4,13 +4,17 @@ import { loginWithPassword } from "./login";
 /**
  * Opens `path` signed in, with scripts off. React swaps streamed content in
  * with scripts, so without them the page stays in its loading state: the
- * static shell and every Suspense fallback. `signedIn: false` skips login.
+ * static shell and every Suspense fallback. `signedIn: false` skips login;
+ * `colorScheme` overrides the project's.
  */
 export async function openWithoutScripts(
   browser: Browser,
   testInfo: TestInfo,
   path: string,
-  { signedIn = true }: { signedIn?: boolean } = {},
+  {
+    signedIn = true,
+    colorScheme: scheme,
+  }: { signedIn?: boolean; colorScheme?: "light" | "dark" } = {},
 ): Promise<Page> {
   const {
     viewport,
@@ -29,7 +33,7 @@ export async function openWithoutScripts(
     hasTouch,
     deviceScaleFactor,
     baseURL,
-    colorScheme,
+    colorScheme: scheme ?? colorScheme,
     extraHTTPHeaders,
   };
   let storageState;

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { FormSkeleton } from "@/components/app/page-skeletons";
 import { passwordLoginEnabled } from "@/server/auth/config";
 import { safeNextPath } from "@/server/auth/paths";
 import { LoginForm } from "./login-form";
@@ -6,7 +7,7 @@ import { LoginForm } from "./login-form";
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="flex flex-1 items-center justify-center p-4">
-      <Suspense fallback={null}>
+      <Suspense fallback={<FormSkeleton testId="skeleton-login" />}>
         <LoginContent searchParams={searchParams} />
       </Suspense>
     </main>

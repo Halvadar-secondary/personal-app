@@ -1,5 +1,120 @@
-import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { expect, type Page, test } from "@playwright/test";
+import { addAchievements, createArea, uniqueName } from "./helpers/app";
+import { loginWithPassword } from "./helpers/login";
 import { openWithoutScripts } from "./helpers/no-script";
+
+const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+
+async function expectNoAxeViolations(page: Page): Promise<void> {
+  const { violations } = await new AxeBuilder({ page })
+    .withTags(TAGS)
+    .analyze();
+  expect(
+    violations.map((v) => ({
+      id: v.id,
+      nodes: v.nodes.map((n) => n.target.join(" ")),
+    })),
+  ).toEqual([]);
+}
+
+// One area with one achievement, for the pages that need ids.
+let area = "";
+let achievement = "";
+test.beforeAll(async ({ browser }) => {
+  const page = await browser.newPage();
+  await loginWithPassword(
+    page,
+    process.env.E2E_OWNER_EMAIL!,
+    process.env.E2E_OWNER_PASSWORD!,
+  );
+  const title = uniqueName("Loading");
+  await createArea(page, uniqueName("Skeleton"));
+  area = new URL(page.url()).pathname;
+  await addAchievements(page, [title]);
+  await page
+    .getByRole("link", { name: title, exact: true })
+    .filter({ visible: true })
+    .click();
+  await expect(page.getByLabel("Add task")).toBeVisible();
+  achievement = new URL(page.url()).pathname;
+  await page.close();
+});
+
+const pages: [string, () => string, string[]][] = [
+  ["overview", () => "/", ["skeleton-overview"]],
+  ["active", () => "/active", ["skeleton-active"]],
+  ["inbox", () => "/inbox", ["skeleton-inbox"]],
+  ["area", () => area, ["skeleton-area"]],
+  ["trophies", () => `${area}/trophies`, ["skeleton-trophies"]],
+  ["achievement", () => achievement, ["skeleton-achievement"]],
+  ["history", () => "/history", ["skeleton-history"]],
+  [
+    "settings",
+    () => "/settings",
+    ["skeleton-settings", "skeleton-passkeys", "skeleton-connected"],
+  ],
+  ["consent", () => "/oauth/consent", ["skeleton-consent"]],
+];
+
+for (const [name, path, ids] of pages) {
+  test(`${name} shows its placeholder while loading`, async ({
+    browser,
+  }, testInfo) => {
+    const page = await openWithoutScripts(browser, testInfo, path());
+    for (const id of ids) await expect(page.getByTestId(id)).toBeVisible();
+    await expect(page.getByText("Loading…")).toHaveCount(0);
+  });
+}
+
+test("login shows its placeholder while loading", async ({
+  browser,
+}, testInfo) => {
+  const page = await openWithoutScripts(browser, testInfo, "/login", {
+    signedIn: false,
+  });
+  await expect(page.getByTestId("skeleton-login")).toBeVisible();
+});
+
+/**
+ * axe needs scripts, so it checks a copy: the scriptless loading page's
+ * markup, minus its scripts, in a scripted page on the same origin.
+ */
+async function axeLoadingState(
+  noScript: Page,
+  colorScheme: "light" | "dark",
+): Promise<void> {
+  const html = (await noScript.content()).replace(
+    /<script\b[\s\S]*?<\/script>/g,
+    "",
+  );
+  const context = await noScript
+    .context()
+    .browser()!
+    .newContext({ colorScheme, baseURL: noScript.url() });
+  const page = await context.newPage();
+  await page.goto("/api/version");
+  await page.setContent(html, { waitUntil: "load" });
+  await expect(page.getByTestId("skeleton-overview")).toBeVisible();
+  // The copy must carry the app's styles, or the contrast check means nothing.
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    colorScheme === "dark" ? "rgb(22, 19, 31)" : "rgb(247, 246, 251)",
+  );
+  await expectNoAxeViolations(page);
+  await context.close();
+}
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`loading state passes axe (${scheme})`, async ({
+    browser,
+  }, testInfo) => {
+    const page = await openWithoutScripts(browser, testInfo, "/", {
+      colorScheme: scheme,
+    });
+    await axeLoadingState(page, scheme);
+  });
+}
 
 // Loading states: with scripts off, pages stay as their static shell plus
 // Suspense fallbacks, which is what a slow load shows.

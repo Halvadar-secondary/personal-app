@@ -111,3 +111,13 @@ it("add reloads the list; an error shows a toast", async () => {
     expect(toast.error).toHaveBeenCalledWith("The operation was cancelled"),
   );
 });
+
+it("shows a placeholder, not text, while the list loads", () => {
+  const api = { ...fakeApi(), list: vi.fn(() => new Promise<never>(() => {})) };
+  render(<Passkeys api={api} />);
+  expect(screen.getByRole("status", { name: "Loading" })).toHaveAttribute(
+    "data-testid",
+    "passkeys-loading",
+  );
+  expect(screen.queryByText("Loading…")).toBeNull();
+});

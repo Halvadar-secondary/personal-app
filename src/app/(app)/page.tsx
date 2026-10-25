@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { OverviewSkeleton } from "@/components/app/page-skeletons";
 import { AreaCard, AreaRow } from "@/components/app/area-card";
 import { CaptureButton } from "@/components/app/capture-button";
 import { NewArea } from "@/components/app/new-area";
@@ -13,9 +14,7 @@ export default function OverviewPage() {
         <h1 className="text-xl font-bold md:text-2xl">Your areas</h1>
         <CaptureButton />
       </header>
-      <Suspense
-        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
-      >
+      <Suspense fallback={<OverviewSkeleton />}>
         <Overview />
       </Suspense>
     </div>

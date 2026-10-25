@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { AreaSkeleton } from "@/components/app/page-skeletons";
 import { AreaBoard } from "@/components/app/area-board";
 import { AreaHeader } from "@/components/app/area-header";
 import { CaptureDestination } from "@/components/app/capture-context";
@@ -9,9 +10,7 @@ import { getAreaBoard } from "@/server/domain/views";
 export default function AreaPage({ params }: PageProps<"/areas/[id]">) {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4 md:p-6">
-      <Suspense
-        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
-      >
+      <Suspense fallback={<AreaSkeleton />}>
         <Area params={params} />
       </Suspense>
     </div>

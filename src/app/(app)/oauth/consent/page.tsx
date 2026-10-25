@@ -1,6 +1,7 @@
 import { verifyOAuthQueryParams } from "@better-auth/oauth-provider";
 import { eq } from "drizzle-orm";
 import { Suspense } from "react";
+import { FormSkeleton } from "@/components/app/page-skeletons";
 import { ConsentForm } from "@/components/app/consent-form";
 import { requireOwner } from "@/server/auth/require-owner";
 import { getDb } from "@/server/db/client";
@@ -12,7 +13,7 @@ export default function ConsentPage({
 }: PageProps<"/oauth/consent">) {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4 p-6">
-      <Suspense fallback={null}>
+      <Suspense fallback={<FormSkeleton testId="skeleton-consent" />}>
         <Consent searchParams={searchParams} />
       </Suspense>
     </div>
