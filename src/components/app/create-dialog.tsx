@@ -249,9 +249,7 @@ function CreateForm({
 
   return (
     <Dialog open onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent
-        className="inset-0 flex h-dvh max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-none md:inset-auto md:top-[15%] md:left-1/2 md:h-auto md:max-w-[620px] md:-translate-x-1/2 md:rounded-xl"
-      >
+      <DialogContent className="inset-0 flex h-dvh max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-none md:inset-auto md:top-[15%] md:left-1/2 md:h-auto md:max-w-[620px] md:-translate-x-1/2 md:rounded-xl">
         <DialogTitle className="sr-only">New {noun}</DialogTitle>
         <DialogDescription className="sr-only">
           Ctrl+Enter creates it.
