@@ -133,3 +133,39 @@ test("navigation shows while the page loads", async ({ browser }, testInfo) => {
     await expect(page.getByRole("link", { name: "History" })).toBeVisible();
   }
 });
+
+// The box is in the static shell (empty until the URL query arrives with the
+// request-time part, which never waits on the database).
+test("search box shows before results load", async ({ browser }, testInfo) => {
+  const page = await openWithoutScripts(browser, testInfo, "/search?q=guitar");
+  await expect(page.getByRole("searchbox", { name: "Search" })).toBeVisible();
+  await expect(page.getByTestId("skeleton-search")).toBeVisible();
+});
+
+test("results dim while a new search runs, typed text survives", async ({
+  page,
+}) => {
+  await loginWithPassword(
+    page,
+    process.env.E2E_OWNER_EMAIL!,
+    process.env.E2E_OWNER_PASSWORD!,
+  );
+  await page.goto("/search?q=a");
+  const results = page.getByTestId("search-results");
+  await expect(results).toHaveAttribute("aria-busy", "false");
+  // Hold the next results request so the search stays in flight.
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(/\/search\?q=ab/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  const box = page.getByRole("searchbox", { name: "Search" });
+  await box.fill("ab");
+  await expect(results).toHaveAttribute("aria-busy", "true");
+  await expect(results).toHaveClass(/opacity-60/);
+  await expect(box).toHaveValue("ab");
+  release();
+  await expect(results).toHaveAttribute("aria-busy", "false");
+  await expect(box).toHaveValue("ab");
+});

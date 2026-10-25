@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { SearchBox } from "@/components/app/search-box";
+import { ListSkeleton } from "@/components/app/page-skeletons";
+import { SearchBox, SearchBoxShell } from "@/components/app/search-box";
+import {
+  SearchPendingProvider,
+  SearchResults,
+} from "@/components/app/search-pending";
 import { read } from "@/server/actions/run";
 import { search } from "@/server/domain/search";
 import type { NavArea } from "@/server/domain/views";
@@ -9,9 +14,17 @@ export default function SearchPage({ searchParams }: PageProps<"/search">) {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 md:p-6">
       <h1 className="text-xl font-bold md:text-2xl">Search</h1>
-      <Suspense fallback={null}>
-        <Search searchParams={searchParams} />
-      </Suspense>
+      <SearchPendingProvider>
+        {/* Two boundaries: the box needs only the URL, so it shows first. */}
+        <Suspense fallback={<SearchBoxShell />}>
+          <SearchBox />
+        </Suspense>
+        <Suspense fallback={<ListSkeleton testId="skeleton-search" />}>
+          <SearchResults>
+            <Results searchParams={searchParams} />
+          </SearchResults>
+        </Suspense>
+      </SearchPendingProvider>
     </div>
   );
 }
@@ -50,7 +63,7 @@ function Group({
   );
 }
 
-async function Search({
+async function Results({
   searchParams,
 }: Pick<PageProps<"/search">, "searchParams">) {
   const raw = (await searchParams).q;
@@ -61,7 +74,6 @@ async function Search({
     : false;
   return (
     <>
-      <SearchBox initial={q} />
       {!r ? (
         <p className="text-sm text-muted-foreground">
           Type to search areas, achievements, tasks and the Inbox.
