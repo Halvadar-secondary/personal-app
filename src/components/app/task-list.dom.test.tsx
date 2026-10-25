@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import type { Recurrence } from "@/lib/recurrence";
+import { CaptureProvider, useCapture } from "./capture-context";
 import { TaskList } from "./task-list";
 import type { TaskItem } from "./task-row";
 
@@ -38,7 +39,6 @@ const daily: Recurrence = { freq: "daily", interval: 1, start: "2026-10-01" };
 it("a task the server hasn't confirmed can't be edited yet", () => {
   render(
     <TaskList
-      achievementId="a"
       tasks={[task("t1", "Saved"), task("draft-1", "Pending")]}
       categories={[]}
       today={TODAY}
@@ -59,7 +59,6 @@ it("ticking a repeating task marks today done at once and calls complete", async
   actions.completeTaskAction.mockReturnValue(new Promise(() => {}));
   render(
     <TaskList
-      achievementId="a"
       tasks={[{ ...task("t1", "Scales"), recurrence: daily }]}
       categories={[]}
       today={TODAY}
@@ -77,7 +76,6 @@ it("ticking a repeating task marks today done at once and calls complete", async
 it("a repeating task not due today can't be ticked", () => {
   render(
     <TaskList
-      achievementId="a"
       tasks={[
         {
           ...task("t1", "Mondays"),
@@ -92,4 +90,24 @@ it("a repeating task not due today can't be ticked", () => {
   expect(
     screen.getByRole("checkbox", { name: "Complete Mondays for today" }),
   ).toBeDisabled();
+});
+
+it("Add task opens the create dialog as a task", async () => {
+  function Probe() {
+    const c = useCapture();
+    return (
+      <output aria-label="capture">{JSON.stringify([c.open, c.preset])}</output>
+    );
+  }
+  render(
+    <CaptureProvider>
+      <TaskList tasks={[]} categories={[]} today={TODAY} weekStart={1} />
+      <Probe />
+    </CaptureProvider>,
+  );
+  expect(screen.queryByRole("textbox", { name: "Add task" })).toBeNull();
+  await userEvent.click(screen.getByRole("button", { name: "Add task" }));
+  expect(screen.getByLabelText("capture")).toHaveTextContent(
+    JSON.stringify([true, { kind: "task" }]),
+  );
 });

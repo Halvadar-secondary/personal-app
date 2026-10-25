@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,32 +12,32 @@ import {
 import { moveBy, type Slot, type Status } from "@/lib/placement";
 import type { AchievementCard } from "@/server/domain/views";
 import { AchievementSummary, type ChipCategory } from "./achievement-card";
-import { AddAchievement } from "./add-achievement";
 import { columnsOf, confirmed, STATUS_LABELS, STATUSES } from "./board-state";
+import { useCapture } from "./capture-context";
 
 type Props = {
   cards: AchievementCard[];
   categories: Map<string, ChipCategory>;
   onMove: (id: string, to: Slot & { status: Status }) => void;
-  onAdd: (title: string) => void;
   onDelete: (id: string) => void;
 };
 
 const ORDER: Status[] = ["active", "backlog", "done"];
 
 /** Below md: grouped list, moved with "Move to…" menus. */
-export function StatusList({
-  cards,
-  categories,
-  onMove,
-  onAdd,
-  onDelete,
-}: Props) {
+export function StatusList({ cards, categories, onMove, onDelete }: Props) {
+  const { openCreate } = useCapture();
   const columns = columnsOf(cards);
   const byId = new Map(cards.map((c) => [c.id, c]));
   return (
     <section aria-label="List" className="flex flex-col gap-4 md:hidden">
-      <AddAchievement onAdd={onAdd} className="bg-card" />
+      <Button
+        variant="outline"
+        className="justify-start bg-card text-muted-foreground"
+        onClick={() => openCreate({ kind: "achievement", status: "backlog" })}
+      >
+        <Plus /> Add achievement
+      </Button>
       {ORDER.map((status) => (
         <div key={status} className="flex flex-col gap-2">
           <h2 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">

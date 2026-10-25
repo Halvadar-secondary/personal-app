@@ -44,7 +44,6 @@ async function Achievement({
       />
       <TaskList
         key={achievement.id}
-        achievementId={achievement.id}
         tasks={tasks}
         today={today}
         weekStart={weekStart}

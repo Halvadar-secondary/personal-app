@@ -30,7 +30,6 @@ async function Area({ params }: Pick<PageProps<"/areas/[id]">, "params">) {
       {/* Keyed by area so client state never carries over between areas. */}
       <AreaBoard
         key={board.area.id}
-        areaId={board.area.id}
         achievements={board.achievements}
         categories={categories.map(({ id, name, color }) => ({
           id,
