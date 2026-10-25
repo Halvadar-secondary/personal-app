@@ -104,7 +104,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Settings: manage passkeys (list, rename, remove)
 - [x] Renovate configured
 - [x] Accessibility pass (axe in E2E clean; keyboard drag works)
-- [ ] Dark mode *(optional)*
+- [x] Dark mode *(optional)*
 
 ---
 

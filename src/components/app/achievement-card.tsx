@@ -13,9 +13,15 @@ export function today(): string {
 
 export function CategoryChip({ category }: { category: ChipCategory }) {
   return (
+    // In dark mode the chip's own colour is too dark to read: lighten it.
     <span
-      className="rounded-full px-1.5 text-[11px] font-medium"
-      style={{ background: `${category.color}1f`, color: category.color }}
+      className="rounded-full px-1.5 text-[11px] font-medium text-(--chip) dark:text-[color-mix(in_oklab,var(--chip)_45%,white)]"
+      style={
+        {
+          background: `${category.color}1f`,
+          "--chip": category.color,
+        } as React.CSSProperties
+      }
     >
       {category.name}
     </span>

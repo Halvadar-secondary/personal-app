@@ -162,3 +162,59 @@ test.describe("signed in", () => {
     await expect(page.getByText(title)).toHaveCount(0);
   });
 });
+
+// Dark mode follows the system setting; it must pass the same checks.
+test.describe("dark", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("dark mode applies", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(22, 19, 31)",
+    );
+  });
+
+  test("login page has no axe violations in dark mode", async ({ page }) => {
+    await page.goto("/login");
+    await expectNoAxeViolations(page);
+  });
+
+  test.describe("signed in", () => {
+    test.beforeEach(({ page }) => login(page));
+
+    for (const path of [
+      "/",
+      "/inbox",
+      "/active",
+      "/search?q=a",
+      "/history",
+      "/settings",
+    ]) {
+      test(`${path} has no axe violations in dark mode`, async ({ page }) => {
+        await page.goto(path);
+        await expectNoAxeViolations(page);
+      });
+    }
+
+    test("area, achievement and capture have no axe violations in dark mode", async ({
+      page,
+    }) => {
+      const { area } = await freshGoal(page);
+      const add = page.getByLabel("Add task");
+      await add.fill("First step");
+      await add.press("Enter");
+      await expect(page.getByText("First step")).toBeVisible();
+      await expectNoAxeViolations(page);
+      await page.goto(area);
+      await expectNoAxeViolations(page);
+      await page
+        .getByRole("button", { name: "Capture" })
+        .filter({ visible: true })
+        .first()
+        .click();
+      await expect(page.getByRole("dialog", { name: "Capture" })).toBeVisible();
+      await expectNoAxeViolations(page);
+    });
+  });
+});

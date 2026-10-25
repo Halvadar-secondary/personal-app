@@ -18,7 +18,7 @@ export function NewArea({ variant }: { variant: "tile" | "button" }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex min-h-40 items-center justify-center gap-1 rounded-[12px] border-2 border-dashed border-[#d8d3e8] text-faint hover:border-primary hover:text-primary"
+          className="flex min-h-40 items-center justify-center gap-1 rounded-[12px] border-2 border-dashed border-[var(--dashed)] text-faint hover:border-primary hover:text-primary"
         >
           <Plus className="size-4" /> New area
         </button>

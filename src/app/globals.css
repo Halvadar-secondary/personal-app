@@ -2,7 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Dark mode follows the system setting; there is no toggle. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 @theme inline {
   --color-background: var(--background);
@@ -94,40 +95,52 @@
   --sidebar-accent-foreground: #5b3fe0;
   --sidebar-border: #ebe8f3;
   --sidebar-ring: #6d4aff;
+  --dashed: #d8d3e8;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Purple-tinted dark of the mockup's palette; every pair passes WCAG AA. */
+    --background: #16131f;
+    --foreground: #ecebf5;
+    --card: #201c2c;
+    --card-foreground: #ecebf5;
+    --popover: #201c2c;
+    --popover-foreground: #ecebf5;
+    --primary: #9d85ff;
+    --primary-foreground: #16131f;
+    --secondary: #2a2440;
+    --secondary-foreground: #c9bcff;
+    --muted: #262135;
+    --muted-foreground: #a9a3bf;
+    --faint: #968fb0;
+    --accent: #2a2440;
+    --accent-foreground: #c9bcff;
+    --badge: #2a2440;
+    --badge-foreground: #c9bcff;
+    --xp-track: #2a2540;
+    --xp-gradient: linear-gradient(90deg, #8b6cff, #c084fc);
+    --destructive: #ff6b70;
+    --border: #2e2940;
+    --input: #3a3450;
+    --ring: #9d85ff;
+    --dashed: #3a3450;
+    --chart-1: #9d85ff;
+    --chart-2: #c084fc;
+    --chart-3: #f59e0b;
+    --chart-4: #10b981;
+    --chart-5: #0ea5e9;
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --sidebar: #1b1726;
+    --sidebar-foreground: #ecebf5;
+    --sidebar-primary: #9d85ff;
+    --sidebar-primary-foreground: #16131f;
+    --sidebar-accent: #2a2440;
+    --sidebar-accent-foreground: #c9bcff;
+    --sidebar-border: #2e2940;
+    --sidebar-ring: #9d85ff;
+    color-scheme: dark;
+  }
 }
 
 @layer base {
