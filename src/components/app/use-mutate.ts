@@ -18,7 +18,7 @@ async function settle<T>(call: () => Promise<Result<T>>) {
   }
 }
 
-async function undo(batchId: string) {
+export async function undo(batchId: string) {
   const r = await settle(() => undoAction({ batchId }));
   if (!r) toast.error(RELOAD);
   else if (!r.ok) toast.error(r.message);

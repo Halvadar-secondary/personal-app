@@ -15,8 +15,8 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { dragAnnouncements } from "@/lib/drag-announcements";
 import { placeInList, type Slot } from "@/lib/placement";
 import {
@@ -25,13 +25,13 @@ import {
 } from "@/server/actions/categories";
 import {
   completeTaskAction,
-  createTaskAction,
   deleteTaskAction,
   moveTaskAction,
   uncompleteTaskAction,
   updateTaskAction,
 } from "@/server/actions/tasks";
 import { confirmed } from "./board-state";
+import { useCapture } from "./capture-context";
 import { CATEGORY_COLORS, type PickerCategory } from "./category-picker";
 import { type TaskItem, TaskRow } from "./task-row";
 import { perform, useMutate } from "./use-mutate";
@@ -50,15 +50,12 @@ type Patch = Partial<
   >
 >;
 type Op =
-  | { type: "add"; task: TaskItem }
   | { type: "patch"; id: string; patch: Patch }
   | { type: "remove"; id: string }
   | ({ type: "move"; id: string } & Slot);
 
 function reducer(tasks: TaskItem[], op: Op): TaskItem[] {
   switch (op.type) {
-    case "add":
-      return [...tasks, op.task];
     case "patch":
       return tasks.map((t) => (t.id === op.id ? { ...t, ...op.patch } : t));
     case "remove":
@@ -75,38 +72,13 @@ function reducer(tasks: TaskItem[], op: Op): TaskItem[] {
   }
 }
 
-function draftTask(achievementId: string, title: string): TaskItem {
-  const now = new Date();
-  return {
-    id: `draft-${crypto.randomUUID()}`,
-    ownerId: "",
-    achievementId,
-    areaId: null,
-    title,
-    notes: null,
-    effort: 2,
-    deadline: null,
-    recurrence: null,
-    completedAt: null,
-    sortKey: "",
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
-    categoryIds: [],
-    recentDone: [],
-    hasCompletions: false,
-  };
-}
-
-/** The achievement's checklist: complete, edit, tag, reorder, add. */
+/** The achievement's checklist: complete, edit, tag, reorder; "Add task" opens the dialog. */
 export function TaskList({
-  achievementId,
   tasks,
   categories,
   today,
   weekStart,
 }: {
-  achievementId: string;
   tasks: TaskItem[];
   categories: PickerCategory[];
   /** The owner's date, for repeating tasks and deadlines. */
@@ -114,7 +86,7 @@ export function TaskList({
   weekStart: number;
 }) {
   const { state, run } = useMutate(reducer, tasks);
-  const [title, setTitle] = useState("");
+  const { openCreate } = useCapture();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
@@ -220,23 +192,13 @@ export function TaskList({
           </ul>
         </SortableContext>
       </DndContext>
-      <Input
-        aria-label="Add task"
-        placeholder="+ Add task"
-        value={title}
-        maxLength={300}
-        className="bg-card"
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => {
-          const t = title.trim();
-          if (e.key !== "Enter" || !t) return;
-          e.preventDefault();
-          setTitle("");
-          run({ type: "add", task: draftTask(achievementId, t) }, () =>
-            createTaskAction({ achievementId, title: t, effort: 2 }),
-          );
-        }}
-      />
+      <Button
+        variant="ghost"
+        className="justify-start text-muted-foreground"
+        onClick={() => openCreate({ kind: "task" })}
+      >
+        <Plus /> Add task
+      </Button>
     </section>
   );
 }

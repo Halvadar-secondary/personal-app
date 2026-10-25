@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
   addAchievements,
+  addTasks,
+  createAchievementInDialog,
+  openCapture,
   createArea,
   expectNoSideScroll,
   isPhone,
@@ -41,19 +44,13 @@ test("capture to the Inbox, then file it into an area", async ({
   await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
   await page.waitForLoadState("networkidle");
 
-  if (isPhone(testInfo)) {
-    await page.getByRole("button", { name: "Capture" }).click();
-  } else {
-    await page.keyboard.press("c");
-  }
-  await expect(page.getByRole("dialog", { name: "Capture" })).toBeVisible();
-  await expect(page.getByText("→ Inbox")).toBeVisible();
-  const field = page.getByRole("textbox", { name: "Capture text" });
-  await field.fill(`!${title}`);
-  await field.press("Enter");
-  await expect(page.getByText("Saved")).toBeVisible();
-  await expect(field).toHaveValue("");
-  await page.keyboard.press("Escape");
+  await openCapture(page, testInfo);
+  await expect(page.getByRole("dialog", { name: "New task" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Destination: Inbox" }),
+  ).toBeVisible();
+  await createAchievementInDialog(page, title);
+  await expect(page.getByText("Achievement created")).toBeVisible();
 
   await expect(page.getByRole("link", { name: title })).toBeVisible();
   await page.getByRole("button", { name: `File to… ${title}` }).click();
@@ -122,15 +119,10 @@ test("add tasks, complete one, set effort and a category", async ({ page }) => {
     page.getByRole("button", { name: "Edit Achievement title" }),
   ).toBeVisible();
 
-  const add = page.getByLabel("Add task");
-  for (const t of ["One", "Two", "Three"]) {
-    await add.fill(t);
-    await add.press("Enter");
-  }
+  await addTasks(page, ["One", "Two", "Three"]);
   await expect(
     page.getByRole("button", { name: "Edit Task title" }),
   ).toHaveCount(3);
-  await expect(add).toBeFocused();
   await page.waitForLoadState("networkidle");
 
   await page.getByRole("checkbox", { name: "Complete One" }).click();
@@ -177,9 +169,7 @@ test("delete a task and undo it from the toast", async ({ page }) => {
     .getByRole("link", { name: "Practice", exact: true })
     .filter({ visible: true })
     .click();
-  const add = page.getByLabel("Add task");
-  await add.fill("Keep me");
-  await add.press("Enter");
+  await addTasks(page, ["Keep me"]);
   await expect(
     page.getByRole("button", { name: "Edit Task title" }),
   ).toHaveCount(1);
@@ -261,7 +251,7 @@ test("no page scrolls sideways on a phone", async ({ page }, testInfo) => {
     .getByRole("link", { name: /An achievement with a long title/ })
     .filter({ visible: true })
     .click();
-  await expect(page.getByLabel("Add task")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add task" })).toBeVisible();
   await expectNoSideScroll(page);
   for (const path of [
     "/",

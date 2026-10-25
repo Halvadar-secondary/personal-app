@@ -23,20 +23,21 @@ import { placeOnBoard, type Slot, type Status } from "@/lib/placement";
 import { cn } from "@/lib/utils";
 import type { AchievementCard } from "@/server/domain/views";
 import { AchievementSummary, type ChipCategory } from "./achievement-card";
-import { AddAchievement } from "./add-achievement";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { columnsOf, confirmed, STATUS_LABELS, STATUSES } from "./board-state";
+import { useCapture } from "./capture-context";
 
 type Props = {
   cards: AchievementCard[];
   categories: Map<string, ChipCategory>;
   onMove: (id: string, to: Slot & { status: Status }) => void;
-  onAdd: (title: string, status: Status) => void;
 };
 
 const COLUMN = "column:";
 
 /** md and up: Backlog / Active / Done, with drag between and within. */
-export function Board({ cards, categories, onMove, onAdd }: Props) {
+export function Board({ cards, categories, onMove }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
@@ -82,7 +83,6 @@ export function Board({ cards, categories, onMove, onAdd }: Props) {
             status={status}
             cards={columns[status].map((id) => byId.get(id)!)}
             categories={categories}
-            onAdd={(title) => onAdd(title, status)}
           />
         ))}
       </DndContext>
@@ -94,14 +94,13 @@ function Column({
   status,
   cards,
   categories,
-  onAdd,
 }: {
   status: Status;
   cards: AchievementCard[];
   categories: Map<string, ChipCategory>;
-  onAdd: (title: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: COLUMN + status });
+  const { openCreate } = useCapture();
   return (
     <div
       ref={setNodeRef}
@@ -123,7 +122,14 @@ function Column({
           <SortableCard key={c.id} card={c} categories={categories} />
         ))}
       </SortableContext>
-      <AddAchievement onAdd={onAdd} className="mt-auto bg-card" />
+      <Button
+        variant="ghost"
+        aria-label={`Add achievement to ${STATUS_LABELS[status]}`}
+        className="mt-auto justify-start text-muted-foreground"
+        onClick={() => openCreate({ kind: "achievement", status })}
+      >
+        <Plus /> Add achievement
+      </Button>
     </div>
   );
 }

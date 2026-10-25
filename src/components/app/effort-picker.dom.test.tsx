@@ -14,3 +14,17 @@ it("shows the current label and calls onChange with the chosen level", async () 
   await userEvent.click(screen.getByRole("menuitemradio", { name: "Hard" }));
   expect(onChange).toHaveBeenCalledWith(4);
 });
+
+it("with a prefix the chip reads 'Effort: Medium'", () => {
+  render(
+    <EffortPicker
+      value={3}
+      onChange={() => {}}
+      prefix="Effort: "
+      className="chip"
+    />,
+  );
+  const trigger = screen.getByRole("button", { name: "Effort: Medium" });
+  expect(trigger).toHaveTextContent("Effort: Medium");
+  expect(trigger).toHaveClass("chip");
+});

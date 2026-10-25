@@ -71,3 +71,18 @@ it("does not offer create for a case-insensitive existing name", async () => {
   expect(screen.getByRole("checkbox", { name: "Gear" })).toBeVisible();
   expect(screen.queryByRole("checkbox", { name: "Ear" })).toBeNull();
 });
+
+it("a custom trigger opens the picker", async () => {
+  render(
+    <CategoryPicker
+      categories={all}
+      value={[]}
+      onChange={() => {}}
+      onCreate={async () => null}
+      trigger={<button type="button">＋ Category</button>}
+    />,
+  );
+  expect(screen.queryByRole("button", { name: "Categories" })).toBeNull();
+  await userEvent.click(screen.getByRole("button", { name: "＋ Category" }));
+  expect(screen.getByRole("textbox", { name: "Find or create" })).toBeVisible();
+});

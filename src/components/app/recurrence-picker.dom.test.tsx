@@ -123,3 +123,21 @@ it("1 week on an older rule runs a week from today", async () => {
     end: { type: "until", date: "2026-10-30" },
   });
 });
+
+it("with no rule the trigger shows its empty label", () => {
+  render(
+    <RecurrencePicker
+      value={null}
+      today={today}
+      locked={false}
+      onSave={() => {}}
+      emptyLabel="Repeat"
+      className="chip"
+    />,
+  );
+  const trigger = screen.getByRole("button", {
+    name: "Repeat: Doesn't repeat",
+  });
+  expect(trigger).toHaveTextContent("Repeat");
+  expect(trigger).toHaveClass("chip");
+});

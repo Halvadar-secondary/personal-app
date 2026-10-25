@@ -32,6 +32,8 @@ type Props = {
   onChange: (ids: string[]) => void;
   /** Creates the category; resolves to its id, or null when it failed. */
   onCreate: (name: string) => Promise<string | null>;
+  /** Replaces the tag icon button (the dialog's "＋ Category" chip). */
+  trigger?: React.ReactNode;
 };
 
 /** Pick a task's categories; "Used here" first, then "All". */
@@ -40,6 +42,7 @@ export function CategoryPicker({
   value,
   onChange,
   onCreate,
+  trigger,
 }: Props) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -56,9 +59,11 @@ export function CategoryPicker({
   return (
     <Popover onOpenChange={() => setQuery("")}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon-xs" aria-label="Categories">
-          <Tag />
-        </Button>
+        {trigger ?? (
+          <Button variant="ghost" size="icon-xs" aria-label="Categories">
+            <Tag />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-60 gap-2 p-2">
         <Input

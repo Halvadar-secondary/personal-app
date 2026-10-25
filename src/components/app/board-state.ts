@@ -10,7 +10,6 @@ export const STATUS_LABELS: Record<Status, string> = {
 
 export type BoardOp =
   | ({ type: "move"; id: string; status: Status } & Slot)
-  | { type: "add"; card: AchievementCard }
   | { type: "remove"; id: string };
 
 /** The optimistic version of what the server will do with each op. */
@@ -18,7 +17,6 @@ export function boardReducer(
   cards: AchievementCard[],
   op: BoardOp,
 ): AchievementCard[] {
-  if (op.type === "add") return [...cards, op.card];
   const card = cards.find((c) => c.id === op.id);
   const rest = cards.filter((c) => c.id !== op.id);
   if (op.type === "remove" || !card) return rest;
@@ -41,30 +39,4 @@ export function columnsOf(cards: AchievementCard[]): Record<Status, string[]> {
   const cols: Record<Status, string[]> = { backlog: [], active: [], done: [] };
   for (const c of cards) cols[c.status].push(c.id);
   return cols;
-}
-
-/** A placeholder card for an achievement the server is still creating. */
-export function draftCard(
-  areaId: string,
-  title: string,
-  status: Status,
-): AchievementCard {
-  const now = new Date();
-  return {
-    id: `draft-${crypto.randomUUID()}`,
-    ownerId: "",
-    areaId,
-    title,
-    notes: null,
-    status,
-    deadline: null,
-    completedAt: null,
-    sortKey: "",
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
-    taskCount: 0,
-    doneCount: 0,
-    categoryIds: [],
-  };
 }

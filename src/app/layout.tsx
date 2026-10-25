@@ -24,6 +24,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Android: the keyboard shrinks the layout, so a sheet's button stays above it.
+  interactiveWidget: "resizes-content",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f7f6fb" },
     { media: "(prefers-color-scheme: dark)", color: "#16131f" },

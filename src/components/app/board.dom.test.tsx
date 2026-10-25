@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import type { AchievementCard } from "@/server/domain/views";
 import { AreaBoard } from "./area-board";
+import { CaptureProvider, useCapture } from "./capture-context";
 
 const moveAchievementAction = vi.fn();
 vi.mock("@/server/actions/achievements", () => ({
@@ -70,7 +71,6 @@ beforeEach(() => {
 it("keyboard-drags a card from Backlog onto the Active card beside it", async () => {
   render(
     <AreaBoard
-      areaId="area"
       achievements={[
         card("x", "backlog", "Sweep picking"),
         card("y", "backlog"),
@@ -99,7 +99,6 @@ it("keyboard-drags a card from Backlog onto the Active card beside it", async ()
 it("sends nothing when a card is dropped where it was", async () => {
   render(
     <AreaBoard
-      areaId="area"
       achievements={[card("x", "backlog", "Sweep picking")]}
       categories={[]}
     />,
@@ -117,7 +116,6 @@ it("sends nothing when a card is dropped where it was", async () => {
 it("leaves an unconfirmed card out of the move position", async () => {
   render(
     <AreaBoard
-      areaId="area"
       achievements={[
         card("x", "backlog", "Sweep picking"),
         card("p", "active"),
@@ -143,7 +141,6 @@ it("leaves an unconfirmed card out of the move position", async () => {
 it("the drag handle is its own button, not a wrapper around the link", () => {
   render(
     <AreaBoard
-      areaId="area"
       achievements={[card("x", "backlog", "Sweep picking")]}
       categories={[]}
     />,
@@ -162,7 +159,6 @@ it("the drag handle is its own button, not a wrapper around the link", () => {
 it("screen readers hear the card's title, not its id", async () => {
   render(
     <AreaBoard
-      areaId="area"
       achievements={[card("x", "backlog", "Sweep picking")]}
       categories={[]}
     />,
@@ -176,4 +172,27 @@ it("screen readers hear the card's title, not its id", async () => {
   await waitFor(() => expect(live).toHaveTextContent(/Sweep picking/));
   expect(live).not.toHaveTextContent(/x/);
   await userEvent.keyboard("{Escape}");
+});
+
+it.each([
+  ["Add achievement to Active", "active"],
+  ["Add achievement", "backlog"],
+])("%s presets the dialog's status", async (name, status) => {
+  function Probe() {
+    const c = useCapture();
+    return (
+      <output aria-label="capture">{JSON.stringify([c.open, c.preset])}</output>
+    );
+  }
+  render(
+    <CaptureProvider>
+      <AreaBoard achievements={[]} categories={[]} />
+      <Probe />
+    </CaptureProvider>,
+  );
+  expect(screen.queryByRole("textbox", { name: /Add achievement/ })).toBeNull();
+  await userEvent.click(screen.getByRole("button", { name }));
+  expect(screen.getByLabelText("capture")).toHaveTextContent(
+    JSON.stringify([true, { kind: "achievement", status }]),
+  );
 });
