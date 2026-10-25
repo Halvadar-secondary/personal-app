@@ -8,11 +8,13 @@ terminal; nothing needs a server of its own.
 
 `backup.yml` runs every night at 03:00 UTC (and on demand from the Actions
 tab). It dumps production's `public` and `drizzle` schemas with
-`pg_dump` 18, fails if the dump is missing the main tables' data, encrypts
-it with [age](https://age-encryption.org) to the owner's public key, and
+`pg_dump` 18, restores the dump into a throwaway Postgres 18 on the runner
+and runs the same check as the drill below (one owner, some areas, every
+migration), so a backup that can't be restored or holds no data fails the
+run. It then encrypts it with [age](https://age-encryption.org) to the owner's public key, and
 keeps it as a workflow artifact for 30 days. The repository is public, so
-only the encrypted file ever leaves the runner, and the logs show its size
-and nothing else.
+only the encrypted file ever leaves the runner, and the logs show row counts
+and the file size, nothing else.
 
 Neon's own point-in-time restore covers "undo the last few hours". The
 nightly backup is for losing the database, the Neon project or the account.
@@ -38,11 +40,17 @@ Needs `age`, `neonctl` (signed in) and PostgreSQL 18 client tools.
 2. Download it: `gh run download <run-id> -n life-goals-backup-<date>`.
 3. Decrypt:
    `age -d -i life-goals-backup.key -o backup.dump life-goals-<date>.dump.age`.
-4. Make a scratch branch:
-   `neonctl branches create --project-id withered-hill-17786740 --name restore-drill-<date>`.
-5. Get its URL: `neonctl connection-string restore-drill-<date> --project-id withered-hill-17786740`.
-6. Restore over it:
-   `pg_restore --clean --if-exists --no-owner --no-acl --single-transaction -d "<url>" backup.dump`.
+4. Make a scratch branch with a new, **empty** database in it. Restoring
+   over a copy of production would hide anything the backup is missing.
+   `neonctl branches create --project-id withered-hill-17786740 --name restore-drill-<date>`
+   then
+   `neonctl databases create --project-id withered-hill-17786740 --branch restore-drill-<date> --name drill`.
+5. Get its URL:
+   `neonctl connection-string restore-drill-<date> --project-id withered-hill-17786740 --database-name drill`.
+6. Restore into it. A new database has its own `public` schema, and the
+   dump brings one:
+   `psql "<url>" -c "drop schema public"`, then
+   `pg_restore --no-owner --no-acl --exit-on-error --single-transaction -d "<url>" backup.dump`.
 7. Check it: `pnpm restore:check "<url>"`. Expect "restore looks whole",
    and counts close to production's (production may have changed since).
 8. Clean up: `neonctl branches delete restore-drill-<date> --project-id withered-hill-17786740`
@@ -52,7 +60,7 @@ Needs `age`, `neonctl` (signed in) and PostgreSQL 18 client tools.
 
 Follow the drill into a fresh branch, check it, then make that branch the
 project's primary branch in the Neon console and point
-`DATABASE_URL`/`MIGRATION_DATABASE_URL` at it (Vercel env and GitHub
+`DATABASE_URL`/`MIGRATION_DATABASE_URL` at its `drill` database (Vercel env and GitHub
 secrets). Redeploy by re-running the latest `deploy` workflow.
 
 ## Errors (Sentry)

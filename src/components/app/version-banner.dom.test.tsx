@@ -4,7 +4,10 @@ import { isNewerBuild, VersionBanner } from "./version-banner";
 
 const MIN = 60_000;
 
-beforeEach(() => vi.useFakeTimers());
+beforeEach(() => {
+  vi.useFakeTimers();
+  setVisibility("visible");
+});
 afterEach(() => vi.useRealTimers());
 
 /** Lets pending fetch promises and their state updates settle. */
@@ -101,5 +104,30 @@ describe("VersionBanner", () => {
     expect(screen.getAllByRole("status")).toHaveLength(1);
     // Found it: no more polling.
     expect(fetchBuildId).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips timed checks while the tab is hidden", async () => {
+    const fetchBuildId = vi.fn().mockResolvedValue("a");
+    render(<VersionBanner current="a" fetchBuildId={fetchBuildId} />);
+    await settle();
+    setVisibility("hidden");
+    await after(30 * MIN);
+    // A hidden tab must not keep the database awake.
+    expect(fetchBuildId).toHaveBeenCalledTimes(1);
+    setVisibility("visible");
+    await settle();
+    expect(fetchBuildId).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks the database-free version route by default", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(Response.json({ buildId: "a" }));
+    render(<VersionBanner current="a" />);
+    await settle();
+    expect(fetchMock).toHaveBeenCalledWith("/api/version", {
+      cache: "no-store",
+    });
+    fetchMock.mockRestore();
   });
 });

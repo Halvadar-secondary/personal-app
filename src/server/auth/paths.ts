@@ -6,6 +6,8 @@ const PUBLIC_EXACT = new Set([
   "/api/health",
   "/api/mcp",
   "/monitoring",
+  // The version banner's poll; a session lookup here would query the db.
+  "/api/version",
   "/manifest.webmanifest",
   "/apple-icon.png",
   "/icon.png",

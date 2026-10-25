@@ -12,10 +12,13 @@ export function isNewerBuild(
   return deployed !== current;
 }
 
-/** The deployed build id, or undefined when the check fails for any reason. */
+/**
+ * The deployed build id, or undefined when the check fails for any reason.
+ * /api/version is static per deployment: polling it never wakes the database.
+ */
 async function fetchDeployedBuildId(): Promise<string | undefined> {
   try {
-    const res = await fetch("/api/health", { cache: "no-store" });
+    const res = await fetch("/api/version", { cache: "no-store" });
     if (!res.ok) return undefined;
     const body = (await res.json()) as { buildId?: unknown };
     return typeof body.buildId === "string" ? body.buildId : undefined;
@@ -25,9 +28,9 @@ async function fetchDeployedBuildId(): Promise<string | undefined> {
 }
 
 /**
- * "New version available" (spec §12): polls /api/health every few minutes
- * and when the app comes back to the foreground, e.g. a home-screen app
- * reopened on the phone.
+ * "New version available" (spec §12): checks the deployed build every few
+ * minutes while the tab is visible, and when the app comes back to the
+ * foreground, e.g. a home-screen app reopened on the phone.
  */
 export function VersionBanner({
   current,
@@ -53,7 +56,9 @@ export function VersionBanner({
       if (document.visibilityState === "visible") void check();
     };
     void check();
-    const timer = setInterval(check, intervalMs);
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void check();
+    }, intervalMs);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       live = false;

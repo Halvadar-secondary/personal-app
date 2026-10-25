@@ -9,14 +9,24 @@ type ScrubbableEvent = {
     headers?: Record<string, string>;
   };
   user?: unknown;
+  breadcrumbs?: unknown;
+  exception?: { values?: { value?: string }[] };
 };
 
 /**
  * Strips what could carry personal data before an event leaves the app:
- * goal titles in bodies and queries, search terms, cookies, bearer tokens.
+ * goal titles in bodies, queries, breadcrumbs and database errors, search
+ * terms, cookies, bearer tokens.
  */
 export function scrubEvent<E extends ScrubbableEvent>(event: E): E {
   delete event.user;
+  // Navigation URLs hold search terms; click crumbs hold aria-labels, which
+  // name goals ("Move Learn guitar").
+  delete event.breadcrumbs;
+  // Drizzle's query errors end with "params: …": the titles and notes written.
+  for (const ex of event.exception?.values ?? []) {
+    if (ex.value) ex.value = ex.value.replace(/\nparams:[\s\S]*$/, "");
+  }
   const req = event.request;
   if (!req) return event;
   delete req.cookies;

@@ -19,7 +19,21 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     environment: production
+    # A throwaway Postgres: every night's dump is restored and checked here,
+    # so a backup that can't be restored, or holds no data, fails the run.
+    services:
+      scratch:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: scratch
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s
+          --health-retries 10
     steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - name: Install pg_dump 18 and age
         run: |
           sudo apt-get update -qq
@@ -32,18 +46,18 @@ jobs:
           --schema=public --schema=drizzle -f backup.dump "$DATABASE_URL"
         env:
           DATABASE_URL: ${{ secrets.PROD_MIGRATION_DATABASE_URL }}
-      - name: Check the dump holds the data
-        # A wrong URL can dump an empty database "successfully".
+      - name: Restore into scratch and check it
+        # The same check as the restore drill: one owner, areas, every
+        # migration. Prints counts only.
         run: |
-          list=$(/usr/lib/postgresql/18/bin/pg_restore --list backup.dump)
-          missing=0
-          for t in "public user" "public areas" "public achievements" "public tasks" "drizzle __drizzle_migrations"; do
-            if ! grep -q "TABLE DATA $t " <<<"$list"; then
-              echo "missing table data: $t"
-              missing=1
-            fi
-          done
-          exit $missing
+          bin=/usr/lib/postgresql/18/bin
+          # A fresh database has its own public schema; the dump brings one.
+          $bin/psql -q "$SCRATCH" -c "drop schema public"
+          $bin/pg_restore --no-owner --no-acl --exit-on-error \
+            --single-transaction -d "$SCRATCH" backup.dump
+          pnpm restore:check "$SCRATCH"
+        env:
+          SCRATCH: postgres://postgres:scratch@localhost:5432/postgres
       - name: Encrypt
         run: |
           if [ -z "$RECIPIENT" ]; then

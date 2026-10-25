@@ -59,4 +59,36 @@ describe("scrubEvent", () => {
       message: "boom",
     });
   });
+
+  it("drops breadcrumbs: they carry URLs with search terms and titles from aria-labels", () => {
+    const event = scrubEvent({
+      breadcrumbs: [
+        { category: "navigation", data: { to: "/search?q=guitar" } },
+        {
+          category: "ui.click",
+          message: 'button[aria-label="Move Learn guitar"]',
+        },
+      ],
+    });
+    expect(event.breadcrumbs).toBeUndefined();
+  });
+
+  it("strips query params from database error messages", () => {
+    const event = scrubEvent({
+      exception: {
+        values: [
+          {
+            type: "DrizzleQueryError",
+            value:
+              'Failed query: insert into "tasks" ("title") values ($1)\nparams: Learn guitar',
+          },
+          { type: "Error", value: "plain message" },
+        ],
+      },
+    });
+    expect(event.exception?.values?.[0]?.value).toBe(
+      'Failed query: insert into "tasks" ("title") values ($1)',
+    );
+    expect(event.exception?.values?.[1]?.value).toBe("plain message");
+  });
 });

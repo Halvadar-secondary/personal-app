@@ -9,6 +9,8 @@ describe("isPublicPath", () => {
     "/api/auth/callback/google",
     // Sentry's tunnel: the browser posts error reports without a session.
     "/monitoring",
+    // The version banner's poll: no session lookup, so no database query.
+    "/api/version",
     // Phones fetch these for Add to Home Screen, often without cookies.
     "/manifest.webmanifest",
     "/apple-icon.png",
