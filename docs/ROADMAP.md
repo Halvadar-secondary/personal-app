@@ -97,7 +97,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 *Done when: it feels like a real app on the phone and problems are visible.*
 
 - [ ] PWA manifest, icons, Apple touch icons; verified "Add to Home Screen" on iOS and Android
-- [ ] "New version available" banner
+- [x] "New version available" banner
 - [x] Sentry (client + server, source maps)
 - [x] Nightly encrypted backup workflow + documented restore drill into a scratch Neon branch
 - [x] Soft-delete purge job

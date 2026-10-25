@@ -4,6 +4,7 @@ import { CaptureProvider } from "@/components/app/capture-context";
 import { CommandPalette } from "@/components/app/command-palette";
 import { Sidebar } from "@/components/app/sidebar";
 import { TabBar } from "@/components/app/tab-bar";
+import { VersionBanner } from "@/components/app/version-banner";
 import { Toaster } from "@/components/ui/sonner";
 import { read } from "@/server/actions/run";
 import { getOverview } from "@/server/domain/views";
@@ -23,6 +24,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         <Capture />
       </Suspense>
       <Toaster position="bottom-center" />
+      <VersionBanner current={process.env.APP_BUILD_ID ?? "dev"} />
     </CaptureProvider>
   );
 }
