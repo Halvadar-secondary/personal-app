@@ -27,6 +27,13 @@ export function mcpResource(env: AuthEnv): string {
   return `${appOrigin(env)}/api/mcp`;
 }
 
+/**
+ * How long a signed copy of the session in a cookie answers sign-in checks
+ * without the database (owner-approved 2026-10-25). A session revoked
+ * elsewhere keeps working this long; signing out here ends it at once.
+ */
+export const SESSION_CACHE_SECONDS = 5 * 60;
+
 export function createAuth(db: Db, env: AuthEnv) {
   // Previews have no BETTER_AUTH_URL: MCP needs a fixed base for issuer and audience.
   const baseURL = appOrigin(env);
@@ -36,6 +43,9 @@ export function createAuth(db: Db, env: AuthEnv) {
     trustedOrigins: trustedOrigins(env),
     rateLimit: { enabled: rateLimitEnabled(env) },
     database: drizzleAdapter(db, { provider: "pg", schema }),
+    session: {
+      cookieCache: { enabled: true, maxAge: SESSION_CACHE_SECONDS },
+    },
     emailAndPassword: {
       enabled: passwordLoginEnabled(env),
       disableSignUp: true,

@@ -47,3 +47,33 @@ test("export refuses a visitor who isn't signed in", async ({ request }) => {
   const res = await request.get("/api/export");
   expect(res.status()).toBe(401);
 });
+
+// The signed session copy lasts 5 minutes; when it's missing or expired the
+// proxy reads the database and must hand the browser a fresh one.
+test("the proxy hands back a fresh session cookie", async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
+  await loginWithPassword(
+    page,
+    process.env.E2E_OWNER_EMAIL!,
+    process.env.E2E_OWNER_PASSWORD!,
+  );
+  const token = (await page.context().cookies()).find((c) =>
+    c.name.endsWith("session_token"),
+  )!;
+  // A bare client: only the token, none of the browser’s other cookies.
+  const bare = await playwright.request.newContext({ baseURL });
+  const res = await bare.get("/inbox", {
+    headers: { cookie: `${token.name}=${token.value}` },
+    maxRedirects: 0,
+  });
+  expect(res.status()).toBe(200);
+  const names = res
+    .headersArray()
+    .filter((h) => h.name.toLowerCase() === "set-cookie")
+    .map((h) => h.value.split("=")[0] ?? "");
+  expect(names.some((n) => n.endsWith("session_data"))).toBe(true);
+  await bare.dispose();
+});
