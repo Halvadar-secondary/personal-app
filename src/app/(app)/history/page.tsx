@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ListSkeleton } from "@/components/app/page-skeletons";
 import { HistoryList } from "@/components/app/history-list";
 import { read } from "@/server/actions/run";
 import { listHistory } from "@/server/domain/history-view";
@@ -8,9 +9,7 @@ export default function HistoryPage({ searchParams }: PageProps<"/history">) {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 md:p-6">
       <h1 className="text-xl font-bold md:text-2xl">History</h1>
-      <Suspense
-        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
-      >
+      <Suspense fallback={<ListSkeleton testId="skeleton-history" rows={6} />}>
         <History searchParams={searchParams} />
       </Suspense>
     </div>

@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { authClient } from "@/lib/auth-client";
+import { SectionSkeleton } from "./page-skeletons";
 
 export type PasskeyRow = {
   id: string;
@@ -76,7 +77,7 @@ export function Passkeys({ api = betterAuthPasskeys }: { api?: PasskeyApi }) {
   };
 
   if (rows === null) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <SectionSkeleton testId="passkeys-loading" />;
   }
   return (
     <div className="flex flex-col gap-3">

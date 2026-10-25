@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { SectionSkeleton } from "@/components/app/page-skeletons";
 import { ConnectedApps } from "@/components/app/connected-apps";
 import { Passkeys } from "@/components/app/passkeys";
 import { SettingsForm } from "@/components/app/settings-form";
@@ -16,23 +17,19 @@ export default function SettingsPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-5 p-4 md:p-6">
       <h1 className="text-xl font-bold md:text-2xl">Settings</h1>
       <Suspense
-        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
+        fallback={<SectionSkeleton testId="skeleton-settings" rows={3} />}
       >
         <Settings />
       </Suspense>
       <section className="flex flex-col gap-2 border-t pt-5">
         <h2 className="text-sm font-semibold">Passkeys</h2>
-        <Suspense
-          fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
-        >
+        <Suspense fallback={<SectionSkeleton testId="skeleton-passkeys" />}>
           <PasskeySection />
         </Suspense>
       </section>
       <section className="flex flex-col gap-2 border-t pt-5">
         <h2 className="text-sm font-semibold">Connected AI apps</h2>
-        <Suspense
-          fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
-        >
+        <Suspense fallback={<SectionSkeleton testId="skeleton-connected" />}>
           <Connected />
         </Suspense>
       </section>

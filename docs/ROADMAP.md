@@ -108,6 +108,17 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ---
 
+## M6.1 — Loading states
+*Done when: no page shows "Loading…", and a cold open shows the app's frame at once.*
+
+- [x] Sidebar and tab bar stay on screen while a page loads
+- [x] Layout-shaped placeholders on every page (pulse off for reduced motion; dark mode)
+- [x] Search box appears at once; results dim while a new search runs
+- [x] Sign-in check reads a 5-minute signed session cookie instead of the database
+- [x] Placeholders for Login and OAuth consent
+
+---
+
 ## Later (not scheduled)
 
 - [ ] Metronome tool that logs practice entries against a task

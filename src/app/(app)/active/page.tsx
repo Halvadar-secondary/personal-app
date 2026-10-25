@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ListSkeleton } from "@/components/app/page-skeletons";
 import { CaptureButton } from "@/components/app/capture-button";
 import { PracticeList } from "@/components/app/practice-list";
 import { formatDeadline, isOverdue } from "@/lib/dates";
@@ -14,9 +15,7 @@ export default function ActivePage() {
         <h1 className="text-xl font-bold md:text-2xl">Active</h1>
         <CaptureButton />
       </header>
-      <Suspense
-        fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
-      >
+      <Suspense fallback={<ListSkeleton testId="skeleton-active" />}>
         <Active />
       </Suspense>
     </div>

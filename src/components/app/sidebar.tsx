@@ -13,18 +13,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AccountMenu } from "./account-menu";
 import { useCapture } from "./capture-context";
 import type { NavData } from "./nav-data";
 
 function NavLink({
   href,
+  active = false,
   children,
 }: {
   href: string;
+  active?: boolean;
   children: React.ReactNode;
 }) {
-  const active = usePathname() === href;
   return (
     <Link
       href={href}
@@ -41,7 +43,53 @@ function NavLink({
 
 /** md and up: the left rail. */
 export function Sidebar({ inboxCount, areas }: NavData) {
+  const path = usePathname();
+  return (
+    <SidebarFrame path={path} inboxCount={inboxCount}>
+      {areas.map((a) => (
+        <NavLink
+          key={a.id}
+          href={`/areas/${a.id}`}
+          active={path === `/areas/${a.id}`}
+        >
+          <span aria-hidden className="w-5 text-center">
+            {a.emoji ?? "•"}
+          </span>
+          <span className="truncate">{a.name}</span>
+        </NavLink>
+      ))}
+    </SidebarFrame>
+  );
+}
+
+/**
+ * The rail while the area list loads: the fixed links work, the areas are
+ * placeholder rows. No pathname: it is the static shell for every route.
+ */
+export function SidebarSkeleton() {
+  return (
+    <SidebarFrame path={null}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+          <Skeleton className="size-5 shrink-0" />
+          <Skeleton className="h-3.5 flex-1" />
+        </div>
+      ))}
+    </SidebarFrame>
+  );
+}
+
+function SidebarFrame({
+  path,
+  inboxCount = 0,
+  children,
+}: {
+  path: string | null;
+  inboxCount?: number;
+  children: React.ReactNode;
+}) {
   const { setOpen } = useCapture();
+  const link = (href: string) => ({ href, active: path === href });
   return (
     <aside className="sticky top-0 hidden h-dvh w-[220px] shrink-0 flex-col gap-4 border-r bg-sidebar p-3 md:flex">
       <Link href="/" className="px-2 pt-1 text-base font-bold">
@@ -51,16 +99,16 @@ export function Sidebar({ inboxCount, areas }: NavData) {
         <Plus /> Capture
       </Button>
       <nav aria-label="Main" className="flex flex-col gap-0.5">
-        <NavLink href="/">
+        <NavLink {...link("/")}>
           <LayoutGrid className="size-4" /> Your areas
         </NavLink>
-        <NavLink href="/active">
+        <NavLink {...link("/active")}>
           <ListChecks className="size-4" /> Active
         </NavLink>
-        <NavLink href="/search">
+        <NavLink {...link("/search")}>
           <Search className="size-4" /> Search
         </NavLink>
-        <NavLink href="/inbox">
+        <NavLink {...link("/inbox")}>
           <Inbox className="size-4" /> Inbox
           {inboxCount > 0 && (
             <span className="ml-auto rounded-full bg-badge px-1.5 text-xs font-semibold text-badge-foreground">
@@ -73,19 +121,12 @@ export function Sidebar({ inboxCount, areas }: NavData) {
         aria-label="Areas"
         className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1"
       >
-        {areas.map((a) => (
-          <NavLink key={a.id} href={`/areas/${a.id}`}>
-            <span aria-hidden className="w-5 text-center">
-              {a.emoji ?? "•"}
-            </span>
-            <span className="truncate">{a.name}</span>
-          </NavLink>
-        ))}
+        {children}
       </nav>
-      <NavLink href="/settings">
+      <NavLink {...link("/settings")}>
         <Settings className="size-4" /> Settings
       </NavLink>
-      <NavLink href="/history">
+      <NavLink {...link("/history")}>
         <HistoryIcon className="size-4" /> History
       </NavLink>
       <AccountMenu />

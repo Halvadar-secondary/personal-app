@@ -32,6 +32,7 @@
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+  --color-skeleton: var(--skeleton);
   --color-faint: var(--faint);
   --color-badge: var(--badge);
   --color-badge-foreground: var(--badge-foreground);
@@ -96,6 +97,7 @@
   --sidebar-border: #ebe8f3;
   --sidebar-ring: #6d4aff;
   --dashed: #d8d3e8;
+  --skeleton: #e6e2f0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -125,6 +127,7 @@
     --input: #3a3450;
     --ring: #9d85ff;
     --dashed: #3a3450;
+    --skeleton: #2e2840;
     --chart-1: #9d85ff;
     --chart-2: #c084fc;
     --chart-3: #f59e0b;
