@@ -33,7 +33,10 @@ async function Achievement({
   ]);
   return (
     <>
-      <CaptureDestination name={achievement.title} />
+      <CaptureDestination
+        area={areas.find((a) => a.id === achievement.areaId) ?? null}
+        achievement={{ id: achievement.id, title: achievement.title }}
+      />
       <AchievementHeader
         key={`${achievement.id}:${achievement.updatedAt.getTime()}`}
         achievement={achievement}
