@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { dragAnnouncements } from "@/lib/drag-announcements";
 import { placeInList, type Slot } from "@/lib/placement";
 import {
   createCategoryAction,
@@ -171,6 +172,11 @@ export function TaskList({
     <section aria-label="Tasks" className="flex flex-col gap-2">
       <DndContext
         sensors={sensors}
+        accessibility={{
+          announcements: dragAnnouncements(
+            (id) => state.find((t) => t.id === id)?.title,
+          ),
+        }}
         collisionDetection={closestCenter}
         onDragEnd={onDragEnd}
       >

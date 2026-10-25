@@ -1,0 +1,35 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "group:allNonMajor",
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "schedule": ["before 6am on monday"],
+  "minimumReleaseAge": "3 days",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Better Auth packages must move together",
+      "matchPackageNames": ["better-auth", "@better-auth/**"],
+      "groupName": "better-auth"
+    },
+    {
+      "matchPackageNames": ["next", "eslint-config-next"],
+      "groupName": "next"
+    },
+    {
+      "description": "Node 24 is pinned by engines and .nvmrc",
+      "matchDepNames": ["node"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ]
+}

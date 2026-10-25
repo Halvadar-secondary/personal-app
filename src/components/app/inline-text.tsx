@@ -26,7 +26,8 @@ export function InlineText({
     return (
       <button
         type="button"
-        aria-label={`Edit ${label}`}
+        // Starts with the visible text, so voice control can say what it sees.
+        aria-label={`${value}, Edit ${label}`}
         onClick={() => setDraft(value)}
         className={cn(
           "min-w-0 cursor-text rounded-sm text-left break-words outline-none focus-visible:ring-2 focus-visible:ring-ring",

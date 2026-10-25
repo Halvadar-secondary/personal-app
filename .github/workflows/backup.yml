@@ -1,0 +1,79 @@
+name: backup
+
+# Nightly encrypted dump of production (spec §11.6). The repo is public, so
+# the dump is encrypted to the owner's age public key before it leaves the
+# runner; only the owner's offline private key can read it.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    # A throwaway Postgres: every night's dump is restored and checked here,
+    # so a backup that can't be restored, or holds no data, fails the run.
+    services:
+      scratch:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: scratch
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Install pg_dump 18 and age
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common age
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-18
+      - name: Dump production
+        run: >
+          /usr/lib/postgresql/18/bin/pg_dump --format=custom --no-owner --no-acl
+          --schema=public --schema=drizzle -f backup.dump "$DATABASE_URL"
+        env:
+          DATABASE_URL: ${{ secrets.PROD_MIGRATION_DATABASE_URL }}
+      - name: Restore into scratch and check it
+        # The same check as the restore drill: one owner, areas, every
+        # migration. Prints counts only.
+        run: |
+          bin=/usr/lib/postgresql/18/bin
+          # A fresh database has its own public schema; the dump brings one.
+          $bin/psql -q "$SCRATCH" -c "drop schema public"
+          $bin/pg_restore --no-owner --no-acl --exit-on-error \
+            --single-transaction -d "$SCRATCH" backup.dump
+          pnpm restore:check "$SCRATCH"
+        env:
+          SCRATCH: postgres://postgres:scratch@localhost:5432/postgres
+      - name: Encrypt
+        run: |
+          if [ -z "$RECIPIENT" ]; then
+            echo "vars.BACKUP_AGE_RECIPIENT is not set"
+            exit 1
+          fi
+          out="life-goals-$(date -u +%F).dump.age"
+          age -r "$RECIPIENT" -o "$out" backup.dump
+          rm backup.dump
+          echo "encrypted: $(stat -c %s "$out") bytes"
+          echo "DAY=$(date -u +%F)" >> "$GITHUB_ENV"
+        env:
+          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: life-goals-backup-${{ env.DAY }}
+          path: life-goals-*.dump.age
+          retention-days: 30
+          if-no-files-found: error

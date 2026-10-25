@@ -46,10 +46,10 @@ it("a task the server hasn't confirmed can't be edited yet", () => {
     />,
   );
   expect(
-    screen.getByRole("button", { name: "Edit Task title" }),
+    screen.getByRole("button", { name: /Edit Task title/ }),
   ).toHaveTextContent("Saved");
   expect(
-    screen.getAllByRole("button", { name: "Edit Task title" }),
+    screen.getAllByRole("button", { name: /Edit Task title/ }),
   ).toHaveLength(1);
   expect(screen.getByText("Pending")).toBeVisible();
 });

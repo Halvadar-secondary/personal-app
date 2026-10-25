@@ -7,6 +7,15 @@ describe("isPublicPath", () => {
     "/api/health",
     "/api/auth/sign-in/social",
     "/api/auth/callback/google",
+    // Sentry's tunnel: the browser posts error reports without a session.
+    "/monitoring",
+    // The version banner's poll: no session lookup, so no database query.
+    "/api/version",
+    // Phones fetch these for Add to Home Screen, often without cookies.
+    "/manifest.webmanifest",
+    "/apple-icon.png",
+    "/icon.png",
+    "/icons/icon-192.png",
   ])("%s is public", (p) => expect(isPublicPath(p)).toBe(true));
   it.each([
     "/",
@@ -17,6 +26,8 @@ describe("isPublicPath", () => {
     "/loginx",
     "/api/healthz",
     "/api/authx",
+    "/monitoringx",
+    "/iconsx",
   ])("%s is private", (p) => expect(isPublicPath(p)).toBe(false));
 });
 

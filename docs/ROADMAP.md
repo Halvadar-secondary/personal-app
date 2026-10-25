@@ -97,14 +97,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 *Done when: it feels like a real app on the phone and problems are visible.*
 
 - [ ] PWA manifest, icons, Apple touch icons; verified "Add to Home Screen" on iOS and Android
-- [ ] "New version available" banner
-- [ ] Sentry (client + server, source maps)
-- [ ] Nightly encrypted backup workflow + documented restore drill into a scratch Neon branch
-- [ ] Soft-delete purge job
-- [ ] Settings: manage passkeys (list, rename, remove)
-- [ ] Renovate configured
-- [ ] Accessibility pass (axe in E2E clean; keyboard drag works)
-- [ ] Dark mode *(optional)*
+- [x] "New version available" banner
+- [x] Sentry (client + server, source maps)
+- [x] Nightly encrypted backup workflow + documented restore drill into a scratch Neon branch
+- [x] Soft-delete purge job
+- [x] Settings: manage passkeys (list, rename, remove)
+- [x] Renovate configured
+- [x] Accessibility pass (axe in E2E clean; keyboard drag works)
+- [x] Dark mode *(optional)*
 
 ---
 

@@ -33,9 +33,12 @@ const SPEC_TOOLS = [
 
 let client: Client;
 
-async function connect(run: Parameters<typeof createLifeGoalsServer>[0]) {
+async function connect(
+  run: Parameters<typeof createLifeGoalsServer>[0],
+  onUnexpected?: Parameters<typeof createLifeGoalsServer>[1],
+) {
   const [a, b] = InMemoryTransport.createLinkedPair();
-  await createLifeGoalsServer(run).connect(a);
+  await createLifeGoalsServer(run, onUnexpected).connect(a);
   client = new Client({ name: "test", version: "1.0.0" });
   await client.connect(b);
 }
@@ -86,6 +89,25 @@ describe("life-goals MCP server", () => {
     expect(r.isError).toBe(true);
     expect(text(r)).toContain("Something went wrong. Try again.");
     expect(text(r)).not.toContain("db down");
+  });
+
+  it("reports unexpected errors, not domain refusals", async () => {
+    const boom = new Error("db down");
+    const report = vi.fn();
+    await connect(
+      vi
+        .fn()
+        .mockRejectedValueOnce(boom)
+        .mockRejectedValueOnce(new DomainError("not_found")),
+      report,
+    );
+    await client.callTool({ name: "get_overview", arguments: {} });
+    await client.callTool({
+      name: "complete_task",
+      arguments: { taskId: crypto.randomUUID() },
+    });
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith(boom, "get_overview");
   });
 
   it("answers with a one-line summary and the JSON", async () => {

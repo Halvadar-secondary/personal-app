@@ -1,5 +1,6 @@
 import { requireMcpAuth } from "@better-auth/mcp";
 import { createMcpHandler } from "@modelcontextprotocol/server";
+import * as Sentry from "@sentry/nextjs";
 import { connection } from "next/server";
 import { mcpResource } from "@/server/auth/auth";
 import { getAuth } from "@/server/auth/instance";
@@ -56,8 +57,11 @@ export async function POST(req: Request) {
       }
       const deps = { db, ownerId: caller.ownerId, actor: caller.actor };
       const handler = createMcpHandler(() =>
-        createLifeGoalsServer((action, input) =>
-          runAction(deps, action, input),
+        createLifeGoalsServer(
+          (action, input) => runAction(deps, action, input),
+          // The model only hears "went wrong"; the owner should hear the rest.
+          (e, tool) =>
+            Sentry.captureException(e, { tags: { tool, surface: "mcp" } }),
         ),
       );
       return handler.fetch(request);

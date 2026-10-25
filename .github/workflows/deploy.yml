@@ -46,6 +46,11 @@ jobs:
         run: |
           pnpm dlx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
           APP_BUILD_ID="${{ github.sha }}" pnpm dlx vercel@latest build --prod --token="$VERCEL_TOKEN"
+        env:
+          # Uploads source maps to Sentry; builds without it skip the upload.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
       # Deploy without taking the domain, prove that exact deployment, then promote it.
       # A failed check never serves traffic, so there is no automatic rollback (which would
       # also pin the domain and make every later deploy fail). Manual undo: `vercel rollback`.

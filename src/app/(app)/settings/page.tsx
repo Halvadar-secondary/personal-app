@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { ConnectedApps } from "@/components/app/connected-apps";
+import { Passkeys } from "@/components/app/passkeys";
 import { SettingsForm } from "@/components/app/settings-form";
 import { read } from "@/server/actions/run";
 import { mcpResource } from "@/server/auth/auth";
@@ -18,6 +20,14 @@ export default function SettingsPage() {
       >
         <Settings />
       </Suspense>
+      <section className="flex flex-col gap-2 border-t pt-5">
+        <h2 className="text-sm font-semibold">Passkeys</h2>
+        <Suspense
+          fallback={<p className="text-sm text-muted-foreground">Loading…</p>}
+        >
+          <PasskeySection />
+        </Suspense>
+      </section>
       <section className="flex flex-col gap-2 border-t pt-5">
         <h2 className="text-sm font-semibold">Connected AI apps</h2>
         <Suspense
@@ -46,6 +56,13 @@ export default function SettingsPage() {
 
 async function Settings() {
   return <SettingsForm initial={await read(getSettings, {})} />;
+}
+
+// Request time only: the auth client can't be built from the build's
+// placeholder URL, so this must never prerender.
+async function PasskeySection() {
+  await connection();
+  return <Passkeys />;
 }
 
 async function Connected() {
