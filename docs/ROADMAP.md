@@ -117,6 +117,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Sign-in check reads a 5-minute signed session cookie instead of the database
 - [x] Placeholders for Login and OAuth consent
 
+## M6.2 — Create dialog
+*Done when: every task and achievement is created in one Linear-style dialog ([design](superpowers/specs/2026-10-25-create-dialog-design.md)).*
+
+- [x] Title, notes and property chips (effort, deadline, repeat, categories; status, deadline), Ctrl/⌘+Enter
+- [x] Breadcrumb shows where it goes and moves it elsewhere
+- [x] "Create more" for a run of items; one Undo removes a task with its categories
+- [x] Capture and the C key open the same dialog, with a Task / Achievement switch
+- [x] "Add task" / "Add achievement" buttons replace the inline fields
+- [x] Full-screen sheet on phones
+
 ---
 
 ## Later (not scheduled)

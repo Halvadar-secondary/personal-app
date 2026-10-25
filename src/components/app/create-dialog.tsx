@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays, Plus, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -214,6 +214,19 @@ function CreateForm({
     });
   }
 
+  // Ctrl/⌘+Enter wherever focus is, even after a picker hands it back.
+  const saveNow = useEffectEvent(() => void save());
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        saveNow();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   async function createCategory(name: string) {
     const r = await perform(() =>
       createCategoryAction({
@@ -237,13 +250,6 @@ function CreateForm({
   return (
     <Dialog open onOpenChange={(o) => !o && requestClose()}>
       <DialogContent
-        aria-describedby={undefined}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            void save();
-          }
-        }}
         className="inset-0 flex h-dvh max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-none md:inset-auto md:top-[15%] md:left-1/2 md:h-auto md:max-w-[620px] md:-translate-x-1/2 md:rounded-xl"
       >
         <DialogTitle className="sr-only">New {noun}</DialogTitle>
@@ -265,7 +271,7 @@ function CreateForm({
                 className={cn(
                   "rounded-[5px] px-2 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   kind === k
-                    ? "bg-accent font-medium text-primary"
+                    ? "bg-accent font-medium text-accent-foreground"
                     : "hover:text-foreground",
                 )}
               >

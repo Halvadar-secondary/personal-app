@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { addAchievements, createArea, saved, uniqueName } from "./helpers/app";
+import {
+  addAchievements,
+  addTasks,
+  createArea,
+  saved,
+  uniqueName,
+} from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
 
 test.beforeEach(async ({ page }) => {
@@ -20,9 +26,7 @@ test("completing a task grows the area's level and streak", async ({
     .getByRole("link", { name: "Sweep" })
     .filter({ visible: true })
     .click();
-  const add = page.getByLabel("Add task");
-  await add.fill("Big one");
-  await add.press("Enter");
+  await addTasks(page, ["Big one"]);
   await expect(
     page.getByRole("button", { name: "Edit Task title" }),
   ).toHaveCount(1);
@@ -81,9 +85,7 @@ test("a daily task is checked off for today and shows on Active", async ({
   await page.getByRole("combobox", { name: "Status" }).click();
   await saved(page, () => page.getByRole("option", { name: "Active" }).click());
 
-  const add = page.getByLabel("Add task");
-  await add.fill(title);
-  await add.press("Enter");
+  await addTasks(page, [title]);
   await expect(
     page.getByRole("button", { name: "Edit Task title" }),
   ).toHaveCount(1);

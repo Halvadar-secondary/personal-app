@@ -2,6 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import {
   addAchievements,
+  addTasks,
+  createAchievementInDialog,
   createArea,
   isPhone,
   keyboardDrag,
@@ -44,7 +46,7 @@ async function freshGoal(page: Page) {
     .getByRole("link", { name: title, exact: true })
     .filter({ visible: true })
     .click();
-  await expect(page.getByLabel("Add task")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add task" })).toBeVisible();
   return { area, achievement: page.url() };
 }
 
@@ -74,17 +76,14 @@ test.describe("signed in", () => {
     page,
   }) => {
     const { area, achievement } = await freshGoal(page);
-    const add = page.getByLabel("Add task");
-    await add.fill("First step");
-    await add.press("Enter");
-    await expect(page.getByText("First step")).toBeVisible();
+    await addTasks(page, ["First step"]);
     await expectNoAxeViolations(page);
     await page.goto(area);
     await expectNoAxeViolations(page);
     expect(achievement).toContain("/achievements/");
   });
 
-  test("capture dialog has no axe violations", async ({ page }) => {
+  test("create dialog has no axe violations", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await page
@@ -92,7 +91,15 @@ test.describe("signed in", () => {
       .filter({ visible: true })
       .first()
       .click();
-    await expect(page.getByRole("dialog", { name: "Capture" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "New task" })).toBeVisible();
+    await expectNoAxeViolations(page);
+    await page
+      .getByRole("group", { name: "Kind" })
+      .getByRole("button", { name: "Achievement" })
+      .click();
+    await expect(
+      page.getByRole("dialog", { name: "New achievement" }),
+    ).toBeVisible();
     await expectNoAxeViolations(page);
   });
 
@@ -112,11 +119,7 @@ test.describe("signed in", () => {
 
   test("tasks reorder by keyboard", async ({ page }) => {
     await freshGoal(page);
-    const add = page.getByLabel("Add task");
-    for (const t of ["One", "Two"]) {
-      await add.fill(t);
-      await add.press("Enter");
-    }
+    await addTasks(page, ["One", "Two"]);
     await expect(
       page.getByRole("button", { name: "Edit Task title" }),
     ).toHaveCount(2);
@@ -146,10 +149,7 @@ test.describe("signed in", () => {
       .filter({ visible: true })
       .first()
       .click();
-    const field = page.getByRole("textbox", { name: "Capture text" });
-    await field.fill(`!${title}`);
-    await field.press("Enter");
-    await page.keyboard.press("Escape");
+    await createAchievementInDialog(page, title);
     await expect(page.getByText(title)).toBeVisible();
 
     // Drag has a keyboard twin on every device: the File to… menu.
@@ -201,10 +201,7 @@ test.describe("dark", () => {
       page,
     }) => {
       const { area } = await freshGoal(page);
-      const add = page.getByLabel("Add task");
-      await add.fill("First step");
-      await add.press("Enter");
-      await expect(page.getByText("First step")).toBeVisible();
+      await addTasks(page, ["First step"]);
       await expectNoAxeViolations(page);
       await page.goto(area);
       await expectNoAxeViolations(page);
@@ -213,7 +210,9 @@ test.describe("dark", () => {
         .filter({ visible: true })
         .first()
         .click();
-      await expect(page.getByRole("dialog", { name: "Capture" })).toBeVisible();
+      await expect(
+        page.getByRole("dialog", { name: "New achievement" }),
+      ).toBeVisible();
       await expectNoAxeViolations(page);
     });
   });

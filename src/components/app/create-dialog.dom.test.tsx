@@ -379,3 +379,13 @@ it("a storage that throws still opens a new task", async () => {
   expect(screen.getByRole("dialog", { name: "New task" })).toBeVisible();
   get.mockRestore();
 });
+
+it("Ctrl+Enter creates even when focus has slipped out of the fields", async () => {
+  setup();
+  await open();
+  await userEvent.type(title(), "Buy strings");
+  (document.activeElement as HTMLElement).blur();
+  expect(document.activeElement).toBe(document.body);
+  await submit();
+  expect(server.createItemAction).toHaveBeenCalledTimes(1);
+});
