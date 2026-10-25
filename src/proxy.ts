@@ -1,7 +1,7 @@
 import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 import { decideAccess } from "@/server/auth/access";
-import { forwardSetCookies } from "@/server/auth/forward-cookies";
+import { forwardSessionCache } from "@/server/auth/forward-cookies";
 import { getAuth } from "@/server/auth/instance";
 import { isPublicPath } from "@/server/auth/paths";
 
@@ -23,7 +23,7 @@ export async function proxy(request: NextRequest) {
   switch (decideAccess(pathname, session, process.env.OWNER_EMAIL)) {
     case "allow": {
       const res = NextResponse.next();
-      if (result) forwardSetCookies(result.headers, res.headers);
+      if (result) forwardSessionCache(result.headers, res.headers);
       return res;
     }
     case "login": {
