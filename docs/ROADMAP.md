@@ -99,7 +99,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] PWA manifest, icons, Apple touch icons; verified "Add to Home Screen" on iOS and Android
 - [ ] "New version available" banner
 - [ ] Sentry (client + server, source maps)
-- [ ] Nightly encrypted backup workflow + documented restore drill into a scratch Neon branch
+- [x] Nightly encrypted backup workflow + documented restore drill into a scratch Neon branch
 - [ ] Soft-delete purge job
 - [ ] Settings: manage passkeys (list, rename, remove)
 - [ ] Renovate configured

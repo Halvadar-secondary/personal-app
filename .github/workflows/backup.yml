@@ -1,0 +1,65 @@
+name: backup
+
+# Nightly encrypted dump of production (spec §11.6). The repo is public, so
+# the dump is encrypted to the owner's age public key before it leaves the
+# runner; only the owner's offline private key can read it.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Install pg_dump 18 and age
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common age
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-18
+      - name: Dump production
+        run: >
+          /usr/lib/postgresql/18/bin/pg_dump --format=custom --no-owner --no-acl
+          --schema=public --schema=drizzle -f backup.dump "$DATABASE_URL"
+        env:
+          DATABASE_URL: ${{ secrets.PROD_MIGRATION_DATABASE_URL }}
+      - name: Check the dump holds the data
+        # A wrong URL can dump an empty database "successfully".
+        run: |
+          list=$(/usr/lib/postgresql/18/bin/pg_restore --list backup.dump)
+          missing=0
+          for t in "public user" "public areas" "public achievements" "public tasks" "drizzle __drizzle_migrations"; do
+            if ! grep -q "TABLE DATA $t " <<<"$list"; then
+              echo "missing table data: $t"
+              missing=1
+            fi
+          done
+          exit $missing
+      - name: Encrypt
+        run: |
+          if [ -z "$RECIPIENT" ]; then
+            echo "vars.BACKUP_AGE_RECIPIENT is not set"
+            exit 1
+          fi
+          out="life-goals-$(date -u +%F).dump.age"
+          age -r "$RECIPIENT" -o "$out" backup.dump
+          rm backup.dump
+          echo "encrypted: $(stat -c %s "$out") bytes"
+          echo "DAY=$(date -u +%F)" >> "$GITHUB_ENV"
+        env:
+          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: life-goals-backup-${{ env.DAY }}
+          path: life-goals-*.dump.age
+          retention-days: 30
+          if-no-files-found: error

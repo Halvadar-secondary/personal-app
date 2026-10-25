@@ -20,7 +20,8 @@
     "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "e2e:users": "tsx --env-file-if-exists=.env.local scripts/ensure-test-users.ts",
     "e2e": "playwright test",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "restore:check": "tsx scripts/restore-check.ts"
   },
   "dependencies": {
     "@better-auth/cimd": "1.7.12",
