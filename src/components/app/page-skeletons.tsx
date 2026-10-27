@@ -239,3 +239,25 @@ export function PlanSkeleton() {
     </Loading>
   );
 }
+
+/** Week: seven day cards, then the week's list. */
+export function WeekSkeleton() {
+  return (
+    <Loading testId="skeleton-week" className="flex flex-col gap-6">
+      <Skeleton className="h-7 w-44" />
+      <div className="grid gap-2 md:grid-cols-7">
+        {Array.from({ length: 7 }, (_, i) => (
+          <div key={i} className={cn(card, "flex flex-col gap-2 p-2")}>
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-full" />
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 2 }, (_, i) => (
+          <Row key={i} />
+        ))}
+      </div>
+    </Loading>
+  );
+}
