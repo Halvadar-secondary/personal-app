@@ -123,6 +123,7 @@ describe("purgeDeleted", () => {
       achievements: 0,
       areas: 0,
       categories: 0,
+      goals: 0,
       practiceEntries: 0,
       completions: 0,
       events: 0,

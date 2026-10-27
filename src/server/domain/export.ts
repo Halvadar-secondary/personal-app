@@ -4,6 +4,7 @@ import {
   achievements,
   areas,
   categories,
+  goals,
   practiceEntries,
   taskCategories,
   taskCompletions,
@@ -45,6 +46,10 @@ export const exportData = defineAction(z.object({}), async (ctx) => {
       .select()
       .from(taskCompletions)
       .where(eq(taskCompletions.ownerId, ctx.ownerId)),
+    goals: await ctx.db
+      .select()
+      .from(goals)
+      .where(eq(goals.ownerId, ctx.ownerId)),
     practiceEntries: await ctx.db
       .select()
       .from(practiceEntries)
