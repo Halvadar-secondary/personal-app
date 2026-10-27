@@ -42,5 +42,6 @@ export const getCreateOptions = defineAction(
     targets: await callAction(ctx, listFilingTargets, {}),
     categories: await callAction(ctx, listCategories, { areaId }),
     today: localDate(ctx.now(), ctx.timeZone),
+    weekStart: ctx.weekStart,
   }),
 );

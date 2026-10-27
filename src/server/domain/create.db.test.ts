@@ -14,6 +14,7 @@ import { createArea } from "./areas";
 import { createCategory } from "./categories";
 import { runAction } from "./context";
 import { createItem, getCreateOptions } from "./create";
+import { getDay } from "./plan";
 import { DomainError } from "./errors";
 import { undoBatch } from "./undo";
 
@@ -166,4 +167,42 @@ it("getCreateOptions lists areas with unfinished achievements, categories and to
   expect(o.targets[0]!.achievements.map((a) => a.title)).toEqual(["Sweep"]);
   expect(o.categories.map((c) => c.name)).toEqual(["Technique"]);
   expect(o.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+});
+
+it("creates a loose task planned tomorrow in Work", async () => {
+  await run(createItem, {
+    kind: "task",
+    achievementId: null,
+    title: "Client email",
+    plan: { type: "day", date: "2026-03-11", section: "work" },
+  });
+  const d = await run(getDay, { day: "2026-03-11" });
+  expect(d.sections.work.map((i) => i.title)).toEqual(["Client email"]);
+});
+
+it("creates a task with a target", async () => {
+  await run(createItem, {
+    kind: "task",
+    achievementId: sweep,
+    title: "Talk to strangers",
+    target: { amount: 100, unit: "times" },
+  });
+  const [row] = await db.select().from(tasks);
+  expect(row).toMatchObject({ targetAmount: 100, targetUnit: "times" });
+});
+
+it("refuses a target on a repeating task", async () => {
+  await expect(
+    run(createItem, {
+      kind: "task",
+      achievementId: sweep,
+      title: "Daily",
+      recurrence: { freq: "daily", interval: 1, start: "2026-03-10" },
+      target: { amount: 10, unit: "hours" },
+    }),
+  ).rejects.toMatchObject({ code: "invalid_input" });
+});
+
+it("gives the dialog the owner's week start", async () => {
+  expect((await run(getCreateOptions, {})).weekStart).toBe(1);
 });
