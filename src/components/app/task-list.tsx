@@ -23,6 +23,7 @@ import {
   createCategoryAction,
   setTaskCategoriesAction,
 } from "@/server/actions/categories";
+import { planTaskAction } from "@/server/actions/plan";
 import {
   completeTaskAction,
   deleteTaskAction,
@@ -47,6 +48,10 @@ type Patch = Partial<
     | "categoryIds"
     | "recentDone"
     | "hasCompletions"
+    | "plannedOn"
+    | "plannedWeek"
+    | "targetAmount"
+    | "targetUnit"
   >
 >;
 type Op =
@@ -166,6 +171,32 @@ export function TaskList({
                 weekStart={weekStart}
                 onToggle={toggle}
                 onPatch={patch}
+                onPlan={(id, plan) =>
+                  run(
+                    {
+                      type: "patch",
+                      id,
+                      patch: {
+                        plannedOn: plan?.type === "day" ? plan.date : null,
+                        plannedWeek: plan?.type === "week" ? plan.date : null,
+                      },
+                    },
+                    () => planTaskAction({ taskId: id, plan }),
+                  )
+                }
+                onTarget={(id, target) =>
+                  run(
+                    {
+                      type: "patch",
+                      id,
+                      patch: {
+                        targetAmount: target?.amount ?? null,
+                        targetUnit: target?.unit ?? null,
+                      },
+                    },
+                    () => updateTaskAction({ taskId: id, target }),
+                  )
+                }
                 onCategories={(id, categoryIds) =>
                   run({ type: "patch", id, patch: { categoryIds } }, () =>
                     setTaskCategoriesAction({ taskId: id, categoryIds }),

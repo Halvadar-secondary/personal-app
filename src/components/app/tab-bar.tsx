@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, ListChecks, Plus, Search, Settings } from "lucide-react";
+import { CalendarDays, LayoutGrid, Plus, Search, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -30,9 +30,9 @@ function Tab({
 }
 
 /**
- * Below md: the bottom tab bar (spec: Areas, Active, Search, Settings, plus
- * Capture). The Inbox is one tap away from the overview's "in Inbox" chip,
- * whose count stands in for a badge here.
+ * Below md: the bottom tab bar: Today, Areas, Week, Search, plus Capture
+ * (Settings sits in the Areas header). The Inbox is one tap away from the
+ * overview's "in Inbox" chip, whose count stands in for a badge here.
  */
 export function TabBar() {
   return <TabBarView path={usePathname()} />;
@@ -46,11 +46,11 @@ export function TabBarView({ path }: { path: string | null }) {
       aria-label="Tabs"
       className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
     >
+      <Tab href="/today" path={path}>
+        <Sun className="size-5" /> Today
+      </Tab>
       <Tab href="/" path={path}>
         <LayoutGrid className="size-5" /> Areas
-      </Tab>
-      <Tab href="/active" path={path}>
-        <ListChecks className="size-5" /> Active
       </Tab>
       <button
         type="button"
@@ -60,11 +60,11 @@ export function TabBarView({ path }: { path: string | null }) {
       >
         <Plus className="size-5" /> Capture
       </button>
+      <Tab href="/week" path={path}>
+        <CalendarDays className="size-5" /> Week
+      </Tab>
       <Tab href="/search" path={path}>
         <Search className="size-5" /> Search
-      </Tab>
-      <Tab href="/settings" path={path}>
-        <Settings className="size-5" /> Settings
       </Tab>
     </nav>
   );
