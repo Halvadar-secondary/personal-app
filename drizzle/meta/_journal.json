@@ -50,6 +50,13 @@
       "when": 1792890879896,
       "tag": "0006_closed_cassandra_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793141272447,
+      "tag": "0007_curved_drax",
+      "breakpoints": true
     }
   ]
 }
