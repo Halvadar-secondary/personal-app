@@ -240,6 +240,9 @@ export const getOverview = defineAction(
           eq(tasks.ownerId, ctx.ownerId),
           isNull(tasks.achievementId),
           isNull(tasks.deletedAt),
+          isNull(tasks.plannedOn),
+          isNull(tasks.plannedWeek),
+          isNull(tasks.recurrence),
         ),
       );
 
