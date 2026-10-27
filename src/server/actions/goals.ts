@@ -5,7 +5,6 @@ import {
   createGoal,
   deleteGoal,
   linkAchievement,
-  listGoals,
   listLinkableAchievements,
   moveGoal,
   updateGoal,
@@ -39,9 +38,4 @@ export async function linkableAchievementsAction(
   input: In<typeof listLinkableAchievements>,
 ) {
   return read(listLinkableAchievements, input);
-}
-
-/** For the achievement's Goal chip. A read: no refresh. */
-export async function goalsAction(input: In<typeof listGoals>) {
-  return read(listGoals, input);
 }

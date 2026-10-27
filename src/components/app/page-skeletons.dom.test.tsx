@@ -6,9 +6,11 @@ import {
   AreaSkeleton,
   DaySkeleton,
   FormSkeleton,
+  GoalsSkeleton,
   ListSkeleton,
   OverviewSkeleton,
   PlanSkeleton,
+  ReviewSkeleton,
   SectionSkeleton,
   WeekSkeleton,
 } from "./page-skeletons";
@@ -41,6 +43,8 @@ describe("page skeletons", () => {
     ["skeleton-day", <DaySkeleton key="d" />],
     ["skeleton-plan", <PlanSkeleton key="p" />],
     ["skeleton-week", <WeekSkeleton key="w" />],
+    ["skeleton-goals", <GoalsSkeleton key="g" />],
+    ["skeleton-review", <ReviewSkeleton key="r" />],
   ])("%s announces one loading status and no text", (id, el) => {
     render(el);
     const status = screen.getByRole("status", { name: "Loading" });

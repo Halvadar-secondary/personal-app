@@ -261,3 +261,35 @@ export function WeekSkeleton() {
     </Loading>
   );
 }
+
+/** Goals: a grid of goal cards. */
+export function GoalsSkeleton() {
+  return (
+    <Loading testId="skeleton-goals" className="grid gap-3 md:grid-cols-2">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i} className={cn(card, "flex flex-col gap-2 p-3")}>
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-3 w-1/2" />
+          <Skeleton className="h-1.5 w-full" />
+        </div>
+      ))}
+    </Loading>
+  );
+}
+
+/** The review: one card per goal, then the week. */
+export function ReviewSkeleton() {
+  return (
+    <Loading testId="skeleton-review" className="flex flex-col gap-4">
+      <Skeleton className="h-7 w-48" />
+      {Array.from({ length: 2 }, (_, i) => (
+        <div key={i} className={cn(card, "flex flex-col gap-2 p-3")}>
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-1.5 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      ))}
+    </Loading>
+  );
+}
