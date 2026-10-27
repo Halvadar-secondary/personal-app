@@ -23,14 +23,15 @@ export function placeInList(
 
 /**
  * A drop on the board. `over.id` null is the column background (its end);
- * a card means take that card's place. Null for no change.
+ * a card means take that card's place. Null for no change. Any columns:
+ * the board's statuses, or a day's sections.
  */
-export function placeOnBoard(
-  columns: Record<Status, string[]>,
+export function placeOnBoard<K extends string = Status>(
+  columns: Record<K, string[]>,
   activeId: string,
-  over: { column: Status; id: string | null },
-): (Slot & { status: Status }) | null {
-  const from = (Object.keys(columns) as Status[]).find((s) =>
+  over: { column: K; id: string | null },
+): (Slot & { status: K }) | null {
+  const from = (Object.keys(columns) as K[]).find((s) =>
     columns[s].includes(activeId),
   );
   if (!from || over.id === activeId) return null;

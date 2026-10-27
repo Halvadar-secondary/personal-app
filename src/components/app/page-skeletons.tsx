@@ -186,3 +186,56 @@ export function AchievementSkeleton() {
     </Loading>
   );
 }
+
+function Sections({ rows = [2, 3] }: { rows?: number[] }) {
+  return (
+    <>
+      {rows.map((n, i) => (
+        <div key={i} className="flex flex-col gap-2">
+          <Skeleton className="m-1 h-3 w-20" />
+          {Array.from({ length: n }, (_, j) => (
+            <div
+              key={j}
+              data-row
+              className={cn(card, "flex items-center gap-3 px-3 py-3")}
+            >
+              <Skeleton className="size-4 shrink-0 rounded-sm" />
+              <Skeleton className="h-4 flex-1" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** Today: the title line, then Work and Spare time. */
+export function DaySkeleton() {
+  return (
+    <Loading testId="skeleton-day" className="flex flex-col gap-5">
+      <Skeleton className="h-7 w-40" />
+      <Sections />
+    </Loading>
+  );
+}
+
+/** Plan tomorrow: the day's sections beside the pick list. */
+export function PlanSkeleton() {
+  return (
+    <Loading
+      testId="skeleton-plan"
+      className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]"
+    >
+      <div className="flex flex-col gap-5">
+        <Skeleton className="h-7 w-48" />
+        <Sections rows={[1, 2]} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Skeleton className="m-1 h-3 w-24" />
+        {Array.from({ length: 4 }, (_, i) => (
+          <Row key={i} />
+        ))}
+      </div>
+    </Loading>
+  );
+}

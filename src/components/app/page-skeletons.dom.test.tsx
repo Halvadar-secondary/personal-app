@@ -4,9 +4,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   AchievementSkeleton,
   AreaSkeleton,
+  DaySkeleton,
   FormSkeleton,
   ListSkeleton,
   OverviewSkeleton,
+  PlanSkeleton,
   SectionSkeleton,
 } from "./page-skeletons";
 
@@ -35,6 +37,8 @@ describe("page skeletons", () => {
       <SectionSkeleton key="s" testId="skeleton-passkeys" />,
     ],
     ["skeleton-login", <FormSkeleton key="f" testId="skeleton-login" />],
+    ["skeleton-day", <DaySkeleton key="d" />],
+    ["skeleton-plan", <PlanSkeleton key="p" />],
   ])("%s announces one loading status and no text", (id, el) => {
     render(el);
     const status = screen.getByRole("status", { name: "Loading" });
