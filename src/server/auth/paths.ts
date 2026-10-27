@@ -11,6 +11,8 @@ const PUBLIC_EXACT = new Set([
   "/manifest.webmanifest",
   "/apple-icon.png",
   "/icon.png",
+  // The evening reminder's service worker: a static script.
+  "/sw.js",
 ]);
 const PUBLIC_PREFIXES = ["/api/auth/", "/.well-known/", "/icons/"];
 

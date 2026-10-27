@@ -4,11 +4,13 @@ import { Suspense } from "react";
 import { SectionSkeleton } from "@/components/app/page-skeletons";
 import { ConnectedApps } from "@/components/app/connected-apps";
 import { Passkeys } from "@/components/app/passkeys";
+import { ReminderSettings } from "@/components/app/reminder-settings";
 import { SettingsForm } from "@/components/app/settings-form";
 import { read } from "@/server/actions/run";
 import { mcpResource } from "@/server/auth/auth";
 import { requireOwner } from "@/server/auth/require-owner";
 import { getDb } from "@/server/db/client";
+import { getReminder } from "@/server/domain/reminders";
 import { getSettings } from "@/server/domain/settings";
 import { listConnectedApps } from "@/server/mcp/connected";
 
@@ -21,6 +23,12 @@ export default function SettingsPage() {
       >
         <Settings />
       </Suspense>
+      <section className="flex flex-col gap-2 border-t pt-5">
+        <h2 className="text-sm font-semibold">Evening reminder</h2>
+        <Suspense fallback={<SectionSkeleton testId="skeleton-reminder" />}>
+          <Reminder />
+        </Suspense>
+      </section>
       <section className="flex flex-col gap-2 border-t pt-5">
         <h2 className="text-sm font-semibold">Passkeys</h2>
         <Suspense fallback={<SectionSkeleton testId="skeleton-passkeys" />}>
@@ -60,6 +68,16 @@ async function Settings() {
 async function PasskeySection() {
   await connection();
   return <Passkeys />;
+}
+
+async function Reminder() {
+  return (
+    <ReminderSettings
+      // The VAPID public key is meant for browsers; read at request time.
+      publicKey={process.env.VAPID_PUBLIC_KEY || null}
+      initial={await read(getReminder, {})}
+    />
+  );
 }
 
 async function Connected() {

@@ -16,6 +16,8 @@ describe("isPublicPath", () => {
     "/apple-icon.png",
     "/icon.png",
     "/icons/icon-192.png",
+    // The push service worker: a static script, fetched on its own schedule.
+    "/sw.js",
   ])("%s is public", (p) => expect(isPublicPath(p)).toBe(true));
   it.each([
     "/",
