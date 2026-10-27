@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, use, useCallback, useEffect, useState } from "react";
+import type { Section } from "@/lib/plan";
 import type { NavArea } from "@/server/domain/views";
 import type { Kind, PageContext } from "./create-rules";
 
@@ -8,6 +9,10 @@ import type { Kind, PageContext } from "./create-rules";
 export type CreatePreset = {
   kind?: Kind;
   status?: "backlog" | "active" | "done";
+  /** From Today, the planner and Week: when to do the new task. */
+  plan?:
+    | { type: "day"; date: string; section: Section }
+    | { type: "week"; date: string };
 };
 
 type Capture = {

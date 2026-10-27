@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Status } from "@/lib/placement";
+import type { Section } from "@/lib/plan";
 import type { Recurrence } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
 import type { Effort } from "@/lib/xp";
@@ -43,6 +44,13 @@ import {
 import { DateField } from "./date-field";
 import { DestinationPicker } from "./destination-picker";
 import { EffortPicker } from "./effort-picker";
+import {
+  type ChipPlan,
+  type ChipTarget,
+  SectionPicker,
+  TargetPicker,
+  WhenPicker,
+} from "./plan-chips";
 import { RecurrencePicker } from "./recurrence-picker";
 import { perform, undo } from "./use-mutate";
 
@@ -109,6 +117,13 @@ function CreateForm({
   const [deadline, setDeadline] = useState<string | null>(null);
   const [recurrence, setRecurrence] = useState<Recurrence | null>(null);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [plan, setPlan] = useState<ChipPlan>(() =>
+    preset.plan ? { type: preset.plan.type, date: preset.plan.date } : null,
+  );
+  const [section, setSection] = useState<Section>(() =>
+    preset.plan?.type === "day" ? preset.plan.section : "spare",
+  );
+  const [target, setTarget] = useState<ChipTarget>(null);
   const [status, setStatus] = useState<Status>(preset.status ?? "backlog");
   const [options, setOptions] = useState<Options | null>(null);
   const [extra, setExtra] = useState<PickerCategory[]>([]);
@@ -187,6 +202,15 @@ function CreateForm({
               deadline,
               recurrence,
               categoryIds,
+              ...(plan
+                ? {
+                    plan:
+                      plan.type === "day"
+                        ? { ...plan, section }
+                        : { type: "week" as const, date: plan.date },
+                  }
+                : {}),
+              ...(target ? { target } : {}),
             }
           : {
               kind,
@@ -298,6 +322,7 @@ function CreateForm({
           </div>
           <DestinationPicker
             kind={kind}
+            planned={kind === "task" && plan !== null}
             value={dest}
             targets={options?.targets ?? null}
             onChange={(d) => {
@@ -349,12 +374,28 @@ function CreateForm({
                 prefix="Effort: "
                 className={chipClass(true)}
               />
+              <WhenPicker
+                value={plan}
+                today={options?.today ?? ""}
+                weekStart={options?.weekStart ?? 1}
+                // A repeating task's rule is its plan.
+                disabled={!options || recurrence !== null}
+                onChange={setPlan}
+              />
+              {plan?.type === "day" && (
+                <SectionPicker value={section} onChange={setSection} />
+              )}
               <DeadlineChip value={deadline} onChange={setDeadline} />
+              <TargetPicker
+                value={target}
+                disabled={recurrence !== null}
+                onChange={setTarget}
+              />
               <RecurrencePicker
                 value={recurrence}
                 today={options?.today ?? ""}
                 locked={false}
-                disabled={!options}
+                disabled={!options || plan !== null || target !== null}
                 onSave={setRecurrence}
                 emptyLabel="Repeat"
                 className={chipClass(recurrence !== null)}
