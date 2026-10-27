@@ -37,7 +37,7 @@ import { DomainError } from "./errors";
 import { planColumns, zPlan, zSection } from "./plan-fields";
 import { sortKeyFor } from "./position";
 import { findLive, updateRecorded } from "./rows";
-import { targetProgress } from "./targets";
+import { targetProgress } from "./target-progress";
 import type { NavArea } from "./views";
 
 // Planned days and weeks (spec "Plan your days"): Today, Plan tomorrow and

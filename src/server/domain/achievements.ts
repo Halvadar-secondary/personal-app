@@ -12,6 +12,7 @@ import {
 import { categoryIdsByTask } from "./categories";
 import { type Ctx, defineAction } from "./context";
 import { sortKeyFor, zPosition } from "./position";
+import { targetProgress } from "./target-progress";
 import {
   findLive,
   insertRecorded,
@@ -220,15 +221,22 @@ export const getAchievement = defineAction(
           )
       : [];
     const hasCompletions = new Set(completed.map((c) => c.taskId));
+    const progress = await targetProgress(
+      ctx,
+      rows.filter((t) => t.targetAmount !== null).map((t) => t.id),
+    );
     const withCategories: (Task & {
       categoryIds: string[];
       recentDone: string[];
       hasCompletions: boolean;
+      /** Toward the target, for tasks that have one. */
+      progress: number | null;
     })[] = rows.map((t) => ({
       ...t,
       categoryIds: ids.get(t.id)!,
       recentDone: recent.filter((r) => r.taskId === t.id).map((r) => r.day),
       hasCompletions: hasCompletions.has(t.id),
+      progress: progress.get(t.id) ?? null,
     }));
     return {
       achievement,

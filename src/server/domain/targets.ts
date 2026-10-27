@@ -1,36 +1,37 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
-import { progressOf } from "@/lib/plan";
-import { practiceEntries, tasks } from "@/server/db/schema";
-import type { Ctx } from "./context";
+import { z } from "zod";
+import { tasks } from "@/server/db/schema";
+import { callAction, defineAction } from "./context";
+import { DomainError } from "./errors";
+import { addPracticeEntry } from "./practice";
+import { findLive } from "./rows";
+import { targetProgress } from "./target-progress";
+import { completeTask } from "./tasks";
 
-/** Progress toward each target task's amount, from its practice entries. */
-export async function targetProgress(
-  ctx: Ctx,
-  taskIds: string[],
-): Promise<Map<string, number>> {
-  if (taskIds.length === 0) return new Map();
-  const rows = await ctx.db
-    .select({
-      taskId: practiceEntries.taskId,
-      unit: tasks.targetUnit,
-      amount: practiceEntries.amount,
-      durationSeconds: practiceEntries.durationSeconds,
-    })
-    .from(practiceEntries)
-    .innerJoin(tasks, eq(tasks.id, practiceEntries.taskId))
-    .where(
-      and(
-        eq(practiceEntries.ownerId, ctx.ownerId),
-        inArray(practiceEntries.taskId, taskIds),
-        isNull(practiceEntries.deletedAt),
-      ),
-    );
-  const out = new Map<string, number>(taskIds.map((id) => [id, 0]));
-  const byTask = new Map<string, typeof rows>();
-  for (const r of rows)
-    byTask.set(r.taskId, [...(byTask.get(r.taskId) ?? []), r]);
-  for (const [id, entries] of byTask) {
-    out.set(id, progressOf(entries[0]!.unit ?? "", entries));
-  }
-  return out;
-}
+/**
+ * Logs progress toward a task's target (minutes for an hours target), and
+ * completes the task once it is reached: one batch, so one undo.
+ */
+export const logProgress = defineAction(
+  z.object({
+    taskId: z.uuid(),
+    amount: z.number().positive().max(100_000),
+    note: z.string().max(2000).optional(),
+  }),
+  async (ctx, { taskId, amount, note }) => {
+    const task = await findLive(ctx, tasks, taskId);
+    if (task.targetAmount === null || task.completedAt) {
+      throw new DomainError("invalid_state");
+    }
+    await callAction(ctx, addPracticeEntry, {
+      taskId,
+      note,
+      ...(task.targetUnit === "hours"
+        ? { durationSeconds: Math.round(amount * 60) }
+        : { amount }),
+    });
+    const progress = (await targetProgress(ctx, [taskId])).get(taskId)!;
+    const completed = progress >= task.targetAmount;
+    if (completed) await callAction(ctx, completeTask, { taskId });
+    return { progress, completed };
+  },
+);
