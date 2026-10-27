@@ -151,7 +151,7 @@ export function DayCard({
         aria-label={`Plan ${label}`}
         className="mt-auto px-1 text-xs text-muted-foreground hover:text-foreground"
       >
-        Plan this day
+        Plan
       </Link>
     </section>
   );

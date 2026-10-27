@@ -129,6 +129,20 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ---
 
+## M7 — Plan your days
+*Done when: the owner plans tomorrow the night before, works down Today's two lists, and plans each week from their life goals ([design](superpowers/specs/2026-10-28-plan-your-days-design.md)).*
+
+- [x] Tasks planned on a day (Work / Spare time, ordered) or in a week, separate from the deadline; loose tasks with a plan leave the Inbox
+- [x] Unfinished tasks roll onto today, and onto tomorrow while planning
+- [x] Today, Plan tomorrow (pick from the week and active achievements, or write new), and Week
+- [x] Goals with a deadline that link achievements from any area; Sunday review plans the week from them
+- [x] Targets (100 times, 10 hours, 400 pages) with progress logging
+- [x] Evening reminder: Web Push at a chosen time when tomorrow isn't planned
+- [ ] Reminder keys stored and verified on the owner's phone (Home Screen app)
+- [x] AI tools for days, weeks, goals and progress
+
+---
+
 ## Later (not scheduled)
 
 - [ ] Metronome tool that logs practice entries against a task
