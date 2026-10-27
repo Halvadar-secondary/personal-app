@@ -3,6 +3,7 @@ import { deleteAchievement } from "./achievements";
 import { deleteArea } from "./areas";
 import { deleteCategory } from "./categories";
 import { type Ctx, callAction, defineAction } from "./context";
+import { deleteGoal } from "./goals";
 import { fileAchievement, fileTask } from "./inbox";
 import { deleteTask } from "./tasks";
 
@@ -41,12 +42,13 @@ const DELETERS = {
   task: (ctx: Ctx, id: string) => callAction(ctx, deleteTask, { taskId: id }),
   category: (ctx: Ctx, id: string) =>
     callAction(ctx, deleteCategory, { categoryId: id }),
+  goal: (ctx: Ctx, id: string) => callAction(ctx, deleteGoal, { goalId: id }),
 };
 
-/** Soft-deletes one area, achievement, task or category. */
+/** Soft-deletes one area, achievement, task, category or goal. */
 export const deleteItem = defineAction(
   z.object({
-    kind: z.enum(["area", "achievement", "task", "category"]),
+    kind: z.enum(["area", "achievement", "task", "category", "goal"]),
     id: z.uuid(),
   }),
   (ctx, { kind, id }) => DELETERS[kind](ctx, id),

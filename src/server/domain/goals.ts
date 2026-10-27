@@ -248,7 +248,7 @@ export const getGoal = defineAction(
     return {
       today,
       goal: summarise(goal, linked, today),
-      achievements: linked.map(({ goalId: _, ...a }) => a),
+      achievements: linked,
     };
   },
 );

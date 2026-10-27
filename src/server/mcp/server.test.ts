@@ -29,6 +29,17 @@ const SPEC_TOOLS = [
   "list_history",
   "undo_batch",
   "delete_item",
+  // Plan your days.
+  "get_day",
+  "get_week",
+  "plan_task",
+  "place_task",
+  "log_progress",
+  "list_goals",
+  "get_goal",
+  "create_goal",
+  "update_goal",
+  "link_achievement_to_goal",
 ];
 
 let client: Client;
