@@ -1,4 +1,4 @@
-import { addDays, localDate, weekStartOf } from "./dates";
+import { addDays, formatDeadline, localDate, weekStartOf } from "./dates";
 
 // Pure rules for behaviour trackers (spec "Behaviour trackers").
 
@@ -65,4 +65,31 @@ export function trendGood(
 ): boolean | null {
   if (diff === 0) return null;
   return direction === "less" ? diff < 0 : diff > 0;
+}
+
+/**
+ * When a moment happened, in the owner's zone: "Tue 23:30" this week,
+ * "Mar 3, 09:00" before it.
+ */
+export function momentTime(
+  at: Date,
+  timeZone: string,
+  weekStart: number,
+  now: Date,
+): string {
+  const time = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(at);
+  const day = localDate(at, timeZone);
+  if (weekStartOf(day, weekStart) === weekOf(now, timeZone, weekStart)) {
+    const weekday = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      weekday: "short",
+    }).format(at);
+    return `${weekday} ${time}`;
+  }
+  return `${formatDeadline(day)}, ${time}`;
 }

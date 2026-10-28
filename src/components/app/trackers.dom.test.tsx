@@ -27,6 +27,12 @@ vi.mock("@/server/actions/history", () => ({
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
+const CLOCK = {
+  timeZone: "UTC",
+  weekStart: 1,
+  now: new Date("2026-03-11T12:00:00Z"),
+};
+
 const tracker = (over: Partial<TrackerSummary> = {}): TrackerSummary => ({
   id: "t1",
   ownerId: "o",
@@ -68,7 +74,7 @@ beforeEach(() => {
 });
 
 it("shows this week so far, a kind trend, intensity and eight weekly bars", () => {
-  render(<TrackerCard tracker={tracker()} moments={[]} />);
+  render(<TrackerCard clock={CLOCK} tracker={tracker()} moments={[]} />);
   const card = within(screen.getByRole("region", { name: "😠 Anger" }));
   expect(card.getByText("This week so far: 2")).toBeVisible();
   const trend = card.getByText("3 fewer than last week");
@@ -82,6 +88,7 @@ it("shows this week so far, a kind trend, intensity and eight weekly bars", () =
 it("a trend the wrong way is neutral, not alarming", () => {
   render(
     <TrackerCard
+      clock={CLOCK}
       tracker={tracker({ thisWeek: 6, lastWeek: 1 })}
       moments={[]}
     />,
@@ -95,6 +102,7 @@ it("a trend the wrong way is neutral, not alarming", () => {
 it("lists moments and deletes one with Undo", async () => {
   render(
     <TrackerCard
+      clock={CLOCK}
       tracker={tracker()}
       moments={[moment("m1", "traffic"), moment("m2", null)]}
     />,
@@ -109,7 +117,7 @@ it("lists moments and deletes one with Undo", async () => {
 it("loads more moments from before the last one", async () => {
   server.momentsAction.mockResolvedValue([moment("m3", "older")]);
   const many = Array.from({ length: 20 }, (_, i) => moment(`m${i}`, null));
-  render(<TrackerCard tracker={tracker()} moments={many} />);
+  render(<TrackerCard clock={CLOCK} tracker={tracker()} moments={many} />);
   await userEvent.click(screen.getByRole("button", { name: "Show more" }));
   expect(server.momentsAction).toHaveBeenCalledWith({
     trackerId: "t1",
@@ -119,7 +127,7 @@ it("loads more moments from before the last one", async () => {
 });
 
 it("the menu archives a tracker", async () => {
-  render(<TrackerCard tracker={tracker()} moments={[]} />);
+  render(<TrackerCard clock={CLOCK} tracker={tracker()} moments={[]} />);
   await userEvent.click(
     screen.getByRole("button", { name: "Tracker menu Anger" }),
   );

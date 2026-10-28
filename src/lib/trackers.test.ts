@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { soFarCounts, trendGood, trendText, weekBuckets } from "./trackers";
+import {
+  momentTime,
+  soFarCounts,
+  trendGood,
+  trendText,
+  weekBuckets,
+} from "./trackers";
 
 const at = (iso: string) => new Date(iso);
 
@@ -78,4 +84,15 @@ describe("trends", () => {
 it("words a trend against another week", () => {
   expect(trendText(-2, "the week before")).toBe("2 fewer than the week before");
   expect(trendText(0, "the week before")).toBe("Same as the week before");
+});
+
+it("names a moment's time in the owner's zone, with a date outside this week", () => {
+  const now = new Date("2026-03-11T12:00:00Z"); // Wed
+  // 19:30 UTC on Tue is 23:30 in Dubai (+04).
+  expect(
+    momentTime(new Date("2026-03-10T19:30:00Z"), "Asia/Dubai", 1, now),
+  ).toBe("Tue 23:30");
+  expect(momentTime(new Date("2026-03-03T09:00:00Z"), "UTC", 1, now)).toBe(
+    "Mar 3, 09:00",
+  );
 });

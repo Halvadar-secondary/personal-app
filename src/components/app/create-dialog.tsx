@@ -140,6 +140,7 @@ function CreateForm({
   const [target, setTarget] = useState<ChipTarget>(null);
   const [status, setStatus] = useState<Status>(preset.status ?? "backlog");
   const [options, setOptions] = useState<Options | null>(null);
+  const [optionsFailed, setOptionsFailed] = useState(false);
   const [extra, setExtra] = useState<PickerCategory[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
@@ -167,7 +168,8 @@ function CreateForm({
     let live = true;
     createOptionsAction({ areaId })
       .then((o) => live && setOptions(o))
-      .catch(() => {}); // Title, notes and Create work without them.
+      // Title, notes and Create work without them; a moment needs trackers.
+      .catch(() => live && setOptionsFailed(true));
     return () => {
       live = false;
     };
@@ -553,6 +555,11 @@ function CreateForm({
           )}
         </div>
         <div className="px-4">
+          {moment && optionsFailed && !error && (
+            <p role="alert" className="pb-2 text-sm text-destructive">
+              {RELOAD}
+            </p>
+          )}
           {error && (
             <p role="alert" className="pb-2 text-sm text-destructive">
               {error}

@@ -45,4 +45,8 @@ test("log a moment from Capture, see it on the tracker, delete and undo", async 
   await page.getByRole("button", { name: "Undo" }).click();
   await page.reload();
   await expect(card.getByText(note)).toBeVisible();
+
+  // The review shows the tracker's patterns (server-rendered).
+  await page.goto("/review");
+  await expect(page.getByRole("region", { name: "Patterns" })).toBeVisible();
 });

@@ -1,11 +1,19 @@
 import Link from "next/link";
 import type { getPatterns } from "@/server/domain/trackers";
-import { momentTime, Trend, trackerLabel } from "./tracker-card";
+import { momentTime } from "@/lib/trackers";
+import { Trend, trackerLabel } from "./tracker-text";
 
 type PatternsData = Awaited<ReturnType<typeof getPatterns.run>>;
 
 /** The review's patterns: last week per tracker, and what the notes said. */
-export function Patterns({ patterns }: { patterns: PatternsData }) {
+export function Patterns({
+  patterns,
+  clock,
+}: {
+  patterns: PatternsData;
+  /** The owner's zone and week, for note times. */
+  clock: { timeZone: string; weekStart: number; now: Date };
+}) {
   if (patterns.trackers.length === 0) return null;
   return (
     <section aria-label="Patterns" className="flex flex-col gap-2">
@@ -40,7 +48,12 @@ export function Patterns({ patterns }: { patterns: PatternsData }) {
                 {t.notes.map((n, i) => (
                   <li key={i} className="break-words">
                     <span className="text-muted-foreground">
-                      {momentTime(n.at)}
+                      {momentTime(
+                        n.at,
+                        clock.timeZone,
+                        clock.weekStart,
+                        clock.now,
+                      )}
                       {n.intensity !== null && ` · ${n.intensity}`} ·{" "}
                     </span>
                     {n.note}

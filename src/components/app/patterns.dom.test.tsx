@@ -5,6 +5,11 @@ import { Patterns } from "./patterns";
 it("shows each tracker's last week against the week before, with its notes", () => {
   render(
     <Patterns
+      clock={{
+        timeZone: "UTC",
+        weekStart: 1,
+        now: new Date("2026-03-11T12:00:00Z"),
+      }}
       patterns={{
         from: "2026-03-02",
         to: "2026-03-08",
@@ -18,7 +23,7 @@ it("shows each tracker's last week against the week before, with its notes", () 
             previous: 5,
             notes: [
               {
-                at: new Date("2026-03-03T18:30:00"),
+                at: new Date("2026-03-03T18:30:00Z"),
                 intensity: 4,
                 note: "tired after the client call",
               },
@@ -42,7 +47,10 @@ it("shows each tracker's last week against the week before, with its notes", () 
 
 it("is hidden without trackers", () => {
   const { container } = render(
-    <Patterns patterns={{ from: "a", to: "b", trackers: [] }} />,
+    <Patterns
+      clock={{ timeZone: "UTC", weekStart: 1, now: new Date() }}
+      patterns={{ from: "a", to: "b", trackers: [] }}
+    />,
   );
   expect(container).toBeEmptyDOMElement();
 });

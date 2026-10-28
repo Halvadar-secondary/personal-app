@@ -3,6 +3,7 @@ import { TrackersSkeleton } from "@/components/app/page-skeletons";
 import { TrackerCard } from "@/components/app/tracker-card";
 import { NewTracker } from "@/components/app/tracker-manage";
 import { read } from "@/server/actions/run";
+import { getSettings } from "@/server/domain/settings";
 import { listMoments, listTrackers } from "@/server/domain/trackers";
 
 export default function TrackersPage() {
@@ -23,7 +24,11 @@ export default function TrackersPage() {
 }
 
 async function Trackers() {
-  const { trackers } = await read(listTrackers, {});
+  const [{ trackers }, settings] = await Promise.all([
+    read(listTrackers, {}),
+    read(getSettings, {}),
+  ]);
+  const clock = { ...settings, now: new Date() };
   const moments = await Promise.all(
     trackers.map((t) => read(listMoments, { trackerId: t.id })),
   );
@@ -38,6 +43,7 @@ async function Trackers() {
         moments={moments[trackers.indexOf(t)]!}
         prevId={list[i - 1]?.id ?? null}
         nextId={list[i + 1]?.id ?? null}
+        clock={clock}
       />
     );
   };

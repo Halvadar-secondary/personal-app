@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { addDays, formatDeadline } from "@/lib/dates";
 import { read } from "@/server/actions/run";
 import { getReview } from "@/server/domain/goals";
+import { getSettings } from "@/server/domain/settings";
 import { getPatterns } from "@/server/domain/trackers";
 
 export default function ReviewPage({ searchParams }: PageProps<"/review">) {
@@ -30,7 +31,10 @@ async function Review({
   const raw = (await searchParams).start;
   const start = Array.isArray(raw) ? raw[0] : raw;
   const r = await read(getReview, { start });
-  const patterns = await read(getPatterns, { start: r.start });
+  const [patterns, settings] = await Promise.all([
+    read(getPatterns, { start: r.start }),
+    read(getSettings, {}),
+  ]);
   const nav = buttonVariants({ variant: "ghost", size: "icon-sm" });
   return (
     <>
@@ -106,7 +110,7 @@ async function Review({
         </details>
       )}
 
-      <Patterns patterns={patterns} />
+      <Patterns patterns={patterns} clock={{ ...settings, now: new Date() }} />
 
       <section aria-label="Your week" className="flex flex-col gap-2">
         <h2 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">

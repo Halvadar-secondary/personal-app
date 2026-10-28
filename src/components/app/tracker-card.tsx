@@ -11,8 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDeadline } from "@/lib/dates";
-import { trendGood, trendText } from "@/lib/trackers";
-import { cn } from "@/lib/utils";
+import { momentTime } from "@/lib/trackers";
 import {
   deleteMomentAction,
   deleteTrackerAction,
@@ -23,45 +22,10 @@ import {
 import type { TrackerMoment } from "@/server/db/goals";
 import type { TrackerSummary } from "@/server/domain/trackers";
 import { InlineText } from "./inline-text";
+import { Trend, trackerLabel } from "./tracker-text";
 import { perform, useMutate } from "./use-mutate";
 
 const PAGE = 20;
-
-export const trackerLabel = (t: { name: string; emoji: string | null }) =>
-  t.emoji ? `${t.emoji} ${t.name}` : t.name;
-
-/** "Tue 18:30" in this device's zone. */
-export function momentTime(at: Date): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(at);
-}
-
-/** "Same as last week" etc., coloured by whether it went the wanted way. */
-export function Trend({
-  direction,
-  diff,
-  than,
-}: {
-  direction: "less" | "more";
-  diff: number;
-  than?: string;
-}) {
-  const good = trendGood(direction, diff);
-  return (
-    <span
-      data-good={good === null ? "same" : String(good)}
-      className={cn(
-        "text-xs",
-        good ? "font-medium text-primary" : "text-muted-foreground",
-      )}
-    >
-      {trendText(diff, than)}
-    </span>
-  );
-}
 
 /** One tracker: this week so far, the trend, 8 weeks of bars and its moments. */
 export function TrackerCard({
@@ -69,9 +33,12 @@ export function TrackerCard({
   moments,
   prevId = null,
   nextId = null,
+  clock,
 }: {
   tracker: TrackerSummary;
   moments: TrackerMoment[];
+  /** The owner's zone and week, for moment times. */
+  clock: { timeZone: string; weekStart: number; now: Date };
   /** Neighbours, for Move up / Move down. */
   prevId?: string | null;
   nextId?: string | null;
@@ -224,7 +191,7 @@ export function TrackerCard({
           {shown.map((m) => (
             <li key={m.id} className="flex items-start gap-2 text-sm">
               <span className="w-20 shrink-0 text-xs text-muted-foreground tabular-nums">
-                {momentTime(m.at)}
+                {momentTime(m.at, clock.timeZone, clock.weekStart, clock.now)}
               </span>
               {m.intensity !== null && (
                 <span

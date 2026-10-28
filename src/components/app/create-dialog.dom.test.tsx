@@ -632,3 +632,17 @@ describe("a moment", () => {
     });
   });
 });
+
+it("a moment says to reload when the dialog's options didn't load", async () => {
+  server.createOptionsAction.mockRejectedValue(new Error("stale"));
+  setup();
+  await userEvent.keyboard("c");
+  await userEvent.click(
+    within(screen.getByRole("group", { name: "Kind" })).getByRole("button", {
+      name: "Moment",
+    }),
+  );
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Couldn't save. Reload the page and try again.",
+  );
+});
