@@ -105,13 +105,11 @@ These override the sections above where they differ.
    (Ctrl/⌘+Enter). With no active trackers it says so and links to
    /trackers. "Create more" works for moments too.
 2. **Moments aren't edited.** Delete (with Undo) and log again. MCP
-    takes an optional The AT command has been deprecated. Please use schtasks.exe instead.
-
-The request is not supported..
+   `log_moment` takes an optional `at`.
 3. **Fair trends.** The Trackers page compares **this week so far** with
    **last week up to the same moment** (same weekday and time). The review's
    Patterns compares whole weeks (the week before the one being planned,
-   with the week before that), the same week  uses.
+   with the week before that), the same week `lastWeekOf` uses.
 4. **Navigation.** Sidebar "Trackers" after Review; a "Trackers" link in
    the Week page header (phones reach Goals and Review the same way);
    command palette entry.
