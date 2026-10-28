@@ -43,6 +43,7 @@ describe("migrations", () => {
         collation_name: "C",
       },
       { table_name: "tasks", column_name: "sort_key", collation_name: "C" },
+      { table_name: "trackers", column_name: "sort_key", collation_name: "C" },
     ]);
     await close();
   });
