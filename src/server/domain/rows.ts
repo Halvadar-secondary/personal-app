@@ -4,6 +4,8 @@ import {
   areas,
   categories,
   goals,
+  trackerMoments,
+  trackers,
   practiceEntries,
   tasks,
 } from "@/server/db/schema";
@@ -18,7 +20,9 @@ export type SoftTable =
   | typeof tasks
   | typeof categories
   | typeof practiceEntries
-  | typeof goals;
+  | typeof goals
+  | typeof trackers
+  | typeof trackerMoments;
 
 type Row<T extends SoftTable> = T["$inferSelect"];
 

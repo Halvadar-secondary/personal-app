@@ -6,6 +6,8 @@ import {
   categories,
   goals,
   tasks,
+  trackerMoments,
+  trackers,
 } from "@/server/db/schema";
 import type { Ctx } from "./context";
 import { DomainError } from "./errors";
@@ -20,7 +22,13 @@ type Ref = { entityType: EntityType; entityId: string };
 type Named = Ref & { label: string };
 
 const byId = <
-  T extends typeof areas | typeof achievements | typeof tasks | typeof goals,
+  T extends
+    | typeof areas
+    | typeof achievements
+    | typeof tasks
+    | typeof goals
+    | typeof trackers
+    | typeof trackerMoments,
 >(
   ctx: Ctx,
   table: T,
@@ -98,6 +106,25 @@ export async function assertParentsAndChildren(
           ),
         );
       for (const k of linked) add("achievement", k.id, k.title);
+    } else if (entityType === "tracker") {
+      const tracker = await byId(ctx, trackers, entityId);
+      if (!tracker?.deletedAt) continue;
+      const kids = await ctx.db
+        .select({ id: trackerMoments.id })
+        .from(trackerMoments)
+        .where(
+          and(
+            eq(trackerMoments.ownerId, ctx.ownerId),
+            eq(trackerMoments.trackerId, entityId),
+            isNull(trackerMoments.deletedAt),
+          ),
+        );
+      for (const k of kids) add("tracker_moment", k.id, "a moment");
+    } else if (entityType === "tracker_moment") {
+      const moment = await byId(ctx, trackerMoments, entityId);
+      if (!moment || moment.deletedAt) continue;
+      const tracker = await byId(ctx, trackers, moment.trackerId);
+      if (tracker?.deletedAt) add("tracker", tracker.id, tracker.name);
     } else if (entityType === "task") {
       const task = await byId(ctx, tasks, entityId);
       if (!task || task.deletedAt || !task.achievementId) continue;
@@ -145,7 +172,11 @@ export async function resyncTaskAreas(ctx: Ctx, touched: Ref[]): Promise<void> {
 }
 
 type Sortable =
-  typeof areas | typeof achievements | typeof tasks | typeof goals;
+  | typeof areas
+  | typeof achievements
+  | typeof tasks
+  | typeof goals
+  | typeof trackers;
 
 /** The live siblings a row is ordered among. */
 function siblingScope(table: Sortable, row: Record<string, unknown>) {

@@ -9,6 +9,8 @@ import {
   taskCategories,
   taskCompletions,
   tasks,
+  trackerMoments,
+  trackers,
 } from "@/server/db/schema";
 import { defineAction } from "./context";
 
@@ -50,6 +52,14 @@ export const exportData = defineAction(z.object({}), async (ctx) => {
       .select()
       .from(goals)
       .where(eq(goals.ownerId, ctx.ownerId)),
+    trackers: await ctx.db
+      .select()
+      .from(trackers)
+      .where(eq(trackers.ownerId, ctx.ownerId)),
+    trackerMoments: await ctx.db
+      .select()
+      .from(trackerMoments)
+      .where(eq(trackerMoments.ownerId, ctx.ownerId)),
     practiceEntries: await ctx.db
       .select()
       .from(practiceEntries)
