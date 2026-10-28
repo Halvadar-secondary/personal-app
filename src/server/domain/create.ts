@@ -4,6 +4,7 @@ import { createAchievement } from "./achievements";
 import { listCategories, setTaskCategories } from "./categories";
 import { callAction, defineAction } from "./context";
 import { createTask } from "./tasks";
+import { activeTrackers } from "./trackers";
 import { listFilingTargets } from "./views";
 
 /**
@@ -43,5 +44,6 @@ export const getCreateOptions = defineAction(
     categories: await callAction(ctx, listCategories, { areaId }),
     today: localDate(ctx.now(), ctx.timeZone),
     weekStart: ctx.weekStart,
+    trackers: await activeTrackers(ctx),
   }),
 );

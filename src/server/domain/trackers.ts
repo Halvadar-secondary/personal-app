@@ -128,19 +128,23 @@ export const logMoment = defineAction(
     intensity: z.int().min(1).max(5).nullish(),
     note: z.string().trim().max(1000).nullish(),
   }),
-  async (ctx, { trackerId, at, intensity, note }): Promise<TrackerMoment> => {
+  async (
+    ctx,
+    { trackerId, at, intensity, note },
+  ): Promise<TrackerMoment & { trackerName: string }> => {
     const tracker = await findLive(ctx, trackers, trackerId);
     if (tracker.archivedAt) throw new DomainError("invalid_state");
     const when = at ? new Date(at) : ctx.now();
     if (when.getTime() > ctx.now().getTime()) {
       throw new DomainError("invalid_input", { at: "in the future" });
     }
-    return insertRecorded(ctx, "tracker_moment", trackerMoments, {
+    const moment = await insertRecorded(ctx, "tracker_moment", trackerMoments, {
       trackerId,
       at: when,
       intensity: intensity ?? null,
       note: note || null,
     });
+    return { ...moment, trackerName: tracker.name };
   },
 );
 

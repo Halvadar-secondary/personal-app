@@ -34,6 +34,12 @@ import {
   updateTask,
 } from "@/server/domain/tasks";
 import { logProgress } from "@/server/domain/targets";
+import {
+  createTracker,
+  listMoments,
+  listTrackers,
+  logMoment,
+} from "@/server/domain/trackers";
 import { undoBatch } from "@/server/domain/undo";
 import { getOverview } from "@/server/domain/views";
 
@@ -285,6 +291,34 @@ export const TOOLS: ToolDef[] = [
     action: linkAchievement,
     summary: (o) =>
       o.goalId ? `Linked ${q(o.title)}` : `Unlinked ${q(o.title)}`,
+  }),
+  tool({
+    name: "list_trackers",
+    description:
+      "The owner's behaviour trackers (things to watch, such as anger or kindness; direction less means fewer is better) with this week so far, last week up to the same moment, and 8 weekly counts.",
+    action: listTrackers,
+    summary: (o) => plural(o.trackers.length, "tracker"),
+  }),
+  tool({
+    name: "create_tracker",
+    description:
+      'Create a behaviour tracker: a name, an optional emoji, and direction "less" (fewer is better, the default) or "more".',
+    action: createTracker,
+    summary: (o) => `Added tracker ${q(o.name)}`,
+  }),
+  tool({
+    name: "log_moment",
+    description:
+      "Log one time a tracked behaviour happened: optional at (ISO time, default now, never in the future), intensity 1–5 and a short note about what was happening.",
+    action: logMoment,
+    summary: (o) => `Logged a moment of ${q(o.trackerName)}`,
+  }),
+  tool({
+    name: "get_tracker",
+    description:
+      "A tracker's moments, newest first (limit up to 100, before for the next page).",
+    action: listMoments,
+    summary: (o) => plural(o.length, "moment"),
   }),
   tool({
     name: "list_history",

@@ -6,6 +6,7 @@ import { type Ctx, callAction, defineAction } from "./context";
 import { deleteGoal } from "./goals";
 import { fileAchievement, fileTask } from "./inbox";
 import { deleteTask } from "./tasks";
+import { deleteTracker } from "./trackers";
 
 // Thin actions for the MCP tools that cover several UI actions (spec §7.2).
 // Each runs in the caller's batch, so one tool call is one undo step.
@@ -43,12 +44,21 @@ const DELETERS = {
   category: (ctx: Ctx, id: string) =>
     callAction(ctx, deleteCategory, { categoryId: id }),
   goal: (ctx: Ctx, id: string) => callAction(ctx, deleteGoal, { goalId: id }),
+  tracker: (ctx: Ctx, id: string) =>
+    callAction(ctx, deleteTracker, { trackerId: id }),
 };
 
-/** Soft-deletes one area, achievement, task, category or goal. */
+/** Soft-deletes one area, achievement, task, category, goal or tracker. */
 export const deleteItem = defineAction(
   z.object({
-    kind: z.enum(["area", "achievement", "task", "category", "goal"]),
+    kind: z.enum([
+      "area",
+      "achievement",
+      "task",
+      "category",
+      "goal",
+      "tracker",
+    ]),
     id: z.uuid(),
   }),
   (ctx, { kind, id }) => DELETERS[kind](ctx, id),

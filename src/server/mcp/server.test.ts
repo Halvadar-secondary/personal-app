@@ -40,6 +40,11 @@ const SPEC_TOOLS = [
   "create_goal",
   "update_goal",
   "link_achievement_to_goal",
+  // Trackers.
+  "list_trackers",
+  "create_tracker",
+  "log_moment",
+  "get_tracker",
 ];
 
 let client: Client;
