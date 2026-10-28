@@ -141,3 +141,17 @@ describe("prefs", () => {
     expect(loadPrefs(null)).toEqual(DEFAULTS);
   });
 });
+
+it("remembers a moment and its tracker", () => {
+  const s = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => s.get(k) ?? null,
+    setItem: (k: string, v: string) => void s.set(k, v),
+  };
+  savePrefs({ kind: "moment", more: false, tracker: "t1" }, storage);
+  expect(loadPrefs(storage)).toEqual({
+    kind: "moment",
+    more: false,
+    tracker: "t1",
+  });
+});

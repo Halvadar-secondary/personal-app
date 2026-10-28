@@ -57,7 +57,15 @@ export function kindForPage(page: PageContext, last: Kind): Kind {
   return last;
 }
 
-export type Prefs = { kind: Kind; more: boolean };
+/** The dialog's kinds: an item, or a tracker moment (no destination). */
+export type DialogKind = Kind | "moment";
+
+export type Prefs = {
+  kind: DialogKind;
+  more: boolean;
+  /** The tracker last logged to. */
+  tracker?: string;
+};
 
 const KEY = "create-dialog";
 const DEFAULTS: Prefs = { kind: "task", more: false };
@@ -80,11 +88,17 @@ export function loadPrefs(
       p &&
       typeof p === "object" &&
       "kind" in p &&
-      (p.kind === "task" || p.kind === "achievement") &&
+      (p.kind === "task" || p.kind === "achievement" || p.kind === "moment") &&
       "more" in p &&
       typeof p.more === "boolean"
     ) {
-      return { kind: p.kind, more: p.more };
+      const tracker =
+        "tracker" in p && typeof p.tracker === "string" ? p.tracker : null;
+      return {
+        kind: p.kind,
+        more: p.more,
+        ...(tracker ? { tracker } : {}),
+      };
     }
   } catch {}
   return DEFAULTS;
