@@ -90,6 +90,36 @@ counts), `create_tracker`. Deleting goes through `delete_item` with kind
   batch. Export includes both; purge removes them like other entities.
 - Weekly counts are computed in the owner's time zone and week start.
 
+## Settled after the builder check (my calls)
+
+These override the sections above where they differ.
+
+1. **No strip on Today.** The owner said "Today shows only what is to be
+   done today"; logging a behaviour isn't. Logging lives in the **Capture
+   dialog** instead (one tap from every page, C on a keyboard): its Kind
+   switch gains **Moment** beside Task and Achievement. A moment shows
+   tracker chips (radio, the last used one preselected), intensity 1–5
+   (optional, tap again to clear), the Notes field as "What was
+   happening?", a **When** chip ("Now" by default; "Earlier…" opens a
+   date-time input that can't be in the future), and **Log moment**
+   (Ctrl/⌘+Enter). With no active trackers it says so and links to
+   /trackers. "Create more" works for moments too.
+2. **Moments aren't edited.** Delete (with Undo) and log again. MCP
+    takes an optional The AT command has been deprecated. Please use schtasks.exe instead.
+
+The request is not supported..
+3. **Fair trends.** The Trackers page compares **this week so far** with
+   **last week up to the same moment** (same weekday and time). The review's
+   Patterns compares whole weeks (the week before the one being planned,
+   with the week before that), the same week  uses.
+4. **Navigation.** Sidebar "Trackers" after Review; a "Trackers" link in
+   the Week page header (phones reach Goals and Review the same way);
+   command palette entry.
+5. Smaller: a trend in the wrong direction is neutral-coloured, never red;
+   moments aren't searchable; logging to an archived tracker is refused;
+   undoing a tracker delete restores only that batch's moments; integrity
+   checks cover tracker → moment.
+
 ## Non-goals
 
 - Reminders to log, streaks or XP for trackers (counting a bad behaviour
