@@ -175,7 +175,13 @@ async function itemsFor(
 }
 
 /** Everything on `day`: its one-offs, the ones rolled onto it, and due repeats. */
-async function daySections(ctx: Ctx, day: string): Promise<Sections> {
+async function daySections(
+  ctx: Ctx,
+  day: string,
+  // The planner shows today's leftovers on tomorrow; a week shows them once.
+  opts: { rollOntoTomorrow?: boolean } = {},
+): Promise<Sections> {
+  const rollOntoTomorrow = opts.rollOntoTomorrow ?? true;
   const now = today(ctx);
   // Completed in the last two days covers "done today" in any time zone.
   const recently = new Date(ctx.now().getTime() - 2 * 86_400_000);
@@ -198,7 +204,11 @@ async function daySections(ctx: Ctx, day: string): Promise<Sections> {
     const done = t.completedAt !== null;
     if (t.plannedOn === day) {
       picked.push({ row, done, rolledFrom: null });
-    } else if (!done && rollsInto(t.plannedOn!, day, now)) {
+    } else if (
+      !done &&
+      rollsInto(t.plannedOn!, day, now) &&
+      (rollOntoTomorrow || day === now)
+    ) {
       picked.push({ row, done, rolledFrom: t.plannedOn });
     } else if (
       done &&
@@ -328,7 +338,10 @@ export const getWeek = defineAction(
     const days = [];
     for (let i = 0; i < 7; i++) {
       const day = addDays(start, i);
-      days.push({ day, sections: await daySections(ctx, day) });
+      days.push({
+        day,
+        sections: await daySections(ctx, day, { rollOntoTomorrow: false }),
+      });
     }
     return { start, end, today: now, days, list: await weekList(ctx, start) };
   },

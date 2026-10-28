@@ -1,4 +1,4 @@
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { addDays, localDate } from "@/lib/dates";
 import {
@@ -92,7 +92,9 @@ export const updateReminder = defineAction(
 /** This device gets reminders; a known endpoint just refreshes its keys. */
 export const savePushSubscription = defineAction(
   z.object({
-    endpoint: z.url().max(2000),
+    // Push services are https; anything else would have the server post
+    // wherever the browser said.
+    endpoint: z.url({ protocol: /^https$/ }).max(2000),
     p256dh: z.string().min(1).max(200),
     auth: z.string().min(1).max(100),
   }),
@@ -102,7 +104,9 @@ export const savePushSubscription = defineAction(
       .values({ ...sub, ownerId: ctx.ownerId, createdAt: ctx.now() })
       .onConflictDoUpdate({
         target: pushSubscriptions.endpoint,
-        set: { ...sub, ownerId: ctx.ownerId },
+        set: sub,
+        // Another owner's device stays theirs.
+        setWhere: eq(pushSubscriptions.ownerId, ctx.ownerId),
       });
     return { saved: true as const };
   },
@@ -127,12 +131,18 @@ export const deletePushSubscription = defineAction(
 export const sendTestReminder = defineAction(z.object({}), async (ctx) => {
   const send = webPushSender();
   const devices = await devicesOf(ctx.db, ctx.ownerId);
-  if (!send || devices.length === 0) throw new DomainError("invalid_state");
+  if (!send) throw new DomainError("invalid_state", { reason: "push" });
+  if (devices.length === 0) {
+    throw new DomainError("invalid_state", { reason: "no_devices" });
+  }
   let sent = 0;
   for (const d of devices) {
-    if ((await send(d, TEST)) === "ok") sent++;
-    else await removeDevice(ctx.db, d.id);
+    const r = await deliver(send, d, TEST);
+    if (r === "ok") sent++;
+    else if (r === "gone") await removeDevice(ctx.db, d.id);
   }
+  // Nothing got through: say so, rather than a generic save error.
+  if (sent === 0) throw new DomainError("invalid_state", { reason: "push" });
   return { sent };
 });
 
@@ -199,23 +209,48 @@ export async function sendReminders(
   db: Db,
   now: Date,
   send: PushSender,
-): Promise<{ owners: number; sent: number; removed: number }> {
+): Promise<{ owners: number; sent: number; removed: number; failed: number }> {
   const due = await dueReminders(db, now);
+  let owners = 0;
   let sent = 0;
   let removed = 0;
+  let failed = 0;
   for (const { ownerId, today } of due) {
-    for (const d of await devicesOf(db, ownerId)) {
-      if ((await send(d, REMINDER)) === "ok") sent++;
-      else {
-        await removeDevice(db, d.id);
-        removed++;
-      }
-    }
-    // Marked even with no devices, so a device added later waits for tomorrow.
-    await db
+    // Claim the evening before sending: a crash or a failing device can
+    // cost one reminder, never repeat it every 15 minutes.
+    const claimed = await db
       .update(settings)
       .set({ lastReminderOn: today })
-      .where(eq(settings.ownerId, ownerId));
+      .where(
+        and(
+          eq(settings.ownerId, ownerId),
+          sql`${settings.lastReminderOn} is distinct from ${today}`,
+        ),
+      )
+      .returning({ ownerId: settings.ownerId });
+    if (claimed.length === 0) continue;
+    owners++;
+    for (const d of await devicesOf(db, ownerId)) {
+      const r = await deliver(send, d, REMINDER);
+      if (r === "ok") sent++;
+      else if (r === "gone") {
+        await removeDevice(db, d.id);
+        removed++;
+      } else failed++;
+    }
   }
-  return { owners: due.length, sent, removed };
+  return { owners, sent, removed, failed };
+}
+
+/** One device's delivery; any error other than "gone" counts as a failure. */
+async function deliver(
+  send: PushSender,
+  d: { endpoint: string; p256dh: string; auth: string },
+  msg: PushMessage,
+): Promise<"ok" | "gone" | "failed"> {
+  try {
+    return await send(d, msg);
+  } catch {
+    return "failed";
+  }
 }

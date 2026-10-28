@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -73,19 +73,54 @@ export function ReminderSettings({
   const [time, setTime] = useState(initial.time);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [savedTime, setSavedTime] = useState(initial.time);
+  const [devices, setDevices] = useState(initial.devices);
+  // Whether this browser is one of the devices; null until known.
+  const [here, setHere] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!supported) return;
+    let live = true;
+    navigator.serviceWorker
+      .getRegistration()
+      .then((reg) => reg?.pushManager.getSubscription() ?? null)
+      .then((sub) => live && setHere(sub !== null))
+      .catch(() => live && setHere(false));
+    return () => {
+      live = false;
+    };
+  }, [supported]);
+
+  /** Permission, then this device's subscription; false if either fails. */
+  async function join(): Promise<boolean> {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      setProblem("Notifications are blocked for this site.");
+      return false;
+    }
+    if (!(await subscribeHere(publicKey!))) return false;
+    if (here !== true) setDevices((n) => n + 1);
+    setHere(true);
+    return true;
+  }
+
+  async function addThisDevice() {
+    setProblem(null);
+    setBusy(true);
+    try {
+      await join();
+    } catch {
+      setProblem("Couldn't turn on notifications on this device.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function turn(on: boolean) {
     setProblem(null);
     setBusy(true);
     try {
-      if (on) {
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") {
-          setProblem("Notifications are blocked for this site.");
-          return;
-        }
-        if (!(await subscribeHere(publicKey!))) return;
-      }
+      if (on && !(await join())) return;
       const r = await perform(() => updateReminderAction({ enabled: on }));
       if (r?.ok) setEnabled(on);
     } catch {
@@ -136,8 +171,9 @@ export function ReminderSettings({
             value={time}
             onChange={(e) => setTime(e.target.value)}
             onBlur={async () => {
-              if (!/^\d{2}:\d{2}$/.test(time) || time === initial.time) return;
-              await perform(() => updateReminderAction({ time }));
+              if (!/^\d{2}:\d{2}$/.test(time) || time === savedTime) return;
+              const r = await perform(() => updateReminderAction({ time }));
+              if (r?.ok) setSavedTime(time);
             }}
             className="rounded-md border bg-card px-2 py-1 text-sm"
           />
@@ -154,7 +190,22 @@ export function ReminderSettings({
             Send a test
           </Button>
         )}
+        {enabled && here === false && !off && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => void addThisDevice()}
+          >
+            Get reminders on this device
+          </Button>
+        )}
       </div>
+      {enabled && (
+        <p className="text-sm text-muted-foreground">
+          On {devices} {devices === 1 ? "device" : "devices"}
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">
         Sent once an evening, only when tomorrow isn&apos;t planned yet. It can
         arrive up to half an hour after the time.

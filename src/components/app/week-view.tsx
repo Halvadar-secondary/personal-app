@@ -133,13 +133,20 @@ export function DayCard({
                   onCheckedChange={() => onToggle?.(i)}
                   className="mt-px size-3.5"
                 />
-                <span
-                  className={cn(
-                    "min-w-0 break-words",
-                    i.done && "text-muted-foreground line-through",
+                <span className="flex min-w-0 flex-col">
+                  <span
+                    className={cn(
+                      "break-words",
+                      i.done && "text-muted-foreground line-through",
+                    )}
+                  >
+                    {i.title}
+                  </span>
+                  {i.rolledLabel && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {i.rolledLabel}
+                    </span>
                   )}
-                >
-                  {i.title}
                 </span>
               </li>
             );

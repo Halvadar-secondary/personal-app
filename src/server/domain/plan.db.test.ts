@@ -373,3 +373,22 @@ describe("planner options", () => {
     expect(d.sections.spare[0]).toMatchObject({ rolledLabel: "from Mon" });
   });
 });
+
+describe("review fixes", () => {
+  it("in a week an unfinished task shows on its day and today only", async () => {
+    await task("Call bank", { plan: day(MONDAY) });
+    await task("Today's", { plan: day(TODAY) });
+    const w = await run(getWeek, { start: MONDAY });
+    const where = (title: string) =>
+      w.days
+        .filter((d) => d.sections.spare.some((i) => i.title === title))
+        .map((d) => d.day);
+    expect(where("Call bank")).toEqual([MONDAY, TODAY]);
+    expect(where("Today's")).toEqual([TODAY]);
+    const tue = w.days.find((d) => d.day === TODAY)!;
+    expect(tue.sections.spare[0]).toMatchObject({
+      title: "Call bank",
+      rolledLabel: "from Mon",
+    });
+  });
+});

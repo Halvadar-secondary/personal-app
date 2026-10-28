@@ -86,11 +86,13 @@ describe("sendReminders", () => {
       owners: 0,
       sent: 0,
       removed: 0,
+      failed: 0,
     });
     expect(await sendReminders(db, at("21:05"), fake)).toEqual({
       owners: 1,
       sent: 1,
       removed: 0,
+      failed: 0,
     });
     expect(sent[0]!.msg).toEqual({
       title: "Plan tomorrow",
@@ -122,7 +124,7 @@ describe("sendReminders", () => {
     await nzRun(savePushSubscription, device(9));
     // 08:05 UTC is 21:05 in Auckland (UTC+13 in March).
     const r = await sendReminders(db, at("08:05"), fake);
-    expect(r).toEqual({ owners: 1, sent: 1, removed: 0 });
+    expect(r).toEqual({ owners: 1, sent: 1, removed: 0, failed: 0 });
     expect(sent[0]!.endpoint).toBe(device(9).endpoint);
   });
 
@@ -130,7 +132,7 @@ describe("sendReminders", () => {
     await run(savePushSubscription, device(2));
     gone.add(device(1).endpoint);
     const r = await sendReminders(db, at("21:05"), fake);
-    expect(r).toEqual({ owners: 1, sent: 1, removed: 1 });
+    expect(r).toEqual({ owners: 1, sent: 1, removed: 1, failed: 0 });
     const left = await db.select().from(pushSubscriptions);
     expect(left.map((s) => s.endpoint)).toEqual([device(2).endpoint]);
   });
@@ -163,6 +165,48 @@ describe("sendTestReminder", () => {
     });
     push.sender = fake;
     await run(deletePushSubscription, { endpoint: device(1).endpoint });
+    await expect(run(sendTestReminder, {})).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+  });
+});
+
+describe("review fixes", () => {
+  it("a device that errors doesn't stop the others or cause repeats", async () => {
+    await run(savePushSubscription, device(2));
+    const flaky: PushSender = async (sub, msg) => {
+      if (sub.endpoint === device(1).endpoint) throw new Error("500");
+      return fake(sub, msg);
+    };
+    const r = await sendReminders(db, at("21:05"), flaky);
+    expect(r).toEqual({ owners: 1, sent: 1, removed: 0, failed: 1 });
+    expect(sent.map((s) => s.endpoint)).toEqual([device(2).endpoint]);
+    // The evening is claimed: no second round at the next run.
+    expect((await sendReminders(db, at("21:20"), flaky)).owners).toBe(0);
+    expect(sent).toHaveLength(1);
+  });
+
+  it("refuses a device endpoint that isn't https", async () => {
+    await expect(
+      run(savePushSubscription, {
+        ...device(5),
+        endpoint: "http://10.0.0.1/x",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_input" });
+  });
+
+  it("never moves another owner's device to the caller", async () => {
+    const other = await createOwner(db);
+    await runner(db, other)(savePushSubscription, device(1));
+    const rows = await db.select().from(pushSubscriptions);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.ownerId).toBe(owner);
+  });
+
+  it("a test that can't reach any device says so", async () => {
+    push.sender = async () => {
+      throw new Error("network");
+    };
     await expect(run(sendTestReminder, {})).rejects.toMatchObject({
       code: "invalid_state",
     });

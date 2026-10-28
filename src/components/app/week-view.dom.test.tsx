@@ -123,3 +123,17 @@ it("gives a week task a day", async () => {
     plan: { type: "day", date: "2026-03-12" },
   });
 });
+
+it("marks a task rolled onto today", () => {
+  const rolled = structuredClone(WEEK);
+  rolled.days[1]!.sections.spare = [
+    item("Call bank", { rolledFrom: "2026-03-09", rolledLabel: "from Mon" }),
+  ];
+  render(
+    <CaptureProvider>
+      <WeekView week={rolled} />
+    </CaptureProvider>,
+  );
+  const tue = within(screen.getByRole("region", { name: "Tue Mar 10" }));
+  expect(tue.getByText("from Mon")).toBeVisible();
+});

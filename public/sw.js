@@ -1,6 +1,11 @@
 // Push only: shows the evening reminder and opens the planner when tapped.
 // No fetch handler, so nothing is cached and there is no offline mode.
 
+// Control pages already open, so a tap can navigate them.
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("push", (event) => {
   let msg = { title: "Life Goals", body: "", url: "/today" };
   try {
@@ -33,7 +38,12 @@ self.addEventListener("notificationclick", (event) => {
       );
       if (client) {
         await client.focus();
-        return client.navigate(url);
+        // An uncontrolled window refuses navigate(): open the planner instead.
+        try {
+          return await client.navigate(url);
+        } catch {
+          // fall through
+        }
       }
       return self.clients.openWindow(url);
     })(),

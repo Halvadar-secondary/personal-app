@@ -32,6 +32,7 @@ const sub = {
 const subscribe = vi.fn();
 const register = vi.fn();
 const requestPermission = vi.fn();
+const getRegistration = vi.fn();
 
 beforeEach(() => {
   for (const f of Object.values(server)) {
@@ -43,11 +44,12 @@ beforeEach(() => {
     pushManager: { subscribe, getSubscription: async () => null },
   });
   requestPermission.mockReset().mockResolvedValue("granted");
+  getRegistration.mockReset().mockResolvedValue(undefined);
   vi.stubGlobal("Notification", { requestPermission, permission: "default" });
   vi.stubGlobal("PushManager", function PushManager() {});
   Object.defineProperty(navigator, "serviceWorker", {
     configurable: true,
-    value: { register, ready: Promise.resolve({}) },
+    value: { register, getRegistration, ready: Promise.resolve({}) },
   });
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -116,4 +118,56 @@ it("explains when the browser can't do notifications", () => {
 it("says reminders aren't set up when the server has no key", () => {
   render(<ReminderSettings publicKey={null} initial={initial} />);
   expect(screen.getByText(/aren't set up on the server yet/)).toBeVisible();
+});
+
+it("a second device can join while reminders are on", async () => {
+  render(
+    <ReminderSettings
+      publicKey={KEY}
+      initial={{ enabled: true, time: "21:00", devices: 1 }}
+    />,
+  );
+  expect(screen.getByText("On 1 device")).toBeVisible();
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Get reminders on this device" }),
+  );
+  await waitFor(() =>
+    expect(server.savePushSubscriptionAction).toHaveBeenCalled(),
+  );
+  expect(server.updateReminderAction).not.toHaveBeenCalled();
+});
+
+it("a device already subscribed isn't offered to join again", async () => {
+  getRegistration.mockResolvedValue({
+    pushManager: { getSubscription: async () => sub },
+  });
+  render(
+    <ReminderSettings
+      publicKey={KEY}
+      initial={{ enabled: true, time: "21:00", devices: 1 }}
+    />,
+  );
+  await waitFor(() => expect(getRegistration).toHaveBeenCalled());
+  expect(
+    screen.queryByRole("button", { name: "Get reminders on this device" }),
+  ).toBeNull();
+});
+
+it("changing the time back saves it again", async () => {
+  render(
+    <ReminderSettings
+      publicKey={KEY}
+      initial={{ enabled: true, time: "21:00", devices: 1 }}
+    />,
+  );
+  const time = screen.getByLabelText("Reminder time");
+  await userEvent.clear(time);
+  await userEvent.type(time, "20:00");
+  await userEvent.tab();
+  await userEvent.clear(time);
+  await userEvent.type(time, "21:00");
+  await userEvent.tab();
+  expect(server.updateReminderAction).toHaveBeenLastCalledWith({
+    time: "21:00",
+  });
 });
