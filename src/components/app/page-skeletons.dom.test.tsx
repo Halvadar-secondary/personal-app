@@ -12,6 +12,7 @@ import {
   PlanSkeleton,
   ReviewSkeleton,
   SectionSkeleton,
+  TrackersSkeleton,
   WeekSkeleton,
 } from "./page-skeletons";
 
@@ -45,6 +46,7 @@ describe("page skeletons", () => {
     ["skeleton-week", <WeekSkeleton key="w" />],
     ["skeleton-goals", <GoalsSkeleton key="g" />],
     ["skeleton-review", <ReviewSkeleton key="r" />],
+    ["skeleton-trackers", <TrackersSkeleton key="t" />],
   ])("%s announces one loading status and no text", (id, el) => {
     render(el);
     const status = screen.getByRole("status", { name: "Loading" });

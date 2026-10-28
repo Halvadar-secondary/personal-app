@@ -27,6 +27,7 @@ const PAGES: [string, string][] = [
   ["/week", "Week"],
   ["/goals", "Goals"],
   ["/review", "Plan your week"],
+  ["/trackers", "Trackers"],
   ["/", "Your areas"],
   ["/active", "Active"],
   ["/inbox", "Inbox"],
