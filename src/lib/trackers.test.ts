@@ -74,3 +74,8 @@ describe("trends", () => {
     expect(trendGood("less", 0)).toBeNull();
   });
 });
+
+it("words a trend against another week", () => {
+  expect(trendText(-2, "the week before")).toBe("2 fewer than the week before");
+  expect(trendText(0, "the week before")).toBe("Same as the week before");
+});

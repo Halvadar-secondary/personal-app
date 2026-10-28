@@ -43,9 +43,11 @@ export function momentTime(at: Date): string {
 export function Trend({
   direction,
   diff,
+  than,
 }: {
   direction: "less" | "more";
   diff: number;
+  than?: string;
 }) {
   const good = trendGood(direction, diff);
   return (
@@ -56,7 +58,7 @@ export function Trend({
         good ? "font-medium text-primary" : "text-muted-foreground",
       )}
     >
-      {trendText(diff)}
+      {trendText(diff, than)}
     </span>
   );
 }

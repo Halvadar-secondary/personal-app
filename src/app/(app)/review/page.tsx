@@ -2,12 +2,14 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ReviewSkeleton } from "@/components/app/page-skeletons";
+import { Patterns } from "@/components/app/patterns";
 import { ReviewGoal, ReviewTasks } from "@/components/app/review-sections";
 import { WeekView } from "@/components/app/week-view";
 import { buttonVariants } from "@/components/ui/button";
 import { addDays, formatDeadline } from "@/lib/dates";
 import { read } from "@/server/actions/run";
 import { getReview } from "@/server/domain/goals";
+import { getPatterns } from "@/server/domain/trackers";
 
 export default function ReviewPage({ searchParams }: PageProps<"/review">) {
   return (
@@ -28,6 +30,7 @@ async function Review({
   const raw = (await searchParams).start;
   const start = Array.isArray(raw) ? raw[0] : raw;
   const r = await read(getReview, { start });
+  const patterns = await read(getPatterns, { start: r.start });
   const nav = buttonVariants({ variant: "ghost", size: "icon-sm" });
   return (
     <>
@@ -102,6 +105,8 @@ async function Review({
           </div>
         </details>
       )}
+
+      <Patterns patterns={patterns} />
 
       <section aria-label="Your week" className="flex flex-col gap-2">
         <h2 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">

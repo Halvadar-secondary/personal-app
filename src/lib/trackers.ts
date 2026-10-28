@@ -53,9 +53,9 @@ export function weekBuckets(
 }
 
 /** "3 fewer than last week", "2 more than last week", "Same as last week". */
-export function trendText(diff: number): string {
-  if (diff === 0) return "Same as last week";
-  return `${Math.abs(diff)} ${diff < 0 ? "fewer" : "more"} than last week`;
+export function trendText(diff: number, than = "last week"): string {
+  if (diff === 0) return `Same as ${than}`;
+  return `${Math.abs(diff)} ${diff < 0 ? "fewer" : "more"} than ${than}`;
 }
 
 /** Did it move the way the tracker wants? Null when it didn't move. */
