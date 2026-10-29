@@ -42,6 +42,12 @@ test("owner approves a client and it calls a tool", async ({
   baseURL,
 }, testInfo) => {
   test.skip(isPhone(testInfo), "one full OAuth run is enough");
+  // On a protected Vercel preview the SDK's own POST to /api/mcp fails before
+  // reaching the app; production gets the MCP smoke after every deploy.
+  test.skip(
+    !!process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+    "full OAuth run is local-only; production has the MCP smoke",
+  );
   // The client's own requests carry no browser or bypass cookies.
   const request = await apiContext(playwright, baseURL);
   const as = await (
