@@ -9,7 +9,9 @@ export type EntityType =
   | "task_categories"
   | "task_completion"
   | "practice_entry"
-  | "goal";
+  | "goal"
+  | "tracker"
+  | "tracker_moment";
 
 export type Change = {
   entityType: EntityType;

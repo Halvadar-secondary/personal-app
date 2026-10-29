@@ -213,6 +213,43 @@ export const practiceEntries = pgTable("practice_entries", {
   source: text("source").notNull(),
 });
 
+export const trackerDirection = pgEnum("tracker_direction", ["less", "more"]);
+
+/** A behaviour to watch: fewer is better ("less") or more is ("more"). */
+export const trackers = pgTable("trackers", {
+  ...base(),
+  name: text("name").notNull(),
+  emoji: text("emoji"),
+  direction: trackerDirection("direction").notNull().default("less"),
+  archivedAt: timestamptz("archived_at"),
+  sortKey: sortKey("sort_key").notNull(),
+});
+
+/** One time the behaviour happened. */
+export const trackerMoments = pgTable(
+  "tracker_moments",
+  {
+    ...base(),
+    trackerId: uuid("tracker_id")
+      .notNull()
+      .references(() => trackers.id),
+    at: timestamptz("at").notNull(),
+    intensity: smallint("intensity"),
+    note: text("note"),
+  },
+  (t) => [
+    check(
+      "tracker_moments_intensity_range",
+      sql`${t.intensity} is null or ${t.intensity} between 1 and 5`,
+    ),
+    index().on(t.ownerId, t.trackerId, t.at),
+  ],
+);
+
+export type Tracker = typeof trackers.$inferSelect;
+export type TrackerMoment = typeof trackerMoments.$inferSelect;
+export type TrackerDirection = Tracker["direction"];
+
 /** Days the owner finished planning; the evening reminder skips them. */
 export const dayPlans = pgTable(
   "day_plans",

@@ -293,3 +293,18 @@ export function ReviewSkeleton() {
     </Loading>
   );
 }
+
+/** Trackers: a card per tracker with its bars. */
+export function TrackersSkeleton() {
+  return (
+    <Loading testId="skeleton-trackers" className="grid gap-3 md:grid-cols-2">
+      {Array.from({ length: 2 }, (_, i) => (
+        <div key={i} className={cn(card, "flex flex-col gap-3 p-3")}>
+          <Skeleton className="h-5 w-1/3" />
+          <Skeleton className="h-3 w-1/2" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      ))}
+    </Loading>
+  );
+}

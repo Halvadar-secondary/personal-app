@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   CalendarDays,
   ClipboardList,
   Flag,
@@ -114,6 +115,9 @@ function SidebarFrame({
         </NavLink>
         <NavLink {...link("/review")}>
           <ClipboardList className="size-4" /> Review
+        </NavLink>
+        <NavLink {...link("/trackers")}>
+          <Activity className="size-4" /> Trackers
         </NavLink>
         <NavLink {...link("/")}>
           <LayoutGrid className="size-4" /> Your areas

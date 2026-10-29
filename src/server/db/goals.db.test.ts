@@ -9,6 +9,8 @@ import {
   goals,
   taskCompletions,
   tasks,
+  trackerMoments,
+  trackers,
 } from "./schema";
 
 let db: Db;
@@ -171,5 +173,38 @@ describe("goals schema", () => {
     const [back] = await db.select().from(achievements);
     expect(back!.goalId).toBe(goal!.id);
     expect(goal!.status).toBe("active");
+  });
+});
+
+describe("trackers schema", () => {
+  it("records a tracker and a moment", async () => {
+    const [t] = await db
+      .insert(trackers)
+      .values({ ownerId: "u1", name: "Anger", sortKey: "a0" })
+      .returning();
+    expect(t!.direction).toBe("less");
+    await db.insert(trackerMoments).values({
+      ownerId: "u1",
+      trackerId: t!.id,
+      at: new Date(),
+      intensity: 3,
+      note: "traffic",
+    });
+    expect(await db.$count(trackerMoments)).toBe(1);
+  });
+
+  it("refuses an intensity outside 1–5", async () => {
+    const [t] = await db
+      .insert(trackers)
+      .values({ ownerId: "u1", name: "Anger", sortKey: "a0" })
+      .returning();
+    await expect(
+      db.insert(trackerMoments).values({
+        ownerId: "u1",
+        trackerId: t!.id,
+        at: new Date(),
+        intensity: 6,
+      }),
+    ).rejects.toThrow();
   });
 });

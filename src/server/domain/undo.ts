@@ -6,6 +6,8 @@ import {
   categories,
   changeEvents,
   goals,
+  trackerMoments,
+  trackers,
   practiceEntries,
   taskCompletions,
   tasks,
@@ -116,6 +118,10 @@ const registry: Record<EntityType, Entity> = {
   goal: tableEntity(goals, true, {
     afterApply: (ctx, id) => rekeyIfTaken(ctx, goals, id),
   }),
+  tracker: tableEntity(trackers, true, {
+    afterApply: (ctx, id) => rekeyIfTaken(ctx, trackers, id),
+  }),
+  tracker_moment: tableEntity(trackerMoments, true),
   task_completion: tableEntity(taskCompletions, false),
   task_categories: {
     read: readTaskCategories,

@@ -141,6 +141,15 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] Reminder keys stored and verified on the owner's phone (Home Screen app)
 - [x] AI tools for days, weeks, goals and progress
 
+## M7.1 — Behaviour trackers
+*Done when: the owner logs a moment (anger, negative thinking, kindness) in seconds and sees weekly patterns ([design](superpowers/specs/2026-10-28-behaviour-trackers-design.md)).*
+
+- [x] Trackers with a direction (fewer or more is better), archive and reorder
+- [x] Log a moment from Capture: tracker, intensity, note, an earlier time
+- [x] Trackers page: this week so far vs the same point last week, 8 weekly bars, moments with delete and Undo
+- [x] Patterns in the Sunday review
+- [x] AI tools for trackers and moments
+
 ---
 
 ## Later (not scheduled)

@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import type { Effort } from "@/lib/xp";
 import { createCategoryAction } from "@/server/actions/categories";
 import { createItemAction, createOptionsAction } from "@/server/actions/create";
+import { logMomentAction } from "@/server/actions/trackers";
 import { STATUS_LABELS, STATUSES } from "./board-state";
 import { type CreatePreset, useCapture } from "./capture-context";
 import {
@@ -34,6 +35,7 @@ import {
 import { chipClass } from "./chip";
 import {
   type Destination,
+  type DialogKind,
   defaultDestination,
   destinationFor,
   type Kind,
@@ -51,6 +53,7 @@ import {
   TargetPicker,
   WhenPicker,
 } from "./plan-chips";
+import { MomentFields } from "./moment-fields";
 import { RecurrencePicker } from "./recurrence-picker";
 import { perform, undo } from "./use-mutate";
 
@@ -103,8 +106,19 @@ function CreateForm({
   const { page } = useCapture();
   const [prefs] = useState(() => loadPrefs());
   const [kind, setKind] = useState<Kind>(
-    () => preset.kind ?? kindForPage(page, prefs.kind),
+    () =>
+      preset.kind ??
+      kindForPage(page, prefs.kind === "moment" ? "task" : prefs.kind),
   );
+  // A tracker moment instead of an item: only when nothing asked for one.
+  const [moment, setMoment] = useState(
+    () => !preset.kind && !page && prefs.kind === "moment",
+  );
+  const [trackerId, setTrackerId] = useState<string | null>(
+    prefs.tracker ?? null,
+  );
+  const [intensity, setIntensity] = useState<number | null>(null);
+  const [at, setAt] = useState<string | null>(null);
   const [more, setMore] = useState(prefs.more);
   const [dest, setDest] = useState<Destination>(() =>
     defaultDestination(kind, page),
@@ -126,6 +140,7 @@ function CreateForm({
   const [target, setTarget] = useState<ChipTarget>(null);
   const [status, setStatus] = useState<Status>(preset.status ?? "backlog");
   const [options, setOptions] = useState<Options | null>(null);
+  const [optionsFailed, setOptionsFailed] = useState(false);
   const [extra, setExtra] = useState<PickerCategory[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
@@ -139,7 +154,10 @@ function CreateForm({
   if (seenPage !== page) {
     setSeenPage(page);
     // The page decides the kind too, unless a button or the owner already did.
-    const k = preset.kind || kindTouched ? kind : kindForPage(page, prefs.kind);
+    const k =
+      preset.kind || kindTouched
+        ? kind
+        : kindForPage(page, prefs.kind === "moment" ? "task" : prefs.kind);
     setKind(k);
     setDest(destinationFor(k, dest, picked, page));
   }
@@ -150,7 +168,8 @@ function CreateForm({
     let live = true;
     createOptionsAction({ areaId })
       .then((o) => live && setOptions(o))
-      .catch(() => {}); // Title, notes and Create work without them.
+      // Title, notes and Create work without them; a moment needs trackers.
+      .catch(() => live && setOptionsFailed(true));
     return () => {
       live = false;
     };
@@ -159,21 +178,80 @@ function CreateForm({
   }, []);
 
   const categories = [...(options?.categories ?? []), ...extra];
-  const noun = kind === "task" ? "task" : "achievement";
+  const noun = moment ? "moment" : kind === "task" ? "task" : "achievement";
+  const trackers = options?.trackers ?? null;
+  // The remembered tracker if it's still active, else the first.
+  const tracker =
+    trackers?.find((t) => t.id === trackerId) ?? trackers?.[0] ?? null;
   const mac =
     typeof navigator !== "undefined" &&
     /Mac|iP(hone|ad)/.test(navigator.platform);
 
-  function remember(next: { kind?: Kind; more?: boolean }) {
-    savePrefs({ kind: next.kind ?? kind, more: next.more ?? more });
+  function remember(next: {
+    kind?: DialogKind;
+    more?: boolean;
+    tracker?: string;
+  }) {
+    savePrefs({
+      kind: next.kind ?? (moment ? "moment" : kind),
+      more: next.more ?? more,
+      ...((next.tracker ?? tracker?.id)
+        ? { tracker: next.tracker ?? tracker!.id }
+        : {}),
+    });
   }
 
-  function switchKind(next: Kind) {
-    if (next === kind) return;
+  function switchKind(next: DialogKind) {
+    if (next === "moment") {
+      if (moment) return;
+      setMoment(true);
+      remember({ kind: "moment" });
+      return;
+    }
+    if (next === kind && !moment) return;
+    setMoment(false);
     setKind(next);
     setKindTouched(true);
     setDest(destinationFor(next, dest, picked, page));
     remember({ kind: next });
+  }
+
+  async function logIt() {
+    if (!tracker || busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    setError(null);
+    setCreated(null);
+    const note = notes.trim();
+    let r: Awaited<ReturnType<typeof logMomentAction>> | null;
+    try {
+      r = await logMomentAction({
+        trackerId: tracker.id,
+        ...(intensity ? { intensity } : {}),
+        ...(note ? { note } : {}),
+        ...(at ? { at: new Date(at).toISOString() } : {}),
+      });
+    } catch {
+      r = null;
+    }
+    busy.current = false;
+    setSaving(false);
+    if (!r || !r.ok) {
+      setError(r?.message ?? RELOAD);
+      return;
+    }
+    if (more) {
+      setNotes("");
+      setIntensity(null);
+      setAt(null);
+      setCreated(tracker.name);
+      return;
+    }
+    onClose();
+    const batchId = r.batchId;
+    toast(`Logged ${tracker.name}`, {
+      action: { label: "Undo", onClick: () => void undo(batchId) },
+    });
   }
 
   function requestClose() {
@@ -182,6 +260,7 @@ function CreateForm({
   }
 
   async function save() {
+    if (moment) return logIt();
     const t = title.trim();
     if (!t || busy.current) return;
     busy.current = true;
@@ -293,7 +372,9 @@ function CreateForm({
         }
         className="inset-0 flex h-[var(--sheet-height,100dvh)] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-none md:inset-auto md:top-[15%] md:left-1/2 md:h-auto md:max-w-[620px] md:-translate-x-1/2 md:rounded-xl"
       >
-        <DialogTitle className="sr-only">New {noun}</DialogTitle>
+        <DialogTitle className="sr-only">
+          {moment ? "Log a moment" : `New ${noun}`}
+        </DialogTitle>
         <DialogDescription className="sr-only">
           Ctrl+Enter creates it.
         </DialogDescription>
@@ -303,61 +384,73 @@ function CreateForm({
             aria-label="Kind"
             className="flex shrink-0 rounded-md border p-0.5"
           >
-            {(["task", "achievement"] as const).map((k) => (
+            {(["task", "achievement", "moment"] as const).map((k) => (
               <button
                 key={k}
                 type="button"
-                aria-pressed={kind === k}
+                aria-pressed={k === "moment" ? moment : !moment && kind === k}
                 onClick={() => switchKind(k)}
                 className={cn(
                   "rounded-[5px] px-2 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  kind === k
+                  (k === "moment" ? moment : !moment && kind === k)
                     ? "bg-accent font-medium text-accent-foreground"
                     : "hover:text-foreground",
                 )}
               >
-                {k === "task" ? "Task" : "Achievement"}
+                {k === "task"
+                  ? "Task"
+                  : k === "achievement"
+                    ? "Achievement"
+                    : "Moment"}
               </button>
             ))}
           </div>
-          <DestinationPicker
-            kind={kind}
-            planned={kind === "task" && plan !== null}
-            value={dest}
-            targets={options?.targets ?? null}
-            onChange={(d) => {
-              setDest(d);
-              setPicked(true);
-            }}
-          />
-          <span aria-hidden className="shrink-0">
-            › New {noun}
-          </span>
+          {moment ? (
+            <span className="shrink-0">Log a moment</span>
+          ) : (
+            <>
+              <DestinationPicker
+                kind={kind}
+                planned={kind === "task" && plan !== null}
+                value={dest}
+                targets={options?.targets ?? null}
+                onChange={(d) => {
+                  setDest(d);
+                  setPicked(true);
+                }}
+              />
+              <span aria-hidden className="shrink-0">
+                › New {noun}
+              </span>
+            </>
+          )}
         </div>
         <div className="flex flex-col px-4 pt-2">
-          <input
-            ref={titleRef}
-            aria-label="Title"
-            placeholder={kind === "task" ? "Task title" : "Achievement title"}
-            value={title}
-            maxLength={kind === "task" ? 300 : 200}
-            autoFocus
-            onChange={(e) => {
-              setTitle(e.target.value);
-              setError(null);
-              setCreated(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                void save();
-              }
-            }}
-            className="w-full bg-transparent py-1.5 text-xl font-semibold outline-none placeholder:text-faint"
-          />
+          {!moment && (
+            <input
+              ref={titleRef}
+              aria-label="Title"
+              placeholder={kind === "task" ? "Task title" : "Achievement title"}
+              value={title}
+              maxLength={kind === "task" ? 300 : 200}
+              autoFocus
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setError(null);
+                setCreated(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  void save();
+                }
+              }}
+              className="w-full bg-transparent py-1.5 text-xl font-semibold outline-none placeholder:text-faint"
+            />
+          )}
           <textarea
             aria-label="Notes"
-            placeholder="Add notes…"
+            placeholder={moment ? "What was happening?" : "Add notes…"}
             value={notes}
             maxLength={10_000}
             rows={2}
@@ -366,7 +459,20 @@ function CreateForm({
           />
         </div>
         <div className="flex flex-wrap gap-1.5 px-4 pb-3">
-          {kind === "task" ? (
+          {moment ? (
+            <MomentFields
+              trackers={trackers}
+              trackerId={tracker?.id ?? null}
+              onTracker={(id) => {
+                setTrackerId(id);
+                remember({ tracker: id });
+              }}
+              intensity={intensity}
+              onIntensity={setIntensity}
+              at={at}
+              onAt={setAt}
+            />
+          ) : kind === "task" ? (
             <>
               <EffortPicker
                 value={effort}
@@ -449,6 +555,11 @@ function CreateForm({
           )}
         </div>
         <div className="px-4">
+          {moment && optionsFailed && !error && (
+            <p role="alert" className="pb-2 text-sm text-destructive">
+              {RELOAD}
+            </p>
+          )}
           {error && (
             <p role="alert" className="pb-2 text-sm text-destructive">
               {error}
@@ -456,7 +567,7 @@ function CreateForm({
           )}
           {created && (
             <p role="status" className="pb-2 text-sm text-muted-foreground">
-              Created “{created}”
+              {moment ? `Logged ${created}` : `Created “${created}”`}
             </p>
           )}
         </div>
@@ -509,10 +620,10 @@ function CreateForm({
               </label>
               <Button
                 className="ml-auto"
-                disabled={!title.trim() || saving}
+                disabled={(moment ? !tracker : !title.trim()) || saving}
                 onClick={() => void save()}
               >
-                Create {noun}
+                {moment ? "Log moment" : `Create ${noun}`}
                 <kbd
                   aria-hidden
                   className="rounded border border-primary-foreground/40 px-1 text-[11px] font-normal"

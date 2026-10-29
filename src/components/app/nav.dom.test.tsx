@@ -41,6 +41,7 @@ it("the sidebar leads with Today, Week, Goals and Review", () => {
     "Week",
     "Goals",
     "Review",
+    "Trackers",
     "Your areas",
     "Active",
     "Search",

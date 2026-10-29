@@ -52,6 +52,12 @@ async function Week({
             Goals
           </Link>
           <Link
+            href="/trackers"
+            className={buttonVariants({ variant: "ghost" })}
+          >
+            Trackers
+          </Link>
+          <Link
             href="/review"
             className={buttonVariants({ variant: "outline" })}
           >

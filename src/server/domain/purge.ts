@@ -9,6 +9,8 @@ import {
   taskCategories,
   taskCompletions,
   tasks,
+  trackerMoments,
+  trackers,
 } from "@/server/db/schema";
 import type { Db } from "@/server/db/types";
 
@@ -18,6 +20,8 @@ export type PurgeCounts = {
   areas: number;
   categories: number;
   goals: number;
+  trackers: number;
+  trackerMoments: number;
   practiceEntries: number;
   completions: number;
   events: number;
@@ -147,6 +151,30 @@ export async function purgeDeleted(
         .returning({ id: goals.id }),
     );
 
+    // Trackers: their moments first (with them, or deleted on their own).
+    const trackerIds = idsOf(
+      await tx
+        .select({ id: trackers.id })
+        .from(trackers)
+        .where(lt(trackers.deletedAt, cutoff)),
+    );
+    const momentIds = idsOf(
+      await tx
+        .delete(trackerMoments)
+        .where(
+          or(
+            lt(trackerMoments.deletedAt, cutoff),
+            trackerIds.length
+              ? inArray(trackerMoments.trackerId, trackerIds)
+              : sql`false`,
+          ),
+        )
+        .returning({ id: trackerMoments.id }),
+    );
+    if (trackerIds.length) {
+      await tx.delete(trackers).where(inArray(trackers.id, trackerIds));
+    }
+
     // 6. History naming a purged row; undo could never put it back.
     const purged = [
       ...taskIds,
@@ -157,6 +185,8 @@ export async function purgeDeleted(
       ...achievementIds,
       ...areaIds,
       ...goalIds,
+      ...trackerIds,
+      ...momentIds,
     ];
     const conditions = [];
     if (purged.length) conditions.push(inArray(changeEvents.entityId, purged));
@@ -190,6 +220,8 @@ export async function purgeDeleted(
       areas: areaIds.length,
       categories: categoryIds.length,
       goals: goalIds.length,
+      trackers: trackerIds.length,
+      trackerMoments: momentIds.length,
       practiceEntries: taskPracticeIds.length + practiceIds.length,
       completions: completionIds.length,
       events,

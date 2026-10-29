@@ -10,7 +10,7 @@ describe("checkHealth", () => {
     expect(h).toEqual({
       ok: true,
       db: "up",
-      schemaVersion: 8,
+      schemaVersion: 9,
       buildId: "abc",
       environment: "preview",
     });
