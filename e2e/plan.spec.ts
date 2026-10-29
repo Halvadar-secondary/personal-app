@@ -96,6 +96,8 @@ test("a task moved to the week's list waits on Week, then gets a day", async ({
   const label = (await day.textContent())!.trim();
   await day.click();
   await expect(list.getByText(title)).toBeHidden();
+  // From the server, not just the optimistic list.
+  await page.reload();
   await expect(
     page.getByRole("region", { name: label }).getByText(title),
   ).toBeVisible();

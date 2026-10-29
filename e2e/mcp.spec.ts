@@ -4,7 +4,7 @@ import {
   StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
 import { expect, test } from "@playwright/test";
-import { isPhone } from "./helpers/app";
+import { apiContext, isPhone } from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
 
 const b64url = (b: Buffer) => b.toString("base64url");
@@ -38,10 +38,12 @@ test("an AI client gets 401 with a pointer to the metadata", async ({
 
 test("owner approves a client and it calls a tool", async ({
   page,
-  request,
+  playwright,
   baseURL,
 }, testInfo) => {
   test.skip(isPhone(testInfo), "one full OAuth run is enough");
+  // The client's own requests carry no browser or bypass cookies.
+  const request = await apiContext(playwright, baseURL);
   const as = await (
     await request.get("/.well-known/oauth-authorization-server")
   ).json();
@@ -116,7 +118,18 @@ test("owner approves a client and it calls a tool", async ({
   const client = new Client({ name: "e2e", version: "1.0.0" });
   await client.connect(
     new StreamableHTTPClientTransport(new URL(resource), {
-      requestInit: { headers: { Authorization: `Bearer ${token}` } },
+      requestInit: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // A protected preview needs the bypass, as every other request has.
+          ...(process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+            ? {
+                "x-vercel-protection-bypass":
+                  process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+              }
+            : {}),
+        },
+      },
     }),
   );
   const result = await client.callTool({ name: "get_overview", arguments: {} });
@@ -138,6 +151,7 @@ test("owner approves a client and it calls a tool", async ({
     },
   });
   expect(after.status()).toBe(401);
+  await request.dispose();
 });
 
 test("the consent page without valid params offers nothing to approve", async ({
