@@ -1,4 +1,9 @@
-import { expect, type Page, type TestInfo } from "@playwright/test";
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  type TestInfo,
+} from "@playwright/test";
 
 /** The database is shared within a run and may hold seed data. */
 export function uniqueName(prefix: string): string {
@@ -143,4 +148,22 @@ export async function saved(
   );
   await act();
   await answered;
+}
+
+/**
+ * A request context like an outside client's: no browser cookies. On a
+ * protected preview it sends only the bypass header, so Vercel sets no
+ * bypass cookie (a cookie would make auth demand an Origin, as for a page).
+ */
+export function apiContext(
+  playwright: {
+    request: { newContext: (o: object) => Promise<APIRequestContext> };
+  },
+  baseURL: string | undefined,
+): Promise<APIRequestContext> {
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  return playwright.request.newContext({
+    baseURL,
+    extraHTTPHeaders: bypass ? { "x-vercel-protection-bypass": bypass } : {},
+  });
 }

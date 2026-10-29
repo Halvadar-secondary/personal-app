@@ -141,9 +141,13 @@ test("on a phone the dialog fills the screen and Create stays in view", async ({
   await openCapture(page, testInfo);
   const dialog = page.getByRole("dialog");
   const viewport = page.viewportSize()!;
-  const box = (await dialog.boundingBox())!;
-  expect(Math.round(box.width)).toBe(viewport.width);
-  expect(Math.round(box.height)).toBe(viewport.height);
+  // Measured once the opening zoom has finished.
+  await expect
+    .poll(async () => {
+      const box = (await dialog.boundingBox())!;
+      return [Math.round(box.width), Math.round(box.height)];
+    })
+    .toEqual([viewport.width, viewport.height]);
   await page.getByRole("textbox", { name: "Title" }).fill("On the go");
   await expect(
     page.getByRole("button", { name: "Create task" }),
