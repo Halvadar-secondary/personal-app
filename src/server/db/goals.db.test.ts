@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "@/test/db";
 import type { Db } from "./types";
@@ -5,6 +6,7 @@ import {
   achievements,
   areas,
   categories,
+  goals,
   taskCompletions,
   tasks,
 } from "./schema";
@@ -108,5 +110,66 @@ describe("goals schema", () => {
     };
     await db.insert(taskCompletions).values(row);
     await expect(db.insert(taskCompletions).values(row)).rejects.toThrow();
+  });
+
+  const loose = { ownerId: "u1", title: "Groceries", sortKey: "a0" };
+  const daily = {
+    freq: "daily" as const,
+    interval: 1,
+    start: "2026-03-01",
+  };
+
+  it("refuses a task planned on a day and in a week", async () => {
+    await expect(
+      db.insert(tasks).values({
+        ...loose,
+        plannedOn: "2026-03-10",
+        plannedWeek: "2026-03-09",
+      }),
+    ).rejects.toThrow();
+    await db.insert(tasks).values({ ...loose, plannedOn: "2026-03-10" });
+    expect(await db.$count(tasks)).toBe(1);
+  });
+
+  it("refuses a plan or a target on a repeating task", async () => {
+    await expect(
+      db
+        .insert(tasks)
+        .values({ ...loose, recurrence: daily, plannedOn: "2026-03-10" }),
+    ).rejects.toThrow();
+    await expect(
+      db.insert(tasks).values({
+        ...loose,
+        recurrence: daily,
+        targetAmount: 10,
+        targetUnit: "hours",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("refuses a target amount without a unit, or zero", async () => {
+    await expect(
+      db.insert(tasks).values({ ...loose, targetAmount: 10 }),
+    ).rejects.toThrow();
+    await expect(
+      db
+        .insert(tasks)
+        .values({ ...loose, targetAmount: 0, targetUnit: "pages" }),
+    ).rejects.toThrow();
+  });
+
+  it("links an achievement to a goal", async () => {
+    const [goal] = await db
+      .insert(goals)
+      .values({ ownerId: "u1", title: "Write a song", sortKey: "a0" })
+      .returning();
+    const { ach } = await chain();
+    await db
+      .update(achievements)
+      .set({ goalId: goal!.id })
+      .where(eq(achievements.id, ach.id));
+    const [back] = await db.select().from(achievements);
+    expect(back!.goalId).toBe(goal!.id);
+    expect(goal!.status).toBe("active");
   });
 });

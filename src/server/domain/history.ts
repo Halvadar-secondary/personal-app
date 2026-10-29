@@ -8,7 +8,8 @@ export type EntityType =
   | "category"
   | "task_categories"
   | "task_completion"
-  | "practice_entry";
+  | "practice_entry"
+  | "goal";
 
 export type Change = {
   entityType: EntityType;

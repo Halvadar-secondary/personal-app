@@ -11,6 +11,11 @@ const actions = vi.hoisted(() => ({
   uncompleteTaskAction: vi.fn(),
 }));
 vi.mock("@/server/actions/tasks", () => actions);
+const plan = vi.hoisted(() => ({
+  planTaskAction: vi.fn(),
+  logProgressAction: vi.fn(),
+}));
+vi.mock("@/server/actions/plan", () => plan);
 vi.mock("@/server/actions/categories", () => ({}));
 
 const task = (id: string, title: string): TaskItem => ({
@@ -25,12 +30,19 @@ const task = (id: string, title: string): TaskItem => ({
   recurrence: null,
   completedAt: null,
   sortKey: id,
+  plannedOn: null,
+  plannedWeek: null,
+  planSection: null,
+  planSortKey: null,
+  targetAmount: null,
+  targetUnit: null,
   createdAt: new Date(0),
   updatedAt: new Date(0),
   deletedAt: null,
   categoryIds: [],
   recentDone: [],
   hasCompletions: false,
+  progress: null,
 });
 
 const TODAY = "2026-10-24"; // a Saturday
@@ -110,4 +122,57 @@ it("Add task opens the create dialog as a task", async () => {
   expect(screen.getByLabelText("capture")).toHaveTextContent(
     JSON.stringify([true, { kind: "task" }]),
   );
+});
+
+it("a one-off task's When chip plans it", async () => {
+  plan.planTaskAction.mockResolvedValue({ ok: true, batchId: "b" });
+  render(
+    <TaskList
+      tasks={[task("t1", "Dentist")]}
+      categories={[]}
+      today={TODAY}
+      weekStart={1}
+    />,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "When: none" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Tomorrow" }));
+  expect(plan.planTaskAction).toHaveBeenCalledWith({
+    taskId: "t1",
+    plan: { type: "day", date: "2026-10-25" },
+  });
+});
+
+it("a repeating task has no When or Target chip", () => {
+  render(
+    <TaskList
+      tasks={[{ ...task("t1", "Scales"), recurrence: daily }]}
+      categories={[]}
+      today={TODAY}
+      weekStart={1}
+    />,
+  );
+  expect(screen.queryByRole("button", { name: /^When/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^Target/ })).toBeNull();
+});
+
+it("a target task shows its progress", () => {
+  render(
+    <TaskList
+      tasks={[
+        {
+          ...task("t1", "Read"),
+          targetAmount: 400,
+          targetUnit: "pages",
+          progress: 34,
+        },
+      ]}
+      categories={[]}
+      today={TODAY}
+      weekStart={1}
+    />,
+  );
+  expect(screen.getByText("34 / 400 pages")).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Target: 400 pages" }),
+  ).toBeVisible();
 });

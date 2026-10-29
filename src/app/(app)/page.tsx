@@ -1,5 +1,7 @@
+import { Settings } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { buttonVariants } from "@/components/ui/button";
 import { OverviewSkeleton } from "@/components/app/page-skeletons";
 import { AreaCard, AreaRow } from "@/components/app/area-card";
 import { CaptureButton } from "@/components/app/capture-button";
@@ -13,6 +15,18 @@ export default function OverviewPage() {
       <header className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-bold md:text-2xl">Your areas</h1>
         <CaptureButton />
+        {/* Phones: Settings left the tab bar for Today and Week. */}
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className={buttonVariants({
+            variant: "ghost",
+            size: "icon",
+            className: "md:hidden",
+          })}
+        >
+          <Settings />
+        </Link>
       </header>
       <Suspense fallback={<OverviewSkeleton />}>
         <Overview />

@@ -3,6 +3,7 @@ import {
   achievements,
   areas,
   categories,
+  goals,
   practiceEntries,
   tasks,
 } from "@/server/db/schema";
@@ -16,7 +17,8 @@ export type SoftTable =
   | typeof achievements
   | typeof tasks
   | typeof categories
-  | typeof practiceEntries;
+  | typeof practiceEntries
+  | typeof goals;
 
 type Row<T extends SoftTable> = T["$inferSelect"];
 

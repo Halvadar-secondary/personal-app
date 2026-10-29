@@ -30,6 +30,7 @@ import {
 import type { Achievement, Area } from "@/server/db/goals";
 import { STATUS_LABELS, STATUSES } from "./board-state";
 import { DateField } from "./date-field";
+import { GoalChip } from "./goal-chip";
 import { InlineText } from "./inline-text";
 import { perform, useMutate } from "./use-mutate";
 
@@ -42,9 +43,12 @@ type Fields = Pick<
 export function AchievementHeader({
   achievement,
   areas,
+  goals = [],
 }: {
   achievement: Achievement;
   areas: Pick<Area, "id" | "name" | "emoji">[];
+  /** Goals it could feed: the active ones, plus its own. */
+  goals?: { id: string; title: string }[];
 }) {
   const router = useRouter();
   const { state, run } = useMutate(
@@ -157,6 +161,11 @@ export function AchievementHeader({
             onSave={(deadline) => update({ deadline })}
           />
         </span>
+        <GoalChip
+          achievementId={id}
+          goalId={achievement.goalId}
+          goals={goals}
+        />
       </div>
       <Textarea
         aria-label="Notes"

@@ -1,6 +1,12 @@
 import { and, asc, eq, gte, isNull, ne, sql } from "drizzle-orm";
 import { keyBetween } from "@/lib/ordering";
-import { achievements, areas, categories, tasks } from "@/server/db/schema";
+import {
+  achievements,
+  areas,
+  categories,
+  goals,
+  tasks,
+} from "@/server/db/schema";
 import type { Ctx } from "./context";
 import { DomainError } from "./errors";
 import type { EntityType } from "./history";
@@ -13,7 +19,9 @@ type Ref = { entityType: EntityType; entityId: string };
 /** A row in the way, named so the message can say which. */
 type Named = Ref & { label: string };
 
-const byId = <T extends typeof areas | typeof achievements | typeof tasks>(
+const byId = <
+  T extends typeof areas | typeof achievements | typeof tasks | typeof goals,
+>(
   ctx: Ctx,
   table: T,
   id: string,
@@ -66,10 +74,30 @@ export async function assertParentsAndChildren(
             ),
           );
         for (const k of kids) add("task", k.id, k.title);
-      } else if (ach.areaId) {
-        const area = await byId(ctx, areas, ach.areaId);
-        if (area?.deletedAt) add("area", area.id, area.name);
+      } else {
+        if (ach.areaId) {
+          const area = await byId(ctx, areas, ach.areaId);
+          if (area?.deletedAt) add("area", area.id, area.name);
+        }
+        if (ach.goalId) {
+          const goal = await byId(ctx, goals, ach.goalId);
+          if (goal?.deletedAt) add("goal", goal.id, goal.title);
+        }
       }
+    } else if (entityType === "goal") {
+      const goal = await byId(ctx, goals, entityId);
+      if (!goal?.deletedAt) continue;
+      const linked = await ctx.db
+        .select({ id: achievements.id, title: achievements.title })
+        .from(achievements)
+        .where(
+          and(
+            eq(achievements.ownerId, ctx.ownerId),
+            eq(achievements.goalId, entityId),
+            isNull(achievements.deletedAt),
+          ),
+        );
+      for (const k of linked) add("achievement", k.id, k.title);
     } else if (entityType === "task") {
       const task = await byId(ctx, tasks, entityId);
       if (!task || task.deletedAt || !task.achievementId) continue;
@@ -116,7 +144,8 @@ export async function resyncTaskAreas(ctx: Ctx, touched: Ref[]): Promise<void> {
   }
 }
 
-type Sortable = typeof areas | typeof achievements | typeof tasks;
+type Sortable =
+  typeof areas | typeof achievements | typeof tasks | typeof goals;
 
 /** The live siblings a row is ordered among. */
 function siblingScope(table: Sortable, row: Record<string, unknown>) {

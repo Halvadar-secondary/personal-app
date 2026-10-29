@@ -19,7 +19,15 @@ function changedLabels(details: unknown): string[] {
     .filter((l): l is string => typeof l === "string");
 }
 
+/** Refusals that say why, beyond their code. */
+const REASONS: Record<string, string> = {
+  push: "Couldn't reach your devices. Turn the reminder off and on again here.",
+  no_devices: "No device gets reminders yet. Turn the reminder on here first.",
+};
+
 export function messageFor(code: DomainErrorCode, details?: unknown): string {
+  const reason = (details as { reason?: unknown } | undefined)?.reason;
+  if (typeof reason === "string" && REASONS[reason]) return REASONS[reason];
   const labels = code === "conflict" ? changedLabels(details) : [];
   if (labels.length === 0) {
     // Named rows we couldn't label still mean "undo the newer change first":

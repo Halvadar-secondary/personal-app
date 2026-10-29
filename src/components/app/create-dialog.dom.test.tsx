@@ -48,6 +48,7 @@ const OPTIONS = {
     { id: "c-tech", name: "Technique", color: "#f59e0b", usedInArea: 1 },
   ],
   today: "2026-10-24",
+  weekStart: 1,
 };
 
 beforeEach(() => {
@@ -459,4 +460,73 @@ it("on a phone the sheet is as tall as what the keyboard leaves", async () => {
     value: undefined,
     configurable: true,
   });
+});
+
+function PlanOpener() {
+  const { openCreate } = useCapture();
+  return (
+    <button
+      onClick={() =>
+        openCreate({
+          kind: "task",
+          plan: { type: "day", date: "2026-10-25", section: "work" },
+        })
+      }
+    >
+      Add to Work
+    </button>
+  );
+}
+
+it("a planner preset files a loose task on that day and section", async () => {
+  render(
+    <CaptureProvider>
+      <PlanOpener />
+      <CreateDialog />
+    </CaptureProvider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Add to Work" }));
+  await waitFor(() => expect(destination()).toBeEnabled());
+  expect(destination()).toHaveAccessibleName("Destination: No achievement");
+  expect(screen.getByRole("button", { name: "When: Tomorrow" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Section: Work" })).toBeVisible();
+  await userEvent.type(title(), "Client email");
+  await submit();
+  expect(server.createItemAction).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: "task",
+      achievementId: null,
+      title: "Client email",
+      plan: { type: "day", date: "2026-10-25", section: "work" },
+    }),
+  );
+});
+
+it("a target chip sends the target; Repeat waits while When or Target is set", async () => {
+  setup("achievement");
+  await open();
+  const repeat = screen.getByRole("button", { name: /^Repeat/ });
+  await userEvent.click(screen.getByRole("button", { name: "When: none" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "This week" }));
+  expect(repeat).toBeDisabled();
+  expect(destination()).toHaveAccessibleName("Destination: 🎸 Guitar › Sweep");
+  await userEvent.click(
+    screen.getByRole("button", { name: "When: This week" }),
+  );
+  await userEvent.click(screen.getByRole("menuitem", { name: "No date" }));
+  expect(repeat).toBeEnabled();
+  await userEvent.click(screen.getByRole("button", { name: "Target: none" }));
+  await userEvent.clear(screen.getByLabelText("Amount"));
+  await userEvent.type(screen.getByLabelText("Amount"), "100");
+  await userEvent.click(screen.getByRole("button", { name: "Set target" }));
+  expect(repeat).toBeDisabled();
+  await userEvent.type(title(), "Talk to strangers");
+  await submit();
+  expect(server.createItemAction).toHaveBeenCalledWith(
+    expect.objectContaining({
+      title: "Talk to strangers",
+      target: { amount: 100, unit: "times" },
+    }),
+  );
+  expect(server.createItemAction.mock.calls[0]![0]).not.toHaveProperty("plan");
 });

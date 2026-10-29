@@ -14,6 +14,7 @@ import { zDate } from "./achievements";
 import { type Ctx, defineAction } from "./context";
 import { DomainError, found } from "./errors";
 import { recordChange } from "./history";
+import { planColumns, targetColumns, zPlan, zTarget } from "./plan-fields";
 import { sortKeyFor, zPosition } from "./position";
 import {
   findLive,
@@ -58,7 +59,27 @@ export const zTaskFields = z.object({
   effort: zEffort.default(2),
   deadline: zDate.nullish(),
   recurrence: zRecurrence.nullish(),
+  plan: zPlan.optional(),
+  target: zTarget.optional(),
 });
+
+type TaskFields = z.output<typeof zTaskFields>;
+
+/** The row values for new task fields, plan and target included. */
+async function newTaskValues(
+  ctx: Ctx,
+  { plan, target, ...fields }: TaskFields,
+) {
+  // A repeating task's rule is its plan, and it has no target.
+  if (fields.recurrence && (plan || target)) {
+    throw new DomainError("invalid_input", { recurrence: "plan or target" });
+  }
+  return {
+    ...fields,
+    ...(plan ? await planColumns(ctx, plan) : {}),
+    ...targetColumns(target ?? null),
+  };
+}
 
 /** The task's parents: an achievement and its area, or neither (Inbox). */
 async function parentsOf(ctx: Ctx, achievementId: string | null) {
@@ -90,7 +111,7 @@ export const createTask = defineAction(
     const parents = await parentsOf(ctx, achievementId);
     const sortKey = sortKeyFor(await siblings(ctx, achievementId), {});
     return insertRecorded(ctx, "task", tasks, {
-      ...fields,
+      ...(await newTaskValues(ctx, fields)),
       ...parents,
       sortKey,
     });
@@ -114,7 +135,7 @@ export const createTasks = defineAction(
     for (const [i, fields] of input.tasks.entries()) {
       made.push(
         await insertRecorded(ctx, "task", tasks, {
-          ...fields,
+          ...(await newTaskValues(ctx, fields)),
           ...parents,
           sortKey: keys[i]!,
         }),
@@ -133,8 +154,9 @@ export const updateTask = defineAction(
     effort: zEffort.optional(),
     deadline: zDate.nullish(),
     recurrence: zRecurrence.nullish(),
+    target: zTarget.optional(),
   }),
-  async (ctx, { taskId, ...patch }) => {
+  async (ctx, { taskId, target, ...patch }) => {
     const before = await findLive(ctx, tasks, taskId);
     const switchesKind =
       patch.recurrence !== undefined &&
@@ -143,7 +165,19 @@ export const updateTask = defineAction(
     if (switchesKind && (await hasCompletions(ctx, taskId))) {
       throw new DomainError("invalid_state");
     }
-    return updateRecorded(ctx, "task", tasks, before, patch);
+    const repeats =
+      patch.recurrence === undefined ? before.recurrence : patch.recurrence;
+    const hasTarget =
+      target === undefined ? before.targetAmount !== null : target !== null;
+    const planned = before.plannedOn !== null || before.plannedWeek !== null;
+    // A repeating task's rule is its plan, and it has no target.
+    if (repeats && (hasTarget || planned)) {
+      throw new DomainError("invalid_input", { recurrence: "plan or target" });
+    }
+    return updateRecorded(ctx, "task", tasks, before, {
+      ...patch,
+      ...(target === undefined ? {} : targetColumns(target)),
+    });
   },
 );
 

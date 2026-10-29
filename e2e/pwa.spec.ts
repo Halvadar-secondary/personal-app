@@ -10,7 +10,7 @@ test("the manifest and icons load without signing in", async ({ request }) => {
   expect(manifest).toMatchObject({
     name: "Life Goals",
     display: "standalone",
-    start_url: "/",
+    start_url: "/today",
   });
   expect(manifest.icons).toHaveLength(3);
   expect(

@@ -4,6 +4,7 @@ import {
   areas,
   categories,
   changeEvents,
+  goals,
   practiceEntries,
   taskCategories,
   taskCompletions,
@@ -16,6 +17,7 @@ export type PurgeCounts = {
   achievements: number;
   areas: number;
   categories: number;
+  goals: number;
   practiceEntries: number;
   completions: number;
   events: number;
@@ -128,6 +130,23 @@ export async function purgeDeleted(
         .returning({ id: areas.id }),
     );
 
+    const goalIds = idsOf(
+      await tx
+        .delete(goals)
+        .where(
+          and(
+            lt(goals.deletedAt, cutoff),
+            notExists(
+              tx
+                .select({ id: achievements.id })
+                .from(achievements)
+                .where(eq(achievements.goalId, goals.id)),
+            ),
+          ),
+        )
+        .returning({ id: goals.id }),
+    );
+
     // 6. History naming a purged row; undo could never put it back.
     const purged = [
       ...taskIds,
@@ -137,6 +156,7 @@ export async function purgeDeleted(
       ...categoryIds,
       ...achievementIds,
       ...areaIds,
+      ...goalIds,
     ];
     const conditions = [];
     if (purged.length) conditions.push(inArray(changeEvents.entityId, purged));
@@ -169,6 +189,7 @@ export async function purgeDeleted(
       achievements: achievementIds.length,
       areas: areaIds.length,
       categories: categoryIds.length,
+      goals: goalIds.length,
       practiceEntries: taskPracticeIds.length + practiceIds.length,
       completions: completionIds.length,
       events,

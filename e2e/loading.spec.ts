@@ -44,6 +44,11 @@ test.beforeAll(async ({ browser }) => {
 const pages: [string, () => string, string[]][] = [
   ["overview", () => "/", ["skeleton-overview"]],
   ["active", () => "/active", ["skeleton-active"]],
+  ["today", () => "/today", ["skeleton-day"]],
+  ["plan", () => "/plan", ["skeleton-plan"]],
+  ["week", () => "/week", ["skeleton-week"]],
+  ["goals", () => "/goals", ["skeleton-goals"]],
+  ["review", () => "/review", ["skeleton-review"]],
   ["inbox", () => "/inbox", ["skeleton-inbox"]],
   ["area", () => area, ["skeleton-area"]],
   ["trophies", () => `${area}/trophies`, ["skeleton-trophies"]],
@@ -123,11 +128,20 @@ test("navigation shows while the page loads", async ({ browser }, testInfo) => {
   const page = await openWithoutScripts(browser, testInfo, "/");
   if (testInfo.project.name === "phone") {
     const tabs = page.getByRole("navigation", { name: "Tabs" });
-    for (const name of ["Areas", "Active", "Search", "Settings"])
+    for (const name of ["Today", "Areas", "Week", "Search"])
       await expect(tabs.getByRole("link", { name })).toBeVisible();
   } else {
     const main = page.getByRole("navigation", { name: "Main" });
-    for (const name of ["Your areas", "Active", "Search", "Inbox"])
+    for (const name of [
+      "Today",
+      "Week",
+      "Goals",
+      "Review",
+      "Your areas",
+      "Active",
+      "Search",
+      "Inbox",
+    ])
       await expect(main.getByRole("link", { name })).toBeVisible();
     await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
     await expect(page.getByRole("link", { name: "History" })).toBeVisible();

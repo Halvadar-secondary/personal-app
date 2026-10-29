@@ -22,6 +22,11 @@ import { useCapture } from "./capture-context";
 import type { NavData } from "./nav-data";
 
 const PAGES: [string, string][] = [
+  ["/today", "Today"],
+  ["/plan", "Plan tomorrow"],
+  ["/week", "Week"],
+  ["/goals", "Goals"],
+  ["/review", "Plan your week"],
   ["/", "Your areas"],
   ["/active", "Active"],
   ["/inbox", "Inbox"],

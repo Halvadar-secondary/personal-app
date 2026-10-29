@@ -51,6 +51,7 @@ const card = (
   deadline: null,
   completedAt: null,
   sortKey: id,
+  goalId: null,
   createdAt: new Date(0),
   updatedAt: new Date(0),
   deletedAt: null,

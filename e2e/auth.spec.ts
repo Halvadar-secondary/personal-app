@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { apiContext } from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
 
 test("anonymous visitor is sent to login", async ({ page }) => {
@@ -64,7 +65,7 @@ test("the proxy hands back a fresh session cookie", async ({
     c.name.endsWith("session_token"),
   )!;
   // A bare client: only the token, none of the browser’s other cookies.
-  const bare = await playwright.request.newContext({ baseURL });
+  const bare = await apiContext(playwright, baseURL);
   const res = await bare.get("/inbox", {
     headers: { cookie: `${token.name}=${token.value}` },
     maxRedirects: 0,

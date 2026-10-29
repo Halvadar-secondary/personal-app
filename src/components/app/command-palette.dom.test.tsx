@@ -73,3 +73,11 @@ it("reloads achievements each time it opens", async () => {
   expect(actions.jumpTargetsAction).toHaveBeenCalledTimes(2);
   expect(screen.getByRole("option", { name: /Sweep picking/ })).toBeVisible();
 });
+
+it("jumps to Plan tomorrow", async () => {
+  setup();
+  await userEvent.keyboard("{Control>}k{/Control}");
+  await userEvent.type(screen.getByPlaceholderText("Jump to…"), "plan tom");
+  await userEvent.keyboard("{Enter}");
+  expect(nav.push).toHaveBeenCalledWith("/plan");
+});

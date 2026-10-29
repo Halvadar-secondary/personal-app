@@ -60,6 +60,11 @@ test.describe("signed in", () => {
 
   for (const path of [
     "/",
+    "/today",
+    "/plan",
+    "/week",
+    "/goals",
+    "/review",
     "/inbox",
     "/active",
     "/search?q=a",
@@ -185,6 +190,11 @@ test.describe("dark", () => {
 
     for (const path of [
       "/",
+      "/today",
+      "/plan",
+      "/week",
+      "/goals",
+      "/review",
       "/inbox",
       "/active",
       "/search?q=a",

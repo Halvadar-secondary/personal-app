@@ -7,7 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Life Goals",
     short_name: "Life Goals",
     description: "Personal life goals tracker",
-    start_url: "/",
+    // The app opens on today's plan.
+    start_url: "/today",
     display: "standalone",
     background_color: "#f7f6fb",
     theme_color: "#f7f6fb",

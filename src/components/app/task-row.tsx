@@ -22,13 +22,31 @@ import { CompletionStrip } from "./completion-strip";
 import { DateField } from "./date-field";
 import { EffortPicker } from "./effort-picker";
 import { InlineText } from "./inline-text";
+import {
+  type ChipPlan,
+  type ChipTarget,
+  ProgressButton,
+  TargetPicker,
+  WhenPicker,
+} from "./plan-chips";
 import { RecurrencePicker } from "./recurrence-picker";
+
+/** A task's plan as the When chip shows it. */
+export function planOf(
+  t: Pick<TaskItem, "plannedOn" | "plannedWeek">,
+): ChipPlan {
+  if (t.plannedOn) return { type: "day", date: t.plannedOn };
+  if (t.plannedWeek) return { type: "week", date: t.plannedWeek };
+  return null;
+}
 
 export type TaskItem = Task & {
   categoryIds: string[];
   /** Repeating tasks: completed days inside the 4-week strip. */
   recentDone: string[];
   hasCompletions: boolean;
+  /** Toward the target, for tasks that have one. */
+  progress: number | null;
 };
 
 export type TaskRowHandlers = {
@@ -39,6 +57,8 @@ export type TaskRowHandlers = {
       Pick<TaskItem, "title" | "effort" | "deadline" | "recurrence">
     >,
   ) => void;
+  onPlan: (id: string, plan: ChipPlan) => void;
+  onTarget: (id: string, target: ChipTarget) => void;
   onCategories: (id: string, ids: string[]) => void;
   onCreateCategory: (name: string) => Promise<string | null>;
   onDelete: (id: string) => void;
@@ -73,6 +93,10 @@ export function TaskRow({
     ? task.recentDone.includes(today)
     : task.completedAt !== null;
   const notDue = rule !== null && !isDueOn(rule, today);
+  const target: ChipTarget =
+    task.targetAmount !== null
+      ? { amount: task.targetAmount, unit: task.targetUnit! }
+      : null;
   const chips = new Map<string, ChipCategory>(categories.map((c) => [c.id, c]));
 
   return (
@@ -148,12 +172,44 @@ export function TaskRow({
                   "font-semibold text-destructive",
               )}
             />
+            {!rule && (
+              <>
+                <WhenPicker
+                  value={planOf(task)}
+                  today={today}
+                  weekStart={weekStart}
+                  onChange={(plan) => on.onPlan(task.id, plan)}
+                  className="inline-flex h-5 items-center gap-1 rounded-sm text-[11px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <TargetPicker
+                  value={target}
+                  onChange={(t) => on.onTarget(task.id, t)}
+                  className="inline-flex h-5 items-center gap-1 rounded-sm text-[11px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                {target && (
+                  <ProgressButton
+                    taskId={task.id}
+                    title={task.title}
+                    unit={target.unit}
+                    amount={target.amount}
+                    progress={task.progress ?? 0}
+                    disabled={done}
+                  />
+                )}
+              </>
+            )}
             <RecurrencePicker
               value={rule}
               today={today}
               locked={task.hasCompletions}
-              // A finished one-off task can't start repeating.
-              disabled={!rule && task.completedAt !== null}
+              // A finished one-off task can't start repeating, nor a planned
+              // or target one: a rule is its own plan.
+              disabled={
+                !rule &&
+                (task.completedAt !== null ||
+                  planOf(task) !== null ||
+                  target !== null)
+              }
               onSave={(recurrence) => on.onPatch(task.id, { recurrence })}
             />
             {rule && hasEnded(rule, today) && (

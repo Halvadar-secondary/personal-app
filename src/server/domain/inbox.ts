@@ -84,6 +84,10 @@ export const listInbox = defineAction(z.object({}), async (ctx) => ({
         eq(tasks.ownerId, ctx.ownerId),
         isNull(tasks.achievementId),
         isNull(tasks.deletedAt),
+        // Planned or repeating loose tasks already have a "when".
+        isNull(tasks.plannedOn),
+        isNull(tasks.plannedWeek),
+        isNull(tasks.recurrence),
       ),
     )
     .orderBy(desc(tasks.createdAt), desc(tasks.sortKey)),

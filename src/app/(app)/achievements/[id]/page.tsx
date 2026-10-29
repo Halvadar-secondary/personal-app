@@ -7,6 +7,7 @@ import { read } from "@/server/actions/run";
 import { getAchievement } from "@/server/domain/achievements";
 import { listAreas } from "@/server/domain/areas";
 import { listCategories } from "@/server/domain/categories";
+import { listGoals } from "@/server/domain/goals";
 
 export default function AchievementPage({
   params,
@@ -27,10 +28,14 @@ async function Achievement({
   const { achievement, tasks, today, weekStart } = await read(getAchievement, {
     achievementId: id,
   });
-  const [areas, categories] = await Promise.all([
+  const [areas, categories, { goals }] = await Promise.all([
     read(listAreas, {}),
     read(listCategories, { areaId: achievement.areaId ?? undefined }),
+    read(listGoals, {}),
   ]);
+  const goalOptions = goals
+    .filter((g) => g.status === "active" || g.id === achievement.goalId)
+    .map(({ id, title }) => ({ id, title }));
   return (
     <>
       <CaptureDestination
@@ -41,6 +46,7 @@ async function Achievement({
         key={`${achievement.id}:${achievement.updatedAt.getTime()}`}
         achievement={achievement}
         areas={areas.map(({ id, name, emoji }) => ({ id, name, emoji }))}
+        goals={goalOptions}
       />
       <TaskList
         key={achievement.id}

@@ -5,6 +5,7 @@ import {
   areas,
   categories,
   changeEvents,
+  goals,
   practiceEntries,
   taskCompletions,
   tasks,
@@ -112,6 +113,9 @@ const registry: Record<EntityType, Entity> = {
     beforeApply: assertCategoryNameFree,
   }),
   practice_entry: tableEntity(practiceEntries, true),
+  goal: tableEntity(goals, true, {
+    afterApply: (ctx, id) => rekeyIfTaken(ctx, goals, id),
+  }),
   task_completion: tableEntity(taskCompletions, false),
   task_categories: {
     read: readTaskCategories,

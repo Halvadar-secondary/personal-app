@@ -10,6 +10,8 @@ export const addPracticeEntry = defineAction(
     taskId: z.uuid(),
     startedAt: z.iso.datetime({ offset: true }).optional(),
     durationSeconds: z.int().min(0).optional(),
+    // Progress toward the task's target, in its unit.
+    amount: z.number().positive().max(100_000).optional(),
     metrics: z
       .record(z.string().max(40), z.union([z.number(), z.string().max(200)]))
       .optional(),

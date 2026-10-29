@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  CalendarDays,
+  ClipboardList,
+  Flag,
   History as HistoryIcon,
   Inbox,
   LayoutGrid,
@@ -8,6 +11,7 @@ import {
   Plus,
   Search,
   Settings,
+  Sun,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -92,13 +96,25 @@ function SidebarFrame({
   const link = (href: string) => ({ href, active: path === href });
   return (
     <aside className="sticky top-0 hidden h-dvh w-[220px] shrink-0 flex-col gap-4 border-r bg-sidebar p-3 md:flex">
-      <Link href="/" className="px-2 pt-1 text-base font-bold">
+      <Link href="/today" className="px-2 pt-1 text-base font-bold">
         Life Goals
       </Link>
       <Button onClick={() => setOpen(true)} className="justify-start">
         <Plus /> Capture
       </Button>
       <nav aria-label="Main" className="flex flex-col gap-0.5">
+        <NavLink {...link("/today")}>
+          <Sun className="size-4" /> Today
+        </NavLink>
+        <NavLink {...link("/week")}>
+          <CalendarDays className="size-4" /> Week
+        </NavLink>
+        <NavLink {...link("/goals")}>
+          <Flag className="size-4" /> Goals
+        </NavLink>
+        <NavLink {...link("/review")}>
+          <ClipboardList className="size-4" /> Review
+        </NavLink>
         <NavLink {...link("/")}>
           <LayoutGrid className="size-4" /> Your areas
         </NavLink>

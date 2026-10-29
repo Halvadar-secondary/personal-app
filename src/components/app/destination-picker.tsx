@@ -20,9 +20,11 @@ import type { Destination, Kind } from "./create-rules";
 const areaName = (a: { name: string; emoji: string | null }) =>
   a.emoji ? `${a.emoji} ${a.name}` : a.name;
 
-/** "Inbox", "🎸 Guitar" or "🎸 Guitar › Sweep". */
-export function crumbsOf(dest: Destination): string[] {
-  if (!dest.area && !dest.achievement) return ["Inbox"];
+/** "Inbox" ("No achievement" once it has a plan), "🎸 Guitar" or "🎸 Guitar › Sweep". */
+export function crumbsOf(dest: Destination, planned = false): string[] {
+  if (!dest.area && !dest.achievement) {
+    return [planned ? "No achievement" : "Inbox"];
+  }
   return [
     ...(dest.area ? [areaName(dest.area)] : []),
     ...(dest.achievement ? [dest.achievement.title] : []),
@@ -38,15 +40,18 @@ export function DestinationPicker({
   value,
   targets,
   onChange,
+  planned = false,
 }: {
   kind: Kind;
   value: Destination;
   /** Null until the dialog's options arrive. */
   targets: FilingArea[] | null;
   onChange: (dest: Destination) => void;
+  /** A planned task with no achievement isn't an Inbox item. */
+  planned?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const crumbs = crumbsOf(value);
+  const crumbs = crumbsOf(value, planned);
   const pick = (dest: Destination) => {
     onChange(dest);
     setOpen(false);
@@ -77,7 +82,7 @@ export function DestinationPicker({
                 value="inbox"
                 onSelect={() => pick({ area: null, achievement: null })}
               >
-                Inbox
+                {planned ? "No achievement" : "Inbox"}
               </CommandItem>
             </CommandGroup>
             {kind === "achievement" ? (

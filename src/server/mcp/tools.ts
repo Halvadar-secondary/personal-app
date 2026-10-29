@@ -13,9 +13,17 @@ import {
   setTaskCategories,
 } from "@/server/domain/categories";
 import type { Action } from "@/server/domain/context";
+import {
+  createGoal,
+  getGoal,
+  linkAchievement,
+  listGoals,
+  updateGoal,
+} from "@/server/domain/goals";
 import { listHistory } from "@/server/domain/history-view";
 import { captureItem } from "@/server/domain/inbox";
 import { deleteItem, fileItem } from "@/server/domain/mcp-actions";
+import { getDay, getWeek, placeTask, planTask } from "@/server/domain/plan";
 import { addPracticeEntry } from "@/server/domain/practice";
 import { search } from "@/server/domain/search";
 import {
@@ -25,6 +33,7 @@ import {
   uncompleteTask,
   updateTask,
 } from "@/server/domain/tasks";
+import { logProgress } from "@/server/domain/targets";
 import { undoBatch } from "@/server/domain/undo";
 import { getOverview } from "@/server/domain/views";
 
@@ -55,6 +64,12 @@ const plural = (n: number, one: string, many = `${one}s`) =>
 
 const STATUSES =
   "Statuses: backlog (someday), active (working on it now), done.";
+
+const PLAN =
+  'Optional plan says when to do a one-off task: {type:"day", date, section} (section "work" or "spare", default spare) or {type:"week", date} (any day in that week). Repeating tasks take no plan.';
+
+const TARGET =
+  'Optional target is an amount to reach: {amount, unit} with unit "times", "hours", "pages", "lessons" or another short word; progress is logged with log_progress.';
 
 export const TOOLS: ToolDef[] = [
   tool({
@@ -122,8 +137,7 @@ export const TOOLS: ToolDef[] = [
   }),
   tool({
     name: "create_tasks",
-    description:
-      "Add tasks to an achievement (or to the Inbox when achievementId is null), appended in the order given. Prefer one achievement with 5–15 ordered tasks, easiest first. Creating them in one call makes one undo step.",
+    description: `Add tasks to an achievement (or with achievementId null, a loose task), appended in the order given. Prefer one achievement with 5–15 ordered tasks, easiest first. Creating them in one call makes one undo step. ${PLAN} ${TARGET} A loose task with a plan is not in the Inbox.`,
     action: createTasks,
     summary: (o) =>
       o.length === 1
@@ -132,8 +146,7 @@ export const TOOLS: ToolDef[] = [
   }),
   tool({
     name: "update_task",
-    description:
-      "Change a task's title, notes, effort (1–3), deadline (YYYY-MM-DD) or recurrence. Only the fields you pass change.",
+    description: `Change a task's title, notes, effort (1–5), deadline (YYYY-MM-DD), recurrence or target. Only the fields you pass change. To set when to do it, use plan_task. ${TARGET}`,
     action: updateTask,
     summary: (o) => `Updated task ${q(o.title)}`,
   }),
@@ -202,6 +215,78 @@ export const TOOLS: ToolDef[] = [
     summary: () => "Logged practice",
   }),
   tool({
+    name: "get_day",
+    description:
+      "One day's plan (default today, YYYY-MM-DD): its Work and Spare time lists in order, with repeating tasks due that day and unfinished tasks rolled over from earlier days (rolledFrom).",
+    action: getDay,
+    summary: (o) =>
+      `${o.day}: ${plural(o.sections.work.length + o.sections.spare.length, "item")}`,
+  }),
+  tool({
+    name: "get_week",
+    description:
+      "A week (default this one; start may be any day in it): each day's plan, and the week's own list of tasks planned for the week without a day.",
+    action: getWeek,
+    summary: (o) => `Week of ${o.start}: ${plural(o.list.length, "week task")}`,
+  }),
+  tool({
+    name: "plan_task",
+    description: `Set when to do a one-off task, or clear it with plan null. ${PLAN} A day plan puts it last in its section; use place_task for an exact spot.`,
+    action: planTask,
+    summary: (o) => `Planned ${q(o.title)}`,
+  }),
+  tool({
+    name: "place_task",
+    description:
+      "Put a task at a spot in a day's section (work or spare), after afterId and/or before beforeId (task ids on that day). A one-off is planned on that day; a repeating task due that day keeps that spot on every day.",
+    action: placeTask,
+    summary: (o) => `Placed ${q(o.title)}`,
+  }),
+  tool({
+    name: "log_progress",
+    description:
+      "Log progress on a task with a target: amount in its unit (minutes for an hours target), optional note. Completes the task when the target is reached.",
+    action: logProgress,
+    summary: (o) => (o.completed ? "Target reached" : `Progress ${o.progress}`),
+  }),
+  tool({
+    name: "list_goals",
+    description:
+      "The owner's life goals (broad aims with a deadline, such as writing a song) with progress across their linked achievements.",
+    action: listGoals,
+    summary: (o) => plural(o.goals.length, "goal"),
+  }),
+  tool({
+    name: "get_goal",
+    description:
+      "One goal with the achievements that feed it, from any area, and their task progress.",
+    action: getGoal,
+    summary: (o) =>
+      `${q(o.goal.title)}: ${plural(o.achievements.length, "achievement")}`,
+  }),
+  tool({
+    name: "create_goal",
+    description:
+      "Create a life goal with an optional deadline (YYYY-MM-DD). Then link achievements to it with link_achievement_to_goal.",
+    action: createGoal,
+    summary: (o) => `Added goal ${q(o.title)}`,
+  }),
+  tool({
+    name: "update_goal",
+    description:
+      "Change a goal's title, notes, deadline or status (active or done). Only the fields you pass change.",
+    action: updateGoal,
+    summary: (o) => `Updated goal ${q(o.title)}`,
+  }),
+  tool({
+    name: "link_achievement_to_goal",
+    description:
+      "Link an achievement (from any area) to the goal it feeds, or unlink it with goalId null. An achievement feeds at most one goal.",
+    action: linkAchievement,
+    summary: (o) =>
+      o.goalId ? `Linked ${q(o.title)}` : `Unlinked ${q(o.title)}`,
+  }),
+  tool({
     name: "list_history",
     description:
       "Recent changes, newest first, one batch per action with who made it. Pass a batchId to undo_batch to undo one.",
@@ -219,7 +304,7 @@ export const TOOLS: ToolDef[] = [
   tool({
     name: "delete_item",
     description:
-      "Delete an area (with everything in it), achievement (with its tasks), task or category. Soft delete; undo with undo_batch.",
+      "Delete an area (with everything in it), achievement (with its tasks), task, category or goal (its achievements stay, unlinked). Soft delete; undo with undo_batch.",
     action: deleteItem,
     summary: (_o, i) => `Deleted ${i.kind}`,
     destructive: true,
