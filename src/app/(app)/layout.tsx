@@ -17,7 +17,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <Nav />
         </Suspense>
         {/* Bottom padding keeps the phone tab bar off the content. */}
-        <main className="min-w-0 flex-1 pb-24 md:pb-0">{children}</main>
+        <main className="min-w-0 flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
+          {children}
+        </main>
       </div>
       <CreateDialog />
       <Toaster position="bottom-center" />
