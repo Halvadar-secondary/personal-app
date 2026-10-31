@@ -64,6 +64,13 @@
       "when": 1793147204955,
       "tag": "0008_short_callisto",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793444599995,
+      "tag": "0009_tidy_stryfe",
+      "breakpoints": true
     }
   ]
 }

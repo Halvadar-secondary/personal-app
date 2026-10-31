@@ -15,6 +15,28 @@ const none = new Map<string, string>();
 const titles = new Map([["t1", "Scales"]]);
 
 describe("summarizeBatch", () => {
+  it("names the profile section that changed", () => {
+    expect(
+      summarizeBatch(
+        [ev("profile_section", "create", null, { section: "focus" })],
+        none,
+      ),
+    ).toBe("Updated your profile: Current focus");
+    expect(
+      summarizeBatch(
+        [
+          ev(
+            "profile_section",
+            "update",
+            { section: "style", text: "a" },
+            { section: "style", text: "b" },
+          ),
+        ],
+        none,
+      ),
+    ).toBe("Updated your profile: How to talk to me");
+  });
+
   it("names created things", () => {
     expect(
       summarizeBatch([ev("area", "create", null, { name: "Guitar" })], none),
@@ -182,6 +204,7 @@ describe("summarizeBatch", () => {
 it("labels actors", () => {
   expect(actorLabel("ui")).toBe("You");
   expect(actorLabel("seed")).toBe("Sample data");
+  expect(actorLabel("chat")).toBe("Claude in chat");
   expect(actorLabel("mcp:Claude")).toBe("Claude via MCP");
   expect(actorLabel("robot")).toBe("robot");
 });

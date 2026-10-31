@@ -1,3 +1,5 @@
+import { PROFILE_LABELS, type ProfileSection } from "@/lib/profile";
+
 // Plain-English one-liners for a batch of change events (spec §5.5's
 // History panel). Pure: everything it needs arrives as arguments.
 
@@ -102,6 +104,17 @@ export function summarizeBatch(
   const [practice] = of("practice_entry", "create");
   if (practice) return `Logged practice on “${taskOf(practice, taskTitles)}”`;
 
+  const profile = events.find(
+    (e) =>
+      e.entityType === "profile_section" &&
+      (e.op === "create" || e.op === "update"),
+  );
+  if (profile) {
+    const section = (profile.after?.section ?? "") as string;
+    const label = PROFILE_LABELS[section as ProfileSection];
+    return label ? `Updated your profile: ${label}` : "Updated your profile";
+  }
+
   for (const type of RANK) {
     const [update] = of(type, "update");
     if (update) return describeUpdate(update);
@@ -116,6 +129,7 @@ export function summarizeBatch(
 export function actorLabel(actor: string): string {
   if (actor === "ui") return "You";
   if (actor === "seed") return "Sample data";
+  if (actor === "chat") return "Claude in chat";
   if (actor.startsWith("mcp:")) return `${actor.slice(4)} via MCP`;
   return actor;
 }

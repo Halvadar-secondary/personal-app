@@ -13,14 +13,11 @@ import {
   real,
   smallint,
   text,
-  timestamp,
   unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
-
-const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
+import { base, ownerId, timestamptz } from "./columns";
 
 /**
  * Fractional-index keys compare by byte ("Zz" < "a0"). COLLATE "C" makes
@@ -28,19 +25,6 @@ const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
  */
 const sortKey = customType<{ data: string }>({
   dataType: () => 'text COLLATE "C"',
-});
-
-const ownerId = () =>
-  text("owner_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" });
-
-const base = () => ({
-  id: uuid("id").primaryKey().defaultRandom(),
-  ownerId: ownerId(),
-  createdAt: timestamptz("created_at").notNull().defaultNow(),
-  updatedAt: timestamptz("updated_at").notNull().defaultNow(),
-  deletedAt: timestamptz("deleted_at"),
 });
 
 export type Cover = { type: "gradient" | "color" | "image"; value: string };

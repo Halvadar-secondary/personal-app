@@ -6,6 +6,7 @@ import { createAchievement } from "./achievements";
 import { createArea } from "./areas";
 import { createCategory, setTaskCategories } from "./categories";
 import { exportData } from "./export";
+import { updateProfile } from "./profile";
 import { completeTask, createTask, deleteTask } from "./tasks";
 
 let db: Db;
@@ -44,6 +45,7 @@ it("exports every table's rows for the owner, deleted ones included", async () =
   expect(r.taskCategories).toHaveLength(1);
   expect(r.taskCompletions).toHaveLength(1);
   expect(r.practiceEntries).toEqual([]);
+  expect(r.profileSections).toEqual([]);
   expect(r.tasks.find((t) => t.title === "gone")?.deletedAt).not.toBeNull();
 });
 
@@ -64,4 +66,14 @@ it("never includes another owner's rows", async () => {
 it("has no change history", async () => {
   await someData();
   expect(await run(exportData, {})).not.toHaveProperty("changeEvents");
+});
+
+it("exports the profile sections", async () => {
+  await run(updateProfile, { section: "focus", text: "Barre chords" });
+  const r = await run(exportData, {});
+  expect(r.profileSections).toHaveLength(1);
+  expect(r.profileSections[0]).toMatchObject({
+    section: "focus",
+    text: "Barre chords",
+  });
 });
