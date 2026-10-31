@@ -104,6 +104,14 @@ describe("trackers", () => {
     );
   });
 
+  it("counts today's moments, in the owner's day", async () => {
+    await log("2026-03-10T00:30:00Z");
+    await log("2026-03-10T11:00:00Z");
+    await log("2026-03-09T23:00:00Z");
+    const [t] = (await run(listTrackers, {})).trackers;
+    expect(t!.today).toBe(2);
+  });
+
   it("counts this week so far, last week to the same moment, and 8 weeks", async () => {
     await log("2026-03-09T09:00:00Z", { intensity: 2 }); // this Monday
     await log("2026-03-10T10:00:00Z", { intensity: 4 }); // today

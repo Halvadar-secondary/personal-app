@@ -25,8 +25,8 @@ vi.mock("sonner", () => ({
 }));
 
 const TRACKERS = [
-  { id: "t-anger", name: "Anger", emoji: "😠", thisWeek: 3 },
-  { id: "t-kind", name: "Kindness", emoji: null, thisWeek: 0 },
+  { id: "t-anger", name: "Anger", emoji: "😠", today: 3 },
+  { id: "t-kind", name: "Kindness", emoji: null, today: 0 },
 ];
 
 type ToastOpts = {
@@ -56,7 +56,7 @@ describe("QuickLog", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows one button per tracker with this week's count", () => {
+  it("shows one button per tracker with today's count", () => {
     render(<QuickLog trackers={TRACKERS} />);
     const anger = screen.getByRole("button", { name: "Log Anger" });
     expect(anger).toHaveTextContent("😠 Anger");
@@ -75,6 +75,16 @@ describe("QuickLog", () => {
     expect(opts.action.label).toBe("Undo");
     opts.action.onClick();
     expect(server.undoAction).toHaveBeenCalledWith({ batchId: "b1" });
+  });
+
+  it("counts the tap at once, and takes it back if the log fails", async () => {
+    render(<QuickLog trackers={TRACKERS} />);
+    const anger = screen.getByRole("button", { name: "Log Anger" });
+    await userEvent.click(anger);
+    expect(anger).toHaveTextContent("4");
+    server.logMomentAction.mockResolvedValueOnce({ ok: false, message: "No." });
+    await userEvent.click(anger);
+    expect(anger).toHaveTextContent("4");
   });
 
   it("logs again on every tap", async () => {

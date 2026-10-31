@@ -22,20 +22,32 @@ export type QuickTracker = {
   id: string;
   name: string;
   emoji: string | null;
-  thisWeek: number;
+  /** Moments logged today, in the owner's day. */
+  today: number;
 };
 
 type Noting = { momentId: string; name: string };
 
 /**
  * Today's row of trackers: one tap logs a moment now, with no score. The
- * toast offers Undo and Add note; the full form stays in Capture.
+ * toast offers Undo and Add note; details live on the Trackers page.
  */
 export function QuickLog({ trackers }: { trackers: QuickTracker[] }) {
   const [noting, setNoting] = useState<Noting | null>(null);
+  // Taps counted before the server's refreshed counts arrive.
+  const [pending, setPending] = useState<Record<string, number>>({});
+  const [seen, setSeen] = useState(trackers);
+  if (seen !== trackers) {
+    setSeen(trackers);
+    setPending({});
+  }
   if (trackers.length === 0) return null;
 
+  const bump = (id: string, by: number) =>
+    setPending((p) => ({ ...p, [id]: (p[id] ?? 0) + by }));
+
   async function log(t: QuickTracker) {
+    bump(t.id, 1);
     let r: Awaited<ReturnType<typeof logMomentAction>> | null;
     try {
       r = await logMomentAction({ trackerId: t.id });
@@ -43,6 +55,7 @@ export function QuickLog({ trackers }: { trackers: QuickTracker[] }) {
       r = null;
     }
     if (!r || !r.ok) {
+      bump(t.id, -1);
       toast.error(r?.message ?? RELOAD);
       return;
     }
@@ -58,19 +71,23 @@ export function QuickLog({ trackers }: { trackers: QuickTracker[] }) {
   }
 
   return (
-    <section aria-label="Trackers" className="-mx-4 md:mx-0">
-      <div className="flex gap-2 overflow-x-auto px-4 pb-1 md:flex-wrap md:px-0">
+    <section aria-label="Trackers">
+      {/* Every tracker in view: they wrap, never scroll. */}
+      <div className="flex flex-wrap gap-2">
         {trackers.map((t) => (
           <button
             key={t.id}
             type="button"
             aria-label={`Log ${t.name}`}
             onClick={() => void log(t)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border bg-card px-3.5 py-2 text-sm font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border bg-card px-4 text-base font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:scale-95 md:min-h-9 md:px-3.5 md:text-sm"
           >
             {t.emoji ? `${t.emoji} ${t.name}` : t.name}
-            <span className="hidden text-muted-foreground tabular-nums md:inline">
-              · {t.thisWeek}
+            <span
+              title="Today"
+              className="min-w-6 rounded-full bg-muted px-1.5 text-center text-sm text-muted-foreground tabular-nums"
+            >
+              {t.today + (pending[t.id] ?? 0)}
             </span>
           </button>
         ))}

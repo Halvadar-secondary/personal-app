@@ -15,7 +15,6 @@ import { createCategory } from "./categories";
 import { runAction } from "./context";
 import { createItem, getCreateOptions } from "./create";
 import { getDay } from "./plan";
-import { createTracker, updateTracker } from "./trackers";
 import { DomainError } from "./errors";
 import { undoBatch } from "./undo";
 
@@ -206,13 +205,4 @@ it("refuses a target on a repeating task", async () => {
 
 it("gives the dialog the owner's week start", async () => {
   expect((await run(getCreateOptions, {})).weekStart).toBe(1);
-});
-
-it("gives the dialog the active trackers", async () => {
-  const t = await run(createTracker, { name: "Anger", emoji: "😠" });
-  const gone = await run(createTracker, { name: "Old" });
-  await run(updateTracker, { trackerId: gone.id, archived: true });
-  expect((await run(getCreateOptions, {})).trackers).toEqual([
-    { id: t.id, name: "Anger", emoji: "😠" },
-  ]);
 });

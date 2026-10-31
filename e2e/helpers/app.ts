@@ -104,6 +104,37 @@ export async function openCapture(
     await page.keyboard.press("c");
   }
   await expect(page.getByRole("dialog")).toBeVisible();
+  await chooseKind(page, "Task");
+}
+
+/** On the phone, Capture first asks what to make; elsewhere a no-op. */
+export async function chooseKind(
+  page: Page,
+  kind: "Task" | "Achievement",
+): Promise<void> {
+  await expect(page.getByRole("dialog")).toBeVisible();
+  const chooser = page.getByRole("dialog", { name: "Capture" });
+  if (await chooser.isVisible()) {
+    await chooser.getByRole("button", { name: new RegExp(`^${kind}`) }).click();
+  }
+}
+
+/** In the open dialog: make it an achievement (the phone goes Back to the choice). */
+export async function switchToAchievement(page: Page): Promise<void> {
+  if (await page.getByRole("dialog", { name: "Capture" }).isVisible()) {
+    await chooseKind(page, "Achievement");
+    return;
+  }
+  const back = page.getByRole("button", { name: "Back" });
+  if (await back.isVisible()) {
+    await back.click();
+    await chooseKind(page, "Achievement");
+    return;
+  }
+  await page
+    .getByRole("group", { name: "Kind" })
+    .getByRole("button", { name: "Achievement" })
+    .click();
 }
 
 /** In the open dialog: switch to Achievement, type the title, Ctrl+Enter. */
@@ -111,10 +142,7 @@ export async function createAchievementInDialog(
   page: Page,
   title: string,
 ): Promise<void> {
-  await page
-    .getByRole("group", { name: "Kind" })
-    .getByRole("button", { name: "Achievement" })
-    .click();
+  await switchToAchievement(page);
   await page.getByRole("textbox", { name: "Title" }).fill(title);
   await page.keyboard.press("Control+Enter");
   await expect(page.getByRole("dialog")).toBeHidden();

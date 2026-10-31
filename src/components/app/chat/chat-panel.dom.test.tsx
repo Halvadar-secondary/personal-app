@@ -108,6 +108,12 @@ it("the button opens a new, empty conversation every time", async () => {
   expect(sent(1)).toEqual({ tier: "quick", text: "Hi again" });
 });
 
+it("opening it puts the cursor in the message box", async () => {
+  setup();
+  await openPanel();
+  await waitFor(() => expect(box()).toHaveFocus());
+});
+
 it("the picker offers each tier with its model, defaults to Quick, and sends the choice", async () => {
   setup();
   await openPanel();

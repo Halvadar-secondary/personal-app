@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CaptureDestination,
   CaptureProvider,
@@ -13,7 +13,6 @@ const server = vi.hoisted(() => ({
   createOptionsAction: vi.fn(),
   undoAction: vi.fn(),
   createCategoryAction: vi.fn(),
-  logMomentAction: vi.fn(),
   toast: vi.fn(),
 }));
 vi.mock("@/server/actions/create", () => ({
@@ -22,9 +21,6 @@ vi.mock("@/server/actions/create", () => ({
 }));
 vi.mock("@/server/actions/history", () => ({
   undoAction: (i: unknown) => server.undoAction(i),
-}));
-vi.mock("@/server/actions/trackers", () => ({
-  logMomentAction: (i: unknown) => server.logMomentAction(i),
 }));
 vi.mock("@/server/actions/categories", () => ({
   createCategoryAction: (i: unknown) => server.createCategoryAction(i),
@@ -53,10 +49,6 @@ const OPTIONS = {
   ],
   today: "2026-10-24",
   weekStart: 1,
-  trackers: [
-    { id: "t-anger", name: "Anger", emoji: "😠" },
-    { id: "t-kind", name: "Kindness", emoji: null },
-  ],
 };
 
 beforeEach(() => {
@@ -481,23 +473,29 @@ function PlanOpener() {
         })
       }
     >
-      Add to Work
+      Add task
     </button>
   );
 }
 
-it("a planner preset files a loose task on that day and section", async () => {
+it("a planner preset opens a task with no kind switch; Work or Spare time is one tap", async () => {
   render(
     <CaptureProvider>
       <PlanOpener />
       <CreateDialog />
     </CaptureProvider>,
   );
-  await userEvent.click(screen.getByRole("button", { name: "Add to Work" }));
+  await userEvent.click(screen.getByRole("button", { name: "Add task" }));
   await waitFor(() => expect(destination()).toBeEnabled());
   expect(destination()).toHaveAccessibleName("Destination: No achievement");
   expect(screen.getByRole("button", { name: "When: Tomorrow" })).toBeVisible();
-  expect(screen.getByRole("button", { name: "Section: Work" })).toBeVisible();
+  expect(screen.getByRole("dialog", { name: "New task" })).toBeVisible();
+  expect(screen.queryByRole("group", { name: "Kind" })).toBeNull();
+  const section = screen.getByRole("radiogroup", { name: "Section" });
+  expect(within(section).getByRole("radio", { name: "Work" })).toBeChecked();
+  await userEvent.click(
+    within(section).getByRole("radio", { name: "Spare time" }),
+  );
   await userEvent.type(title(), "Client email");
   await submit();
   expect(server.createItemAction).toHaveBeenCalledWith(
@@ -505,7 +503,7 @@ it("a planner preset files a loose task on that day and section", async () => {
       kind: "task",
       achievementId: null,
       title: "Client email",
-      plan: { type: "day", date: "2026-10-25", section: "work" },
+      plan: { type: "day", date: "2026-10-25", section: "spare" },
     }),
   );
 });
@@ -539,110 +537,72 @@ it("a target chip sends the target; Repeat waits while When or Target is set", a
   expect(server.createItemAction.mock.calls[0]![0]).not.toHaveProperty("plan");
 });
 
-describe("a moment", () => {
-  const toMoment = async () => {
-    await open();
-    await userEvent.click(
-      within(screen.getByRole("group", { name: "Kind" })).getByRole("button", {
-        name: "Moment",
-      }),
-    );
-  };
-
-  beforeEach(() => {
-    server.logMomentAction.mockResolvedValue({
-      ok: true,
-      data: { id: "m1" },
-      batchId: "b9",
-    });
-  });
-
-  it("swaps the title for trackers, intensity and a note, and logs it", async () => {
-    setup();
-    await toMoment();
-    expect(screen.getByRole("dialog", { name: "Log a moment" })).toBeVisible();
-    expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Destination/ })).toBeNull();
-    const anger = screen.getByRole("radio", { name: "😠 Anger" });
-    expect(anger).toBeChecked();
-    await userEvent.click(screen.getByRole("button", { name: "Intensity 3" }));
-    await userEvent.type(notes(), "traffic");
-    expect(notes()).toHaveAttribute("placeholder", "What was happening?");
-    await userEvent.click(screen.getByRole("button", { name: "Log moment" }));
-    expect(server.logMomentAction).toHaveBeenCalledWith({
-      trackerId: "t-anger",
-      intensity: 3,
-      note: "traffic",
-    });
-    expect(server.toast).toHaveBeenCalledWith(
-      "Logged Anger",
-      expect.objectContaining({
-        action: expect.objectContaining({ label: "Undo" }),
-      }),
-    );
-  });
-
-  it("taps the chosen intensity again to clear it; Ctrl+Enter logs", async () => {
-    setup();
-    await toMoment();
-    await userEvent.click(screen.getByRole("radio", { name: "Kindness" }));
-    const three = screen.getByRole("button", { name: "Intensity 3" });
-    await userEvent.click(three);
-    expect(three).toHaveAttribute("aria-pressed", "true");
-    await userEvent.click(three);
-    expect(three).toHaveAttribute("aria-pressed", "false");
-    await submit();
-    expect(server.logMomentAction).toHaveBeenCalledWith({
-      trackerId: "t-kind",
-    });
-  });
-
-  it("logs an earlier time from the When chip", async () => {
-    setup();
-    await toMoment();
-    await userEvent.click(screen.getByRole("button", { name: "When: Now" }));
-    const when = screen.getByLabelText("When it happened");
-    await userEvent.type(when, "2026-10-24T08:15");
-    await userEvent.click(screen.getByRole("button", { name: "Log moment" }));
-    const sent = server.logMomentAction.mock.calls[0]![0] as { at: string };
-    expect(new Date(sent.at).getTime()).toBe(
-      new Date("2026-10-24T08:15").getTime(),
-    );
-  });
-
-  it("says so when there are no trackers", async () => {
-    server.createOptionsAction.mockResolvedValue({ ...OPTIONS, trackers: [] });
-    setup();
-    await toMoment();
-    expect(screen.getByText("No trackers yet.")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Add one" })).toHaveAttribute(
-      "href",
-      "/trackers",
-    );
-    expect(screen.getByRole("button", { name: "Log moment" })).toBeDisabled();
-  });
-
-  it("is remembered as the last kind, with its tracker", async () => {
-    setup();
-    await toMoment();
-    await userEvent.click(screen.getByRole("radio", { name: "Kindness" }));
-    expect(JSON.parse(localStorage.getItem("create-dialog")!)).toMatchObject({
-      kind: "moment",
-      tracker: "t-kind",
-    });
-  });
+it("Capture makes tasks and achievements only; moments live on Today and Trackers", async () => {
+  setup();
+  await open();
+  const kind = screen.getByRole("group", { name: "Kind" });
+  expect(
+    within(kind)
+      .getAllByRole("button")
+      .map((b) => b.textContent),
+  ).toEqual(["Task", "Achievement"]);
 });
 
-it("a moment says to reload when the dialog's options didn't load", async () => {
-  server.createOptionsAction.mockRejectedValue(new Error("stale"));
+it("an old remembered moment kind opens a task", async () => {
+  localStorage.setItem(
+    "create-dialog",
+    JSON.stringify({ kind: "moment", more: false, tracker: "t-anger" }),
+  );
   setup();
-  await userEvent.keyboard("c");
-  await userEvent.click(
-    within(screen.getByRole("group", { name: "Kind" })).getByRole("button", {
-      name: "Moment",
-    }),
-  );
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Couldn't save. Reload the page and try again.",
-  );
+  await open();
+  expect(screen.getByRole("dialog", { name: "New task" })).toBeVisible();
+});
+
+describe("on a phone", () => {
+  let match: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    match = vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: query === "(max-width: 767px)",
+          media: query,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    );
+  });
+  afterEach(() => match.mockRestore());
+
+  it("Capture first asks what to make, then shows that form with a way back", async () => {
+    setup();
+    await userEvent.keyboard("c");
+    const chooser = screen.getByRole("dialog", { name: "Capture" });
+    expect(within(chooser).queryByRole("group", { name: "Kind" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /^Achievement/ }));
+    expect(
+      screen.getByRole("dialog", { name: "New achievement" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("group", { name: "Kind" })).toBeNull();
+    await waitFor(() => expect(title()).toHaveFocus());
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    await userEvent.click(screen.getByRole("button", { name: /^Task/ }));
+    expect(screen.getByRole("dialog", { name: "New task" })).toBeVisible();
+  });
+
+  it("a button that asks for a task goes straight to the task form", async () => {
+    render(
+      <CaptureProvider>
+        <PlanOpener />
+        <CreateDialog />
+      </CaptureProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add task" }));
+    expect(screen.getByRole("dialog", { name: "New task" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+  });
 });

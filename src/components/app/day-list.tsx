@@ -111,6 +111,7 @@ export function DayList({
   sections: Sections;
 }) {
   const { state, run } = useMutate(reducer, sections);
+  const { openCreate } = useCapture();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
@@ -191,6 +192,19 @@ export function DayList({
             onReplan={replan}
           />
         ))}
+        {/* One way in; the task dialog picks Work or Spare time. */}
+        <Button
+          variant="outline"
+          className="self-center rounded-full px-6"
+          onClick={() =>
+            openCreate({
+              kind: "task",
+              plan: { type: "day", date: day, section: "work" },
+            })
+          }
+        >
+          <Plus /> Add task
+        </Button>
       </div>
     </DndContext>
   );
@@ -215,7 +229,6 @@ function DaySection({
   ) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: ZONE + section });
-  const { openCreate } = useCapture();
   const label = SECTION_LABELS[section];
   const done = items.filter((i) => i.done).length;
   return (
@@ -252,18 +265,6 @@ function DaySection({
           ))}
         </ul>
       </SortableContext>
-      <Button
-        variant="ghost"
-        className="justify-start text-muted-foreground"
-        onClick={() =>
-          openCreate({
-            kind: "task",
-            plan: { type: "day", date: day, section },
-          })
-        }
-      >
-        <Plus /> Add to {label}
-      </Button>
     </section>
   );
 }

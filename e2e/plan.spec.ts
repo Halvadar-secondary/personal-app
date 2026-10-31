@@ -10,17 +10,18 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-/** Adds a task to a day's section from its "Add to …" button. */
+/** Adds a task to a day's section: Add task, then Work or Spare time. */
 async function addTo(
   page: Page,
   section: "Work" | "Spare time",
   title: string,
 ) {
-  await page
-    .getByRole("region", { name: section })
-    .getByRole("button", { name: `Add to ${section}` })
-    .click();
+  await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "New task" });
+  await dialog
+    .getByRole("radiogroup", { name: "Section" })
+    .getByRole("radio", { name: section })
+    .click();
   await expect(
     dialog.getByRole("button", { name: "Destination: No achievement" }),
   ).toBeVisible();
