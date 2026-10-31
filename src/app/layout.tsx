@@ -26,6 +26,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   // Android: the keyboard shrinks the layout, so a sheet's button stays above it.
   interactiveWidget: "resizes-content",
+  // iPhone: draw to the edges and report the safe areas (home indicator,
+  // rounded corners), which the tab bar pads by.
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f7f6fb" },
     { media: "(prefers-color-scheme: dark)", color: "#16131f" },

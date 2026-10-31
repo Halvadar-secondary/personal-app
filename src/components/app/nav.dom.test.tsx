@@ -48,3 +48,21 @@ it("the sidebar leads with Today, Week, Goals and Review", () => {
     "Inbox",
   ]);
 });
+
+it("the tab bar keeps clear of the phone's rounded corners and home bar", () => {
+  render(
+    <CaptureProvider>
+      <TabBarView path="/today" />
+    </CaptureProvider>,
+  );
+  const bar = screen.getByRole("navigation", { name: "Tabs" });
+  expect(bar.className).toContain(
+    "pb-[max(0.25rem,env(safe-area-inset-bottom))]",
+  );
+  expect(bar.className).toContain(
+    "pl-[max(0.75rem,env(safe-area-inset-left))]",
+  );
+  expect(bar.className).toContain(
+    "pr-[max(0.75rem,env(safe-area-inset-right))]",
+  );
+});

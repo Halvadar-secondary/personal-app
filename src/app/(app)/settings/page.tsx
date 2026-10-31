@@ -6,6 +6,7 @@ import { ConnectedApps } from "@/components/app/connected-apps";
 import { Passkeys } from "@/components/app/passkeys";
 import { ReminderSettings } from "@/components/app/reminder-settings";
 import { SettingsForm } from "@/components/app/settings-form";
+import { SignOutButton } from "@/components/app/sign-out";
 import { read } from "@/server/actions/run";
 import { mcpResource } from "@/server/auth/auth";
 import { requireOwner } from "@/server/auth/require-owner";
@@ -40,6 +41,10 @@ export default function SettingsPage() {
         <Suspense fallback={<SectionSkeleton testId="skeleton-connected" />}>
           <Connected />
         </Suspense>
+      </section>
+      <section className="flex flex-col gap-2 border-t pt-5">
+        <h2 className="text-sm font-semibold">Account</h2>
+        <SignOutButton />
       </section>
       <section className="flex flex-col gap-2 border-t pt-5">
         <h2 className="text-sm font-semibold">Your data</h2>

@@ -44,7 +44,7 @@ export function TabBarView({ path }: { path: string | null }) {
   return (
     <nav
       aria-label="Tabs"
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-card pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.25rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] md:hidden"
     >
       <Tab href="/today" path={path}>
         <Sun className="size-5" /> Today
