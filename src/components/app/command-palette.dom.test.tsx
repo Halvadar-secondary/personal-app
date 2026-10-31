@@ -11,6 +11,10 @@ vi.mock("next/navigation", () => ({
 }));
 const actions = vi.hoisted(() => ({ jumpTargetsAction: vi.fn() }));
 vi.mock("@/server/actions/palette", () => actions);
+const chat = vi.hoisted(() => ({ openChat: vi.fn() }));
+vi.mock("./chat/chat-panel", () => ({
+  useChatPanel: () => ({ openChat: chat.openChat }),
+}));
 
 beforeEach(() => {
   nav.push.mockReset();
@@ -80,4 +84,16 @@ it("jumps to Plan tomorrow", async () => {
   await userEvent.type(screen.getByPlaceholderText("Jump to…"), "plan tom");
   await userEvent.keyboard("{Enter}");
   expect(nav.push).toHaveBeenCalledWith("/plan");
+});
+
+it("Ask Claude opens the chat panel", async () => {
+  setup();
+  await userEvent.keyboard("{Control>}k{/Control}");
+  await userEvent.click(screen.getByRole("option", { name: "Ask Claude" }));
+  expect(chat.openChat).toHaveBeenCalledWith();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("dialog", { name: "Command palette" }),
+    ).toBeNull(),
+  );
 });
