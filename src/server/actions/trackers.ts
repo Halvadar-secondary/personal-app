@@ -8,6 +8,7 @@ import {
   listMoments,
   logMoment,
   moveTracker,
+  noteMoment,
   updateTracker,
 } from "@/server/domain/trackers";
 import { act, read } from "./run";
@@ -32,6 +33,10 @@ export async function deleteTrackerAction(input: In<typeof deleteTracker>) {
 
 export async function logMomentAction(input: In<typeof logMoment>) {
   return act(logMoment, input, (m) => ({ id: m.id }));
+}
+
+export async function noteMomentAction(input: In<typeof noteMoment>) {
+  return act(noteMoment, input);
 }
 
 export async function deleteMomentAction(input: In<typeof deleteMoment>) {
