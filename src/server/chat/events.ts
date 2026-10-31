@@ -15,3 +15,10 @@ export type ChatEvent =
   | { type: "confirm"; toolUseId: string; name: string; prompt: string }
   | { type: "done"; model: string; changed: boolean }
   | { type: "error"; message: string; retryable: boolean };
+
+/** What the panel shows for stored messages (context, system rows and thinking are hidden). */
+export type ChatItem =
+  | { kind: "user"; text: string }
+  | { kind: "assistant"; text: string; model: string | null }
+  | { kind: "tool"; summary: string; batchId: string | null; error: boolean }
+  | { kind: "confirm"; toolUseId: string; prompt: string };

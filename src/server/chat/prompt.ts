@@ -37,6 +37,8 @@ const WEEKDAYS = [
   "Saturday",
 ];
 
+export const CONTEXT_MARKER = "Context from the app (not typed by the owner):";
+
 /** The changing context: today's date, settings and the owner's profile. */
 export function contextBlock(
   profile: { sections: { label: string; text: string }[] },
@@ -45,7 +47,7 @@ export function contextBlock(
 ): string {
   const date = localDate(now, settings.timeZone);
   const lines = [
-    "Context from the app (not typed by the owner):",
+    CONTEXT_MARKER,
     `Today is ${WEEKDAYS[weekdayOf(date)]}, ${date}.`,
     `Time zone: ${settings.timeZone}.`,
     `The week starts on ${WEEKDAYS[settings.weekStart]}.`,

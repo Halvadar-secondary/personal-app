@@ -62,7 +62,7 @@ const MAX_TOKENS = 8000;
 const TITLE_CHARS = 60;
 const DECLINED = "The owner declined.";
 const INTERRUPTED = "This call was interrupted before it ran.";
-const STOP_TOOLS = "Stop using tools now and summarise what you did.";
+export const STOP_TOOLS = "Stop using tools now and summarise what you did.";
 const API_FAILED = "Claude couldn't answer. Try again.";
 const REFUSED = "Claude declined to answer this one.";
 
