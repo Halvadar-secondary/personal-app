@@ -9,6 +9,7 @@ import {
   trackerMoments,
   trackers,
   practiceEntries,
+  profileSections,
   taskCompletions,
   tasks,
 } from "@/server/db/schema";
@@ -122,6 +123,7 @@ const registry: Record<EntityType, Entity> = {
     afterApply: (ctx, id) => rekeyIfTaken(ctx, trackers, id),
   }),
   tracker_moment: tableEntity(trackerMoments, true),
+  profile_section: tableEntity(profileSections, true),
   task_completion: tableEntity(taskCompletions, false),
   task_categories: {
     read: readTaskCategories,
@@ -136,6 +138,7 @@ const FALLBACK_LABELS: Partial<Record<EntityType, string>> = {
   task_completion: "a completion",
   task_categories: "categories",
   practice_entry: "a practice entry",
+  profile_section: "your profile",
 };
 
 /** What to call an entity in a message: its title or name, from the first snapshot that has one. */

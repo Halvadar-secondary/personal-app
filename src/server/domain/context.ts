@@ -4,8 +4,8 @@ import { settings } from "@/server/db/schema";
 import type { Db } from "@/server/db/types";
 import { DomainError } from "./errors";
 
-/** Who made a change: the owner in the UI, the seed script, or an AI app. */
-export type Actor = "ui" | "seed" | `mcp:${string}`;
+/** Who made a change: the owner in the UI, the seed script, Claude in the in-app chat, or an AI app. */
+export type Actor = "ui" | "seed" | "chat" | `mcp:${string}`;
 
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 

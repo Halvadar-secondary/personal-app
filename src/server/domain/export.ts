@@ -4,8 +4,11 @@ import {
   achievements,
   areas,
   categories,
+  chatMessages,
+  conversations,
   goals,
   practiceEntries,
+  profileSections,
   taskCategories,
   taskCompletions,
   tasks,
@@ -60,6 +63,18 @@ export const exportData = defineAction(z.object({}), async (ctx) => {
       .select()
       .from(trackerMoments)
       .where(eq(trackerMoments.ownerId, ctx.ownerId)),
+    profileSections: await ctx.db
+      .select()
+      .from(profileSections)
+      .where(eq(profileSections.ownerId, ctx.ownerId)),
+    conversations: await ctx.db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.ownerId, ctx.ownerId)),
+    chatMessages: await ctx.db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.ownerId, ctx.ownerId)),
     practiceEntries: await ctx.db
       .select()
       .from(practiceEntries)

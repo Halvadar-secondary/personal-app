@@ -19,6 +19,7 @@ import {
 import { jumpTargetsAction } from "@/server/actions/palette";
 import type { JumpTarget } from "@/server/domain/views";
 import { useCapture } from "./capture-context";
+import { useChatPanel } from "./chat/chat-panel";
 import type { NavData } from "./nav-data";
 
 const PAGES: [string, string][] = [
@@ -36,10 +37,11 @@ const PAGES: [string, string][] = [
   ["/settings", "Settings"],
 ];
 
-/** Ctrl+K / ⌘K: jump to any page, area or achievement, or capture. */
+/** Ctrl+K / ⌘K: jump to any page, area or achievement, capture, or ask Claude. */
 export function CommandPalette({ areas }: { areas: NavData["areas"] }) {
   const router = useRouter();
   const { setOpen: setCaptureOpen } = useCapture();
+  const { openChat } = useChatPanel();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   // Fetched on every open (achievements come and go); the last list shows
@@ -143,6 +145,14 @@ export function CommandPalette({ areas }: { areas: NavData["areas"] }) {
                 }}
               >
                 Capture…
+              </CommandItem>
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false);
+                  openChat();
+                }}
+              >
+                Ask Claude
               </CommandItem>
               {q && (
                 // Always shown for any text: it's the way out of no match.

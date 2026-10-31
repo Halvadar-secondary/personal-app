@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { CaptureProvider } from "@/components/app/capture-context";
+import { ChatButton } from "@/components/app/chat/chat-button";
+import { ChatProvider } from "@/components/app/chat/chat-panel";
 import { CommandPalette } from "@/components/app/command-palette";
 import { CreateDialog } from "@/components/app/create-dialog";
 import { Sidebar, SidebarSkeleton } from "@/components/app/sidebar";
@@ -12,18 +14,21 @@ import { getOverview } from "@/server/domain/views";
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <CaptureProvider>
-      <div className="flex min-h-dvh">
-        <Suspense fallback={<NavSkeleton />}>
-          <Nav />
-        </Suspense>
-        {/* Bottom padding keeps the phone tab bar off the content. */}
-        <main className="min-w-0 flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
-          {children}
-        </main>
-      </div>
-      <CreateDialog />
-      <Toaster position="bottom-center" />
-      <VersionBanner current={process.env.APP_BUILD_ID ?? "dev"} />
+      <ChatProvider>
+        <div className="flex min-h-dvh">
+          <Suspense fallback={<NavSkeleton />}>
+            <Nav />
+          </Suspense>
+          {/* Bottom padding keeps the phone tab bar and the Claude button off the content. */}
+          <main className="min-w-0 flex-1 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-20">
+            {children}
+          </main>
+        </div>
+        <CreateDialog />
+        <ChatButton />
+        <Toaster position="bottom-center" />
+        <VersionBanner current={process.env.APP_BUILD_ID ?? "dev"} />
+      </ChatProvider>
     </CaptureProvider>
   );
 }

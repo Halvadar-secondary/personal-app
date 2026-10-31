@@ -7,6 +7,7 @@ import {
   trackerMoments,
   trackers,
   practiceEntries,
+  profileSections,
   tasks,
 } from "@/server/db/schema";
 import type { Ctx } from "./context";
@@ -22,7 +23,8 @@ export type SoftTable =
   | typeof practiceEntries
   | typeof goals
   | typeof trackers
-  | typeof trackerMoments;
+  | typeof trackerMoments
+  | typeof profileSections;
 
 type Row<T extends SoftTable> = T["$inferSelect"];
 

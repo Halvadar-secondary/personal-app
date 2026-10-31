@@ -25,6 +25,7 @@ import { captureItem } from "@/server/domain/inbox";
 import { deleteItem, fileItem } from "@/server/domain/mcp-actions";
 import { getDay, getWeek, placeTask, planTask } from "@/server/domain/plan";
 import { addPracticeEntry } from "@/server/domain/practice";
+import { getProfile, updateProfile } from "@/server/domain/profile";
 import { search } from "@/server/domain/search";
 import {
   completeTask,
@@ -319,6 +320,20 @@ export const TOOLS: ToolDef[] = [
       "A tracker's moments, newest first (limit up to 100, before for the next page).",
     action: listMoments,
     summary: (o) => plural(o.length, "moment"),
+  }),
+  tool({
+    name: "get_profile",
+    description:
+      "The owner's profile: what they've told you about themselves (About me, Current focus, How I plan, How to talk to me). Read it at the start of a conversation if you don't already have it.",
+    action: getProfile,
+    summary: () => "Read profile",
+  }),
+  tool({
+    name: "update_profile",
+    description:
+      "Rewrite one section of the owner's profile (about, focus, planning, style; up to 1,000 characters). Use it only for lasting facts the owner states or confirms, not one-off requests. Merge the new fact into the section's current text instead of appending, and drop anything it makes untrue.",
+    action: updateProfile,
+    summary: (o) => `Updated profile: ${o.label}`,
   }),
   tool({
     name: "list_history",

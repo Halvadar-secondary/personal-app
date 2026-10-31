@@ -11,7 +11,8 @@ export type EntityType =
   | "practice_entry"
   | "goal"
   | "tracker"
-  | "tracker_moment";
+  | "tracker_moment"
+  | "profile_section";
 
 export type Change = {
   entityType: EntityType;

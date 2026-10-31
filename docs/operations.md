@@ -129,3 +129,24 @@ copy back.
 - To cut every device off immediately, rotate `BETTER_AUTH_SECRET` in
   Vercel and redeploy: every cookie signed with the old secret stops
   working, so everyone has to sign in again.
+
+## In-app chat (Claude API)
+
+The chat panel calls the Claude API with the owner's own key.
+
+### One-time setup (owner)
+
+1. In the Claude Console, create an API key for this app.
+2. **Set a monthly spend limit for the key in the Claude Console** before
+   using it, so a runaway loop can't run up a bill.
+3. Add the key to Vercel for both environments:
+   `vercel env add ANTHROPIC_API_KEY production` and
+   `vercel env add ANTHROPIC_API_KEY preview` (paste at the prompt).
+   `deploy.yml` doesn't need it: the app reads it at runtime from the Vercel
+   project, and the workflow passes no other runtime secrets. Add a GitHub
+   secret only if a workflow ever has to call the API itself.
+4. Redeploy (re-run the latest `deploy` workflow).
+
+Without the key the chat reports that it isn't set up; the rest of the app
+works. Settings, "Claude in chat" shows the model each tier (Quick, Smart,
+Deepest) uses: the newest of its kind, or a model id you pin.
