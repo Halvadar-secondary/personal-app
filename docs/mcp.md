@@ -28,6 +28,11 @@ where they were at the time of writing; apps move them around.
 Limits: 120 requests a minute per app; access tokens last 15 minutes and are
 refreshed by the app. Revoking in Settings cuts an app off on its next call.
 
+Claude app users can tell Claude to use their profile, the notes under Settings
+→ Profile: add "Use my life-goals profile: read it at the start and keep it up
+to date" to your Claude instructions. Claude then calls `get_profile` and
+`update_profile` on its own.
+
 Locally, use `http://localhost:3000/api/mcp` and sign in with the test
 password form or a passkey (Google isn't configured locally).
 

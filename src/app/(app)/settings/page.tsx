@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { SectionSkeleton } from "@/components/app/page-skeletons";
 import { ConnectedApps } from "@/components/app/connected-apps";
 import { Passkeys } from "@/components/app/passkeys";
+import { ProfileForm } from "@/components/app/profile-form";
 import { ReminderSettings } from "@/components/app/reminder-settings";
 import { SettingsForm } from "@/components/app/settings-form";
 import { SignOutButton } from "@/components/app/sign-out";
@@ -11,6 +12,7 @@ import { read } from "@/server/actions/run";
 import { mcpResource } from "@/server/auth/auth";
 import { requireOwner } from "@/server/auth/require-owner";
 import { getDb } from "@/server/db/client";
+import { getProfile } from "@/server/domain/profile";
 import { getReminder } from "@/server/domain/reminders";
 import { getSettings } from "@/server/domain/settings";
 import { listConnectedApps } from "@/server/mcp/connected";
@@ -24,6 +26,12 @@ export default function SettingsPage() {
       >
         <Settings />
       </Suspense>
+      <section className="flex flex-col gap-2 border-t pt-5">
+        <h2 className="text-sm font-semibold">Profile</h2>
+        <Suspense fallback={<SectionSkeleton testId="skeleton-profile" />}>
+          <Profile />
+        </Suspense>
+      </section>
       <section className="flex flex-col gap-2 border-t pt-5">
         <h2 className="text-sm font-semibold">Evening reminder</h2>
         <Suspense fallback={<SectionSkeleton testId="skeleton-reminder" />}>
@@ -90,4 +98,9 @@ async function Connected() {
   const { timeZone } = await read(getSettings, {});
   const apps = await listConnectedApps(getDb(), id, new Date(), timeZone);
   return <ConnectedApps apps={apps} mcpUrl={mcpResource(process.env)} />;
+}
+
+async function Profile() {
+  const { sections } = await read(getProfile, {});
+  return <ProfileForm initial={sections} />;
 }

@@ -45,6 +45,9 @@ const SPEC_TOOLS = [
   "create_tracker",
   "log_moment",
   "get_tracker",
+  // Profile.
+  "get_profile",
+  "update_profile",
 ];
 
 let client: Client;
