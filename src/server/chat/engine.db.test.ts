@@ -6,8 +6,10 @@ import { achievements } from "@/server/db/schema";
 import type { Db } from "@/server/db/types";
 import { createAchievement } from "@/server/domain/achievements";
 import { createArea } from "@/server/domain/areas";
-import { getConversation } from "@/server/domain/conversations";
+import { CONTEXT_MARKER } from "@/lib/chat-context";
+import { appendMessages, getConversation } from "@/server/domain/conversations";
 import { updateProfile } from "@/server/domain/profile";
+import { messageFor } from "@/server/messages";
 import { createTestDb } from "@/test/db";
 import { createOwner, FIXED_NOW, type Run, runner } from "@/test/factories";
 import { type ChatClient, runTurn, type TurnInput } from "./engine";
@@ -469,6 +471,8 @@ it("sends the right settings for each tier", async () => {
       edits: [{ type: "compact_20260112" }],
     });
     expect(r.system[0].cache_control).toEqual({ type: "ephemeral" });
+    // Automatic caching: the breakpoint moves with the history.
+    expect(r.cache_control).toEqual({ type: "ephemeral" });
     expect(last(r.tools as Block[]).cache_control).toEqual({
       type: "ephemeral",
     });
@@ -546,12 +550,17 @@ it("stores a refusal that has text", async () => {
   ]);
 });
 
-it("adds the new profile as a system message once it changes", async () => {
-  const t0 = FIXED_NOW;
-  const later = (h: number) => new Date(t0.getTime() + h * 3600e3);
+const later = (h: number) => new Date(FIXED_NOW.getTime() + h * 3600e3);
+const isContext = (b: Block) =>
+  b.type === "text" && String(b.text).startsWith(CONTEXT_MARKER);
+/** No stored system row may sit right before a user message: the API refuses it. */
+const noSystemBeforeUser = (msgs: Body[]) =>
+  msgs.every((m, i) => !(m.role === "system" && msgs[i + 1]?.role === "user"));
+
+it("puts the new profile in the owner's next message once it changes", async () => {
   const f = fake([say("a"), say("b"), say("c")]);
   const id = conversationOf(
-    await turn(f.client, { text: "Hello" }, { now: t0 }),
+    await turn(f.client, { text: "Hello" }, { now: FIXED_NOW }),
   );
 
   await turn(
@@ -559,7 +568,10 @@ it("adds the new profile as a system message once it changes", async () => {
     { conversationId: id, text: "Again" },
     { now: later(1) },
   );
-  expect(last(f.requests[1]!.messages as Body[]).role).toBe("user");
+  // Same day, same profile: no context again.
+  expect(last(f.requests[1]!.messages as Body[]).content).toEqual([
+    { type: "text", text: "Again" },
+  ]);
 
   await runner(db, owner, { now: later(2) })(updateProfile, {
     section: "focus",
@@ -571,8 +583,174 @@ it("adds the new profile as a system message once it changes", async () => {
     { now: later(3) },
   );
   const msgs = f.requests[2]!.messages as Body[];
-  const sys = last(msgs);
-  expect(sys.role).toBe("system");
-  expect(sys.content).toContain("Marathon training");
-  expect(msgs.at(-2)!.content).toEqual([{ type: "text", text: "And now?" }]);
+  expect(msgs.some((m) => m.role === "system")).toBe(false);
+  const sent = last(msgs);
+  expect(sent.role).toBe("user");
+  expect(isContext(sent.content[0])).toBe(true);
+  expect(sent.content[0].text).toContain("Marathon training");
+  expect(sent.content[1]).toEqual({ type: "text", text: "And now?" });
+  expect((await stored(id)).some((r) => r.role === "system")).toBe(false);
+});
+
+it("still works after a failed turn that refreshed the context", async () => {
+  const f = fake([say("a"), new Error("socket hang up"), say("c")]);
+  const id = conversationOf(await turn(f.client, { text: "Hello" }));
+  await runner(db, owner, { now: later(1) })(updateProfile, {
+    section: "focus",
+    text: "Marathon training",
+  });
+  const failed = await turn(
+    f.client,
+    { conversationId: id, text: "And now?" },
+    { now: later(2) },
+  );
+  expect(last(failed)).toMatchObject({ type: "error", retryable: true });
+
+  await turn(
+    f.client,
+    { conversationId: id, text: "Hello again?" },
+    { now: later(3) },
+  );
+  const msgs = f.requests[2]!.messages as Body[];
+  expect(noSystemBeforeUser(msgs)).toBe(true);
+  expect(msgs.map((m) => m.role)).toEqual([
+    "user",
+    "assistant",
+    "user",
+    "user",
+  ]);
+  const refreshed = msgs[2]!.content as Block[];
+  expect(isContext(refreshed[0]!)).toBe(true);
+  expect(refreshed[0]!.text).toContain("Marathon training");
+  // The profile hasn't changed again since: no second copy.
+  expect((msgs[3]!.content as Block[]).some(isContext)).toBe(false);
+});
+
+it("drops a stored system row the owner's next message follows", async () => {
+  const f = fake([say("a"), say("b")]);
+  const id = conversationOf(await turn(f.client, { text: "Hello" }));
+  // Stored by an older version: a profile refresh whose turn then failed.
+  await run(appendMessages, {
+    conversationId: id,
+    messages: [
+      { role: "user", content: [{ type: "text", text: "And now?" }] },
+      { role: "system", content: "The owner's profile changed." },
+    ],
+  });
+  await turn(f.client, { conversationId: id, text: "Hello?" });
+  const msgs = f.requests[1]!.messages as Body[];
+  expect(noSystemBeforeUser(msgs)).toBe(true);
+  expect(msgs.map((m) => m.role)).toEqual([
+    "user",
+    "assistant",
+    "user",
+    "user",
+  ]);
+  // The dropped row's refresh comes again with the new message.
+  expect(isContext(last(msgs).content[0])).toBe(true);
+  expect((await stored(id)).map((r) => r.role)).toContain("system");
+});
+
+it("tells a resumed conversation today's date", async () => {
+  const f = fake([say("a"), say("b"), say("c")]);
+  const id = conversationOf(
+    await turn(f.client, { text: "Hello" }, { now: FIXED_NOW }),
+  );
+  await turn(
+    f.client,
+    { conversationId: id, text: "Morning" },
+    { now: later(24) },
+  );
+  const sent = last(f.requests[1]!.messages as Body[]);
+  expect(isContext(sent.content[0])).toBe(true);
+  expect(sent.content[0].text).toContain("Wednesday, 2026-03-11");
+  expect(sent.content[1]).toEqual({ type: "text", text: "Morning" });
+
+  await turn(
+    f.client,
+    { conversationId: id, text: "Later" },
+    { now: later(26) },
+  );
+  expect(last(f.requests[2]!.messages as Body[]).content).toEqual([
+    { type: "text", text: "Later" },
+  ]);
+});
+
+it("puts the context after the results that close pending calls", async () => {
+  const { id } = await pendingDelete();
+  const f = fake([say("Sure.")]);
+  await turn(
+    f.client,
+    { conversationId: id, text: "Never mind" },
+    { now: later(24) },
+  );
+  const sent = last(f.requests[0]!.messages as Body[]).content as Block[];
+  expect(sent.map((b) => b.type)).toEqual(["tool_result", "text", "text"]);
+  expect(isContext(sent[1]!)).toBe(true);
+  expect(sent[2]).toEqual({ type: "text", text: "Never mind" });
+});
+
+it("answers a malformed destructive call with an error instead of asking", async () => {
+  const f = fake([
+    calls(
+      toolUse("tu_1", "delete_item", {
+        kind: "achievement",
+        id: "Learn barre chords",
+      }),
+    ),
+    say("Let me look it up first."),
+  ]);
+  const events = await turn(f.client, { text: "Delete barre chords" });
+  expect(events.some((e) => e.type === "confirm")).toBe(false);
+  expect(events).toContainEqual(
+    expect.objectContaining({ type: "tool", id: "tu_1", error: true }),
+  );
+  expect(f.requests).toHaveLength(2);
+  const sent = last(f.requests[1]!.messages as Body[]);
+  expect(sent.content).toEqual([
+    {
+      type: "tool_result",
+      tool_use_id: "tu_1",
+      content: messageFor("invalid_input"),
+      is_error: true,
+    },
+  ]);
+  expect(last(events)).toMatchObject({ type: "done" });
+});
+
+it("tells the client the message is saved before asking Claude", async () => {
+  const events: ChatEvent[] = [];
+  const seen: ChatEvent[][] = [];
+  const f = fake([say("Hi"), say("Again")]);
+  const client: ChatClient = {
+    beta: {
+      messages: {
+        stream(body) {
+          seen.push([...events]);
+          return f.client.beta.messages.stream(body);
+        },
+      },
+    },
+  };
+  const go = (input: TurnInput) =>
+    runTurn(
+      { db, ownerId: owner, client, now: () => FIXED_NOW, models: MODELS },
+      input,
+      (e) => events.push(e),
+    );
+  await go({ text: "Hello" });
+  expect(seen[0]!.map((e) => e.type)).toEqual(["conversation", "saved"]);
+  const id = conversationOf(events);
+  events.length = 0;
+  await go({ conversationId: id, text: "More" });
+  expect(seen[1]!.map((e) => e.type)).toEqual(["saved"]);
+});
+
+it("says the answer to a confirm is saved", async () => {
+  const { id } = await pendingDelete();
+  const after = await turn(fake([say("Kept.")]).client, {
+    conversationId: id,
+    confirm: { toolUseId: "tu_1", approve: false },
+  });
+  expect(after[0]).toEqual({ type: "saved" });
 });

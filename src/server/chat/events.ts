@@ -3,6 +3,8 @@
 
 export type ChatEvent =
   | { type: "conversation"; id: string; title: string; model: string }
+  /** The owner's message (or answer) is stored: from here, Retry asks for `retry`. */
+  | { type: "saved" }
   | { type: "text"; delta: string }
   | {
       type: "tool";

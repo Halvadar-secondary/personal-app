@@ -1,5 +1,6 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
+import { CONTEXT_MARKER } from "@/lib/chat-context";
 import { localDate, weekdayOf } from "@/lib/dates";
 import type { OwnerSettings } from "@/server/domain/settings";
 
@@ -19,7 +20,7 @@ How to work:
 - Keep replies short unless the owner wants to talk it through.
 - Read live data with the tools when you need it; don't guess what's there.
 - Use update_profile as its description says: only for lasting facts the owner states or confirms, merged into the section.
-- Dates are in the owner's time zone, given in the context at the start of the conversation. "Today", "tomorrow" and weekdays mean dates there.
+- Dates are in the owner's time zone, given in the app's context: at the start of the conversation, and again in a later message when the day or the profile changes (the latest one holds). "Today", "tomorrow" and weekdays mean dates there.
 - Deleting and undoing ask the owner first; if they decline, accept it and carry on.`;
 
 /** The stable instructions, cached with the tools. */
@@ -36,8 +37,6 @@ const WEEKDAYS = [
   "Friday",
   "Saturday",
 ];
-
-export const CONTEXT_MARKER = "Context from the app (not typed by the owner):";
 
 /** The changing context: today's date, settings and the owner's profile. */
 export function contextBlock(

@@ -3,8 +3,13 @@
 import { notFound } from "next/navigation";
 import { requireOwner } from "@/server/auth/require-owner";
 import { getDb } from "@/server/db/client";
-import { toChatItems } from "@/server/chat/items";
-import { listModels, resolveTiers, type Tier, TIERS } from "@/server/chat/models";
+import { awaitingReply, toChatItems } from "@/server/chat/items";
+import {
+  listModels,
+  resolveTiers,
+  type Tier,
+  TIERS,
+} from "@/server/chat/models";
 import { runAction } from "@/server/domain/context";
 import {
   deleteConversation,
@@ -24,12 +29,14 @@ export async function openChat(id: string) {
   const { id: ownerId } = await requireOwner();
   const deps = { db: getDb(), ownerId, actor: "ui" as const };
   try {
-    const { conversation, messages } = await runAction(
-      deps,
-      getConversation,
-      { id },
-    );
-    return { conversation, items: await toChatItems(deps, messages) };
+    const { conversation, messages } = await runAction(deps, getConversation, {
+      id,
+    });
+    return {
+      conversation,
+      items: await toChatItems(deps, messages),
+      pending: awaitingReply(messages),
+    };
   } catch (e) {
     if (
       e instanceof DomainError &&

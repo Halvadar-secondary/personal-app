@@ -1,5 +1,6 @@
 import { and, desc, eq, isNull, max, sql } from "drizzle-orm";
 import { z } from "zod";
+import { CONTEXT_MARKER } from "@/lib/chat-context";
 import { type ChatMeta, chatMessages, conversations } from "@/server/db/schema";
 import { type Ctx, defineAction } from "./context";
 import { found } from "./errors";
@@ -146,7 +147,7 @@ function snippetAround(text: string, needle: string): string {
   return text.slice(start, start + SNIPPET);
 }
 
-/** Title or the text of user/assistant text blocks; never tool inputs or thinking. */
+/** Title or the text of user/assistant text blocks; never tool inputs, thinking or the app's context. */
 export const searchConversations = defineAction(
   z.object({
     query: z.string().trim().min(1).max(200),
@@ -183,6 +184,8 @@ export const searchConversations = defineAction(
           if (
             b.type === "text" &&
             typeof b.text === "string" &&
+            // The app's context block, not something either side said.
+            !b.text.startsWith(CONTEXT_MARKER) &&
             b.text.toLowerCase().includes(needle)
           )
             snippets.push(snippetAround(b.text, needle));

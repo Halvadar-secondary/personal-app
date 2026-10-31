@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import * as Sentry from "@sentry/nextjs";
+import { localDate } from "@/lib/dates";
 import type { ChatMeta } from "@/server/db/schema";
 import type { Db } from "@/server/db/types";
 import { type ActionDeps, runAction } from "@/server/domain/context";
@@ -23,6 +24,7 @@ import {
   chatToolDefs,
   describeDestructive,
   isDestructive,
+  rejectInvalid,
   runChatTool,
 } from "./tools";
 
@@ -87,7 +89,7 @@ const blocksOf = (m: ChatMessage): Block[] =>
   Array.isArray(m.content) ? (m.content as Block[]) : [];
 
 /** Tool calls in the last assistant message that no later user message answers. */
-function unanswered(history: ChatMessage[]): ToolUse[] {
+export function unanswered(history: ChatMessage[]): ToolUse[] {
   const at = history.findLastIndex((m) => m.role === "assistant");
   if (at < 0) return [];
   const answered = new Set(
@@ -137,44 +139,42 @@ async function append(t: Turn, messages: NewChatMessage[]): Promise<void> {
 const metaOf = (tools: ToolMeta): ChatMeta | null =>
   Object.keys(tools).length > 0 ? { tools } : null;
 
-async function context(t: Turn) {
-  const profile = await runAction(t.action, getProfile, {});
-  const settings = await runAction(t.action, getSettings, {});
-  return { profile, text: contextBlock(profile, settings, t.deps.now()) };
-}
-
-/** Rule 2: the owner's new message, persisted before any request. */
+/**
+ * Rule 2: the owner's new message, persisted before any request. The app's
+ * context (date, settings, profile) leads the first message, and comes again
+ * in a later one when the owner's day has turned or the profile changed since
+ * the last message. It rides in the user message, after any results that
+ * close pending calls (those must come first), never as a separate system
+ * message: one left behind by a failed turn would sit before the owner's next
+ * message, which the API refuses.
+ */
 async function addUserText(t: Turn, text: string): Promise<void> {
   const tools: ToolMeta = {};
   const content = closeOut(unanswered(t.history), tools);
-  const { profile, text: ctx } = await context(t);
-  const first = t.history.length === 0;
-  if (first) content.push({ type: "text", text: ctx });
-  content.push({ type: "text", text });
+  const profile = await runAction(t.action, getProfile, {});
+  const settings = await runAction(t.action, getSettings, {});
+  const now = t.deps.now();
   const last = t.history.at(-1);
-  const stale =
-    !first &&
-    last !== undefined &&
-    profile.updatedAt !== null &&
-    last.createdAt < profile.updatedAt;
-  await append(t, [
-    { role: "user", content, meta: metaOf(tools) },
-    ...(stale
-      ? [
-          {
-            role: "system" as const,
-            content: `The owner's profile changed since the last message. Updated context:\n\n${ctx}`,
-          },
-        ]
-      : []),
-  ]);
+  const refresh =
+    last === undefined ||
+    // An older stored refresh this message would orphan (see `orphaned`).
+    last.role === "system" ||
+    (profile.updatedAt !== null && last.createdAt < profile.updatedAt) ||
+    localDate(last.createdAt, settings.timeZone) !==
+      localDate(now, settings.timeZone);
+  if (refresh)
+    content.push({ type: "text", text: contextBlock(profile, settings, now) });
+  content.push({ type: "text", text });
+  await append(t, [{ role: "user", content, meta: metaOf(tools) }]);
 }
 
-async function runTool(t: Turn, call: ToolUse, tools: ToolMeta) {
-  const out = await runChatTool(
-    { db: t.deps.db, ownerId: t.deps.ownerId },
-    call,
-  );
+/** Records a tool call's outcome and tells the panel; returns its result block. */
+function record(
+  t: Turn,
+  call: ToolUse,
+  tools: ToolMeta,
+  out: Awaited<ReturnType<typeof runChatTool>>,
+): Block {
   const error = out.result.is_error === true;
   tools[call.id] = { summary: out.summary, batchId: out.batchId, error };
   if (out.batchId) t.changed = true;
@@ -187,6 +187,14 @@ async function runTool(t: Turn, call: ToolUse, tools: ToolMeta) {
     error,
   });
   return out.result as unknown as Block;
+}
+
+async function runTool(t: Turn, call: ToolUse, tools: ToolMeta) {
+  const out = await runChatTool(
+    { db: t.deps.db, ownerId: t.deps.ownerId },
+    call,
+  );
+  return record(t, call, tools, out);
 }
 
 async function askConfirm(t: Turn, call: ToolUse): Promise<void> {
@@ -227,12 +235,23 @@ async function answerConfirm(
       meta: metaOf(tools),
     },
   ]);
+  t.emit({ type: "saved" });
   if (next) {
     await askConfirm(t, next);
     return true;
   }
   return false;
 }
+
+/**
+ * Older versions stored a profile refresh as a system row after the owner's
+ * message. When that turn failed, the owner's next message followed it, and
+ * the API refuses a system message right before a user one. Such a row is left
+ * out of the request (it stays stored); the message after it carries the
+ * context again (see `addUserText`).
+ */
+const orphaned = (history: ChatMessage[], i: number) =>
+  history[i]!.role === "system" && history[i + 1]?.role === "user";
 
 function requestBody(t: Turn, model: string, withTools: boolean): ChatRequest {
   const fallback = t.tier !== "quick";
@@ -245,13 +264,18 @@ function requestBody(t: Turn, model: string, withTools: boolean): ChatRequest {
     tools: chatToolDefs(),
     ...(withTools ? {} : { tool_choice: { type: "none" as const } }),
     // Sent exactly as stored: thinking and compaction blocks included.
-    messages: t.history.map(
-      (m) =>
-        ({
-          role: m.role,
-          content: m.content,
-        }) as ChatRequest["messages"][number],
-    ),
+    messages: t.history
+      .filter((_, i) => !orphaned(t.history, i))
+      .map(
+        (m) =>
+          ({
+            role: m.role,
+            content: m.content,
+          }) as ChatRequest["messages"][number],
+      ),
+    // Automatic caching: a breakpoint on the last block, so each request
+    // reads the history the previous one wrote.
+    cache_control: { type: "ephemeral" },
     output_config: { effort: TIERS[t.tier].effort },
     context_management: { edits: [{ type: "compact_20260112" }] },
     betas: [
@@ -329,10 +353,19 @@ async function loop(t: Turn): Promise<void> {
 
     const tools: ToolMeta = {};
     const results: Block[] = [];
-    for (const call of calls)
-      if (!isDestructive(call.name))
+    // Destructive calls the owner will be asked about; a malformed one is
+    // answered with an error now, like any other call's bad input.
+    const held: typeof calls = [];
+    for (const call of calls) {
+      if (!isDestructive(call.name)) {
         results.push(await runTool(t, call, tools));
-    const destructive = calls.find((c) => isDestructive(c.name));
+        continue;
+      }
+      const invalid = rejectInvalid(call);
+      if (invalid) results.push(record(t, call, tools, invalid));
+      else held.push(call);
+    }
+    const destructive = held[0];
     const stop = !destructive && n >= MAX_TOOL_REQUESTS;
     if (stop) results.push({ type: "text", text: STOP_TOOLS });
     if (results.length > 0)
@@ -420,6 +453,7 @@ export async function runTurn(
     const t = await start(deps, input, emit);
     if (input.text !== undefined) {
       await addUserText(t, input.text);
+      emit({ type: "saved" });
     } else if (input.confirm) {
       if (await answerConfirm(t, input.confirm)) {
         t.emit({ type: "done", model: t.model, changed: t.changed });

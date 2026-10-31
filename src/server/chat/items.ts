@@ -1,8 +1,8 @@
 import "server-only";
 import type { ChatMessage } from "@/server/domain/conversations";
-import { STOP_TOOLS } from "./engine";
+import { STOP_TOOLS, unanswered } from "./engine";
 import type { ChatItem } from "./events";
-import { CONTEXT_MARKER } from "./prompt";
+import { CONTEXT_MARKER } from "@/lib/chat-context";
 import { describeDestructive, isDestructive } from "./tools";
 
 type Block = { type: string; [key: string]: unknown };
@@ -20,6 +20,15 @@ const textOf = (blocks: Block[], hide: (t: string) => boolean): string =>
     .filter((t) => !hide(t))
     .join("\n\n")
     .trim();
+
+/**
+ * The owner's last message has no reply and nothing waits on them: the turn
+ * failed or was cut off, and `retry` can answer it. Same test as the engine's.
+ */
+export function awaitingReply(messages: ChatMessage[]): boolean {
+  const last = messages.findLast((m) => m.role !== "system");
+  return last?.role === "user" && unanswered(messages).length === 0;
+}
 
 /** The panel's view of a stored conversation, with a trailing pending delete as `confirm`. */
 export async function toChatItems(
@@ -45,8 +54,7 @@ export async function toChatItems(
     const hasResult = blocks.some((b) => b.type === "tool_result");
     const text = textOf(
       blocks,
-      (t) =>
-        t.startsWith(CONTEXT_MARKER) || (hasResult && t === STOP_TOOLS),
+      (t) => t.startsWith(CONTEXT_MARKER) || (hasResult && t === STOP_TOOLS),
     );
     if (text) items.push({ kind: "user", text });
   }

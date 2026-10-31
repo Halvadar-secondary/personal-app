@@ -55,7 +55,9 @@ it("maps a stored conversation to the panel's items", async () => {
       {
         role: "user",
         content: [
-          t("text", { text: "Context from the app (not typed by the owner):\nToday." }),
+          t("text", {
+            text: "Context from the app (not typed by the owner):\nToday.",
+          }),
           t("text", { text: "rename my area" }),
         ],
       },
@@ -114,4 +116,85 @@ it("offers the three tiers with labels", async () => {
     smart: { id: "s", name: "S", label: "Smart" },
     deep: { id: "d", name: "D", label: "Deepest" },
   });
+});
+
+it("opens a conversation that ends in a malformed delete", async () => {
+  const c = await run(createConversation, { title: "Chat", model: "q" });
+  await run(appendMessages, {
+    conversationId: c.id,
+    messages: [
+      { role: "user", content: [{ type: "text", text: "delete barre" }] },
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "delete_item",
+            input: { kind: "achievement", id: "Learn barre chords" },
+          },
+        ],
+        model: "q",
+      },
+    ],
+  });
+  const opened = await openChat(c.id);
+  expect(opened.items.at(-1)).toEqual({
+    kind: "confirm",
+    toolUseId: "t1",
+    prompt: "Delete this achievement?",
+  });
+  expect(opened.pending).toBe(false);
+});
+
+it("flags a conversation whose last message Claude never answered", async () => {
+  const c = await run(createConversation, { title: "Chat", model: "q" });
+  const say = (role: "user" | "assistant", text: string) => ({
+    role,
+    content: [{ type: "text", text }],
+  });
+  await run(appendMessages, {
+    conversationId: c.id,
+    messages: [say("user", "hi"), say("assistant", "hello")],
+  });
+  expect((await openChat(c.id)).pending).toBe(false);
+  await run(appendMessages, {
+    conversationId: c.id,
+    messages: [
+      say("user", "and?"),
+      { role: "system", content: "Older stored refresh." },
+    ],
+  });
+  expect((await openChat(c.id)).pending).toBe(true);
+});
+
+it("isn't pending while a delete waits on the owner", async () => {
+  const area = await run(createArea, { name: "Guitar" });
+  const c = await run(createConversation, { title: "Chat", model: "q" });
+  await run(appendMessages, {
+    conversationId: c.id,
+    messages: [
+      { role: "user", content: [{ type: "text", text: "swap" }] },
+      {
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "t1", name: "list_areas", input: {} },
+          {
+            type: "tool_use",
+            id: "t2",
+            name: "delete_item",
+            input: { kind: "area", id: area.id },
+          },
+        ],
+        model: "q",
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "t1", content: "ok" }],
+      },
+    ],
+  });
+  const opened = await openChat(c.id);
+  expect(opened.pending).toBe(false);
+  expect(opened.items.at(-1)).toMatchObject({ kind: "confirm" });
 });

@@ -166,9 +166,12 @@ labelled profile that is always in context and that the model edits itself.
   - *How I plan*: how the owner likes tasks and days shaped.
   - *How to talk to me*: tone and length.
 - **Always sent** at the start of every in-app conversation, in the first user
-  turn after the cached instructions. When a conversation is resumed and the
-  profile has changed since its last message, the new profile is added as a
-  mid-conversation system message before the owner's next message.
+  turn after the cached instructions. When the profile has changed since the
+  conversation's last message, or the owner's date has turned since then, the
+  context (date, settings, profile) comes again as a hidden block at the start
+  of the owner's next message (after any tool results it carries). It is never
+  a separate system message: one left behind by a failed turn would sit right
+  before the owner's next message, which the API refuses.
 - **Claude edits it during the chat** with `update_profile`: it rewrites one
   section, merging the new fact into what is there instead of appending, so
   the profile stays short. The tool description tells Claude to update only

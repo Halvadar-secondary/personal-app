@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import type { Db } from "@/server/db/types";
+import { CONTEXT_MARKER } from "@/lib/chat-context";
 import { createTestDb } from "@/test/db";
 import { createOwner, type Run, runner } from "@/test/factories";
 import {
@@ -105,4 +106,25 @@ it("keeps conversations private to their owner", async () => {
   );
   expect(await other(searchConversations, { query: "barre" })).toEqual([]);
   expect(await other(listConversations, {})).toEqual([]);
+});
+
+it("doesn't match the app's hidden context blocks", async () => {
+  const c = await run(createConversation, { title: "Chat", model: "m" });
+  await run(appendMessages, {
+    conversationId: c.id,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `${CONTEXT_MARKER}\nThe owner's profile:\n\n## Current focus\nMarathon training`,
+          },
+          { type: "text", text: "hello" },
+        ],
+      },
+    ],
+  });
+  expect(await run(searchConversations, { query: "marathon" })).toEqual([]);
+  expect(await run(searchConversations, { query: "hello" })).toHaveLength(1);
 });

@@ -200,28 +200,61 @@ async function titleOf(deps: Deps, kind: string, id: string) {
   }
 }
 
-/** The question the owner is asked before a destructive call runs. */
+/**
+ * A tool call whose input its schema rejects, answered as an error the way a
+ * running tool would be; null when the input is fine. Destructive calls are
+ * checked with this before the owner is asked about them.
+ */
+export function rejectInvalid(block: {
+  id: string;
+  name: string;
+  input: unknown;
+}): ReturnType<typeof failed> | null {
+  const tool = BY_NAME.get(block.name);
+  if (!tool) return failed(block.id, `Unknown tool: ${block.name}`);
+  const r = tool.action.input.safeParse(block.input);
+  return r.success
+    ? null
+    : failed(block.id, messageFor("invalid_input", { issues: r.error.issues }));
+}
+
+const isUuid = (v: unknown): v is string => z.uuid().safeParse(v).success;
+
+/** The question the owner is asked before a destructive call runs. Never throws. */
 export async function describeDestructive(
   deps: Deps,
   name: string,
   input: unknown,
 ): Promise<string> {
-  const i = (input ?? {}) as Record<string, unknown>;
+  const i = (input && typeof input === "object" ? input : {}) as Record<
+    string,
+    unknown
+  >;
   if (name === "delete_item") {
-    const kind = String(i.kind);
-    const title = await titleOf(deps, kind, String(i.id));
+    const kind = typeof i.kind === "string" ? i.kind : "item";
+    let title: string | undefined;
+    try {
+      if (isUuid(i.id)) title = await titleOf(deps, kind, i.id);
+    } catch (e) {
+      console.error("describe delete failed", e);
+    }
     return title ? `Delete ${kind} “${title}”?` : `Delete this ${kind}?`;
   }
   if (name === "undo_batch") {
-    const d = { ...deps, actor: "chat" as const };
-    let before: number | undefined;
-    // History pages newest first; the batch is almost always on the first.
-    for (let page = 0; page < 10; page++) {
-      const h = await runAction(d, listHistory, { before, limit: 100 });
-      const hit = h.batches.find((b) => b.batchId === i.batchId);
-      if (hit) return `Undo “${hit.summary}”?`;
-      if (h.nextBefore === null) break;
-      before = h.nextBefore;
+    if (!isUuid(i.batchId)) return "Undo this change?";
+    try {
+      const d = { ...deps, actor: "chat" as const };
+      let before: number | undefined;
+      // History pages newest first; the batch is almost always on the first.
+      for (let page = 0; page < 10; page++) {
+        const h = await runAction(d, listHistory, { before, limit: 100 });
+        const hit = h.batches.find((b) => b.batchId === i.batchId);
+        if (hit) return `Undo “${hit.summary}”?`;
+        if (h.nextBefore === null) break;
+        before = h.nextBefore;
+      }
+    } catch (e) {
+      console.error("describe undo failed", e);
     }
     return "Undo this change?";
   }

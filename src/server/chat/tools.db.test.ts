@@ -92,3 +92,19 @@ it("describes destructive calls", async () => {
     await describeDestructive(deps, "undo_batch", { batchId: r.batchId }),
   ).toBe("Undo “Created area “Piano””?");
 });
+
+it("falls back to a plain question when it can't name the target", async () => {
+  const deps = { db, ownerId: owner };
+  expect(
+    await describeDestructive(deps, "delete_item", {
+      kind: "achievement",
+      id: "Learn barre chords",
+    }),
+  ).toBe("Delete this achievement?");
+  expect(await describeDestructive(deps, "delete_item", null)).toBe(
+    "Delete this item?",
+  );
+  expect(await describeDestructive(deps, "undo_batch", { batchId: 42 })).toBe(
+    "Undo this change?",
+  );
+});
