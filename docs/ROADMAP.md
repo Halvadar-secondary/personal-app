@@ -150,6 +150,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Patterns in the Sunday review
 - [x] AI tools for trackers and moments
 
+## M8 — In-app chat
+*Done when: the owner can talk to Claude inside the app, which uses the same actions as the AI tools, with a model choice per conversation and Settings overrides.*
+
+- [x] Chat panel with streaming replies, model picker (Quick / Smart / Deepest) and past conversations
+- [x] Settings: pin a model per tier or stay on the newest
+- [ ] `ANTHROPIC_API_KEY` set in Vercel with a monthly spend limit; live smoke on production
+- [ ] Microphone dictation checked in the iPhone Home Screen app
+
 ---
 
 ## Later (not scheduled)
@@ -158,7 +166,6 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] Arpeggio / chord trainer tool
 - [ ] Completion celebrations
 - [ ] Practice entries count toward streaks
-- [ ] In-app chat panel with Claude (on top of the same actions)
 - [ ] Offline support
 - [ ] Custom domain
 - [ ] Other personal features beyond goals

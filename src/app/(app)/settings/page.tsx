@@ -2,19 +2,21 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { SectionSkeleton } from "@/components/app/page-skeletons";
+import { ChatModelSettings } from "@/components/app/chat-model-settings";
 import { ConnectedApps } from "@/components/app/connected-apps";
 import { Passkeys } from "@/components/app/passkeys";
 import { ProfileForm } from "@/components/app/profile-form";
 import { ReminderSettings } from "@/components/app/reminder-settings";
 import { SettingsForm } from "@/components/app/settings-form";
 import { SignOutButton } from "@/components/app/sign-out";
+import { chatTiers } from "@/server/actions/chat";
 import { read } from "@/server/actions/run";
 import { mcpResource } from "@/server/auth/auth";
 import { requireOwner } from "@/server/auth/require-owner";
 import { getDb } from "@/server/db/client";
 import { getProfile } from "@/server/domain/profile";
 import { getReminder } from "@/server/domain/reminders";
-import { getSettings } from "@/server/domain/settings";
+import { getChatModelOverrides, getSettings } from "@/server/domain/settings";
 import { listConnectedApps } from "@/server/mcp/connected";
 
 export default function SettingsPage() {
@@ -42,6 +44,12 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold">Passkeys</h2>
         <Suspense fallback={<SectionSkeleton testId="skeleton-passkeys" />}>
           <PasskeySection />
+        </Suspense>
+      </section>
+      <section className="flex flex-col gap-2 border-t pt-5">
+        <h2 className="text-sm font-semibold">Claude in chat</h2>
+        <Suspense fallback={<SectionSkeleton testId="skeleton-chat-models" />}>
+          <ChatModels />
         </Suspense>
       </section>
       <section className="flex flex-col gap-2 border-t pt-5">
@@ -103,4 +111,24 @@ async function Connected() {
 async function Profile() {
   const { sections } = await read(getProfile, {});
   return <ProfileForm initial={sections} />;
+}
+
+const FALLBACK_NAMES = {
+  quick: "Claude Haiku 5.5",
+  smart: "Claude Sonnet 5.5",
+  deep: "Claude Opus 5.5",
+} as const;
+
+async function ChatModels() {
+  const overrides = await read(getChatModelOverrides, {});
+  // Without ANTHROPIC_API_KEY the live names can't be looked up; the section
+  // must still render so the pins can be edited.
+  const live = await chatTiers().catch(() => null);
+  const labels = { quick: "Quick", smart: "Smart", deep: "Deepest" } as const;
+  const tiers = (["quick", "smart", "deep"] as const).map((tier) => ({
+    tier,
+    label: labels[tier],
+    name: live?.[tier].name ?? overrides[tier] ?? FALLBACK_NAMES[tier],
+  }));
+  return <ChatModelSettings tiers={tiers} overrides={overrides} />;
 }
