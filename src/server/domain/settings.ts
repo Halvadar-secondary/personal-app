@@ -17,6 +17,33 @@ const zTimeZone = z.string().refine(
   { message: "Unknown time zone" },
 );
 
+const zModelOverride = z
+  .string()
+  .regex(/^claude-[a-z0-9-]+$/)
+  .nullable()
+  .optional();
+
+export type ChatModelOverrides = {
+  quick: string | null;
+  smart: string | null;
+  deep: string | null;
+};
+
+export const getChatModelOverrides = defineAction(
+  z.object({}),
+  async (ctx): Promise<ChatModelOverrides> => {
+    const [row] = await ctx.db
+      .select()
+      .from(settings)
+      .where(eq(settings.ownerId, ctx.ownerId));
+    return {
+      quick: row?.chatModelQuick ?? null,
+      smart: row?.chatModelSmart ?? null,
+      deep: row?.chatModelDeep ?? null,
+    };
+  },
+);
+
 export const getSettings = defineAction(
   z.object({}),
   async (ctx): Promise<OwnerSettings> => ({
@@ -26,13 +53,16 @@ export const getSettings = defineAction(
 );
 
 /**
- * Time zone and week start. Not written to history: these aren't goal
+ * Time zone, week start and chat model overrides. Not written to history: these aren't goal
  * data, and undoing a time zone change has no use.
  */
 export const updateSettings = defineAction(
   z.object({
     timeZone: zTimeZone.optional(),
     weekStart: z.int().min(0).max(6).optional(),
+    chatModelQuick: zModelOverride,
+    chatModelSmart: zModelOverride,
+    chatModelDeep: zModelOverride,
   }),
   async (ctx, patch): Promise<OwnerSettings> => {
     const [row] = await ctx.db
@@ -41,6 +71,9 @@ export const updateSettings = defineAction(
         ownerId: ctx.ownerId,
         timeZone: patch.timeZone ?? ctx.timeZone,
         weekStart: patch.weekStart ?? ctx.weekStart,
+        chatModelQuick: patch.chatModelQuick,
+        chatModelSmart: patch.chatModelSmart,
+        chatModelDeep: patch.chatModelDeep,
       })
       .onConflictDoUpdate({
         target: settings.ownerId,

@@ -19,6 +19,10 @@ export const settings = pgTable("settings", {
   reminderTime: text("reminder_time").notNull().default("21:00"),
   // The owner-local evening the last reminder went out.
   lastReminderOn: date("last_reminder_on", { mode: "string" }),
+  // Owner-chosen model ids that replace the automatic chat tier picks.
+  chatModelQuick: text("chat_model_quick"),
+  chatModelSmart: text("chat_model_smart"),
+  chatModelDeep: text("chat_model_deep"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

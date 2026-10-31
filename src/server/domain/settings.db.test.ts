@@ -4,7 +4,7 @@ import type { Db } from "@/server/db/types";
 import { createTestDb } from "@/test/db";
 import { createOwner, deps, type Run, runner } from "@/test/factories";
 import { defineAction, runAction } from "./context";
-import { getSettings, updateSettings } from "./settings";
+import { getChatModelOverrides, getSettings, updateSettings } from "./settings";
 
 let db: Db;
 let close: () => Promise<void>;
@@ -45,4 +45,30 @@ it("rejects an unknown time zone or week start", async () => {
   await expect(run(updateSettings, { weekStart: 7 })).rejects.toThrow(
     "invalid_input",
   );
+});
+
+it("stores chat model overrides, validates them, and clears with null", async () => {
+  expect(await run(getChatModelOverrides, {})).toEqual({
+    quick: null,
+    smart: null,
+    deep: null,
+  });
+  await run(updateSettings, { chatModelSmart: "claude-opus-5" });
+  expect(await run(getChatModelOverrides, {})).toEqual({
+    quick: null,
+    smart: "claude-opus-5",
+    deep: null,
+  });
+  await run(updateSettings, { chatModelSmart: null, chatModelDeep: "claude-opus-6" });
+  expect(await run(getChatModelOverrides, {})).toEqual({
+    quick: null,
+    smart: null,
+    deep: "claude-opus-6",
+  });
+  await expect(
+    run(updateSettings, { chatModelQuick: "gpt-4" }),
+  ).rejects.toThrow("invalid_input");
+  await expect(
+    run(updateSettings, { chatModelQuick: "claude-Bad" }),
+  ).rejects.toThrow("invalid_input");
 });
