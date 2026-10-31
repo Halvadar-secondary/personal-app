@@ -427,8 +427,13 @@ it("stops tools after ten round-trips", async () => {
   const events = await turn(f.client, { text: "Look around" });
 
   expect(f.requests).toHaveLength(11);
-  for (const r of f.requests.slice(0, 10)) expect(r.tools).toBeDefined();
-  expect(f.requests[10]!.tools).toBeUndefined();
+  for (const r of f.requests) expect(r.tools).toBeDefined();
+  for (const r of f.requests.slice(0, 10))
+    expect(r).not.toHaveProperty("tool_choice");
+  // Tools stay defined (history holds tool blocks); Claude just can't call one.
+  expect(f.requests[10]!.tool_choice).toEqual({ type: "none" });
+  for (const r of f.requests)
+    expect(["any", "tool"]).not.toContain(r.tool_choice?.type);
   const sent = last(f.requests[10]!.messages as Body[]);
   expect(sent.role).toBe("user");
   expect(sent.content[0]).toMatchObject({ tool_use_id: "tu_10" });
@@ -513,14 +518,28 @@ it("doesn't retry a 400 from the fallback model itself", async () => {
   });
 });
 
-it("reports a refusal", async () => {
-  const f = fake([{ content: [], stop_reason: "refusal" }]);
+it("reports a refusal without storing an empty reply", async () => {
+  const f = fake([{ content: [], stop_reason: "refusal" }, say("Hello.")]);
   const events = await turn(f.client, { text: "Hi" });
   expect(last(events)).toEqual({
     type: "error",
     message: "Claude declined to answer this one.",
     retryable: false,
   });
+  const id = conversationOf(events);
+  expect((await stored(id)).map((r) => r.role)).toEqual(["user"]);
+
+  await turn(f.client, { conversationId: id, text: "Something else" });
+  const msgs = f.requests[1]!.messages as Body[];
+  expect(msgs.map((m) => m.role)).toEqual(["user", "user"]);
+  for (const m of msgs) expect(m.content).not.toEqual([]);
+});
+
+it("stores a refusal that has text", async () => {
+  const f = fake([
+    { content: [text("I can't help with that.")], stop_reason: "refusal" },
+  ]);
+  const events = await turn(f.client, { text: "Hi" });
   expect((await stored(conversationOf(events))).map((r) => r.role)).toEqual([
     "user",
     "assistant",

@@ -240,7 +240,10 @@ function requestBody(t: Turn, model: string, withTools: boolean): ChatRequest {
     model,
     max_tokens: MAX_TOKENS,
     system: systemPrompt(),
-    ...(withTools ? { tools: chatToolDefs() } : {}),
+    // History holds tool blocks, so tools stay defined even when Claude may
+    // no longer call them.
+    tools: chatToolDefs(),
+    ...(withTools ? {} : { tool_choice: { type: "none" as const } }),
     // Sent exactly as stored: thinking and compaction blocks included.
     messages: t.history.map(
       (m) =>
@@ -302,14 +305,17 @@ async function loop(t: Turn): Promise<void> {
   for (let n = 1; ; n++) {
     const reply = await request(t, withTools);
     if (!reply) return;
-    await append(t, [
-      {
-        role: "assistant",
-        content: reply.content as unknown as Block[],
-        model: reply.model,
-        usage: reply.usage as unknown as Record<string, unknown>,
-      },
-    ]);
+    // An empty assistant message mid-history is rejected by the API, so an
+    // empty reply (e.g. a refusal before any text) is never stored.
+    if (reply.content.length > 0)
+      await append(t, [
+        {
+          role: "assistant",
+          content: reply.content as unknown as Block[],
+          model: reply.model,
+          usage: reply.usage as unknown as Record<string, unknown>,
+        },
+      ]);
     if (reply.stop_reason === "refusal") {
       t.emit({ type: "error", message: REFUSED, retryable: false });
       return;
