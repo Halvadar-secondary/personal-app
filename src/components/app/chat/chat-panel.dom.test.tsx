@@ -327,6 +327,7 @@ it("a failed turn shows the message with Retry", async () => {
   fetchMock.mockResolvedValueOnce(
     ndjson([
       { type: "conversation", id: "c1", title: "t", model: "claude-haiku-5-5" },
+      { type: "saved" },
       { type: "text", delta: "Half" },
       {
         type: "error",
@@ -346,6 +347,29 @@ it("a failed turn shows the message with Retry", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Retry" }));
   expect(sent(1)).toEqual({ conversationId: "c1", retry: true });
   expect(await screen.findByText("Back.")).toBeVisible();
+});
+
+it("a reopened conversation Claude never answered offers Retry", async () => {
+  actions.openChat.mockResolvedValue({
+    conversation: { id: "c3", title: "t", model: "claude-haiku-5-5" },
+    items: [{ kind: "user", text: "Plan my day" }],
+    pending: true,
+  });
+  render(
+    <ChatProvider>
+      <OpenById id="c3" />
+    </ChatProvider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Open c3" }));
+  fetchMock.mockResolvedValueOnce(
+    ndjson([
+      { type: "text", delta: "Here it is." },
+      { type: "done", model: "claude-haiku-5-5", changed: false },
+    ]),
+  );
+  await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+  expect(sent(0)).toEqual({ conversationId: "c3", retry: true });
+  expect(await screen.findByText("Here it is.")).toBeVisible();
 });
 
 it("Ctrl+J and Cmd+J open it", async () => {

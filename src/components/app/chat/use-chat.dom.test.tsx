@@ -111,6 +111,7 @@ it("drops the partial reply on a retryable error; Retry resends the turn", async
   fetchMock.mockResolvedValueOnce(
     ndjson([
       { type: "conversation", id: "c1", title: "t", model: "claude-haiku-5-5" },
+      { type: "saved" },
       { type: "text", delta: "Half a rep" },
       {
         type: "error",
@@ -264,5 +265,131 @@ it("sends nothing while a stored conversation loads", async () => {
   expect(result.current.loading).toBe(false);
   expect(result.current.items).toEqual([
     { kind: "user", text: "Old question" },
+  ]);
+});
+
+/** A response whose events the test pushes one at a time. */
+function controlled() {
+  const encoder = new TextEncoder();
+  let ctrl!: ReadableStreamDefaultController<Uint8Array>;
+  const response = new Response(
+    new ReadableStream<Uint8Array>({
+      start(c) {
+        ctrl = c;
+      },
+    }),
+  );
+  return {
+    response,
+    push: (e: ChatEvent) =>
+      ctrl.enqueue(encoder.encode(`${JSON.stringify(e)}\n`)),
+    close: () => ctrl.close(),
+  };
+}
+
+const finished = (): ChatEvent[] => [
+  { type: "done", model: "claude-haiku-5-5", changed: false },
+];
+
+it("retries on the server once it saved the message, even if the stream drops", async () => {
+  fetchMock.mockResolvedValueOnce(
+    ndjson([
+      { type: "conversation", id: "c1", title: "t", model: "claude-haiku-5-5" },
+      { type: "saved" },
+      { type: "text", delta: "Half" },
+    ]),
+  );
+  const { result } = renderHook(() => useChat());
+  await act(() => result.current.send("Hi"));
+  expect(result.current.error?.retryable).toBe(true);
+  fetchMock.mockResolvedValueOnce(ndjson(finished()));
+  await act(() => result.current.retry());
+  expect(sent(1)).toEqual({ conversationId: "c1", retry: true });
+});
+
+it("resends the text when the stream drops before the server saved it", async () => {
+  fetchMock.mockResolvedValueOnce(
+    ndjson([
+      { type: "conversation", id: "c1", title: "t", model: "claude-haiku-5-5" },
+    ]),
+  );
+  const { result } = renderHook(() => useChat());
+  await act(() => result.current.send("Hi"));
+  expect(result.current.error?.retryable).toBe(true);
+  fetchMock.mockResolvedValueOnce(ndjson(finished()));
+  await act(() => result.current.retry());
+  expect(sent(1)).toEqual({ conversationId: "c1", tier: "quick", text: "Hi" });
+});
+
+it("offers Retry on a reopened conversation Claude never answered", async () => {
+  actions.openChat.mockResolvedValue({
+    conversation: { id: "c9", title: "Old", model: "claude-haiku-5-5" },
+    items: [{ kind: "user", text: "Unanswered" }],
+    pending: true,
+  });
+  const { result } = renderHook(() => useChat());
+  await act(() => result.current.load("c9"));
+  expect(result.current.error?.retryable).toBe(true);
+  fetchMock.mockResolvedValueOnce(
+    ndjson([
+      { type: "text", delta: "Sorry, here." },
+      { type: "done", model: "claude-haiku-5-5", changed: false },
+    ]),
+  );
+  await act(() => result.current.retry());
+  expect(sent(0)).toEqual({ conversationId: "c9", retry: true });
+  expect(result.current.error).toBeNull();
+  expect(result.current.items.at(-1)).toMatchObject({ text: "Sorry, here." });
+});
+
+it("keeps a model picked while Claude is thinking for the next message", async () => {
+  const s = controlled();
+  fetchMock.mockResolvedValueOnce(s.response);
+  const { result } = renderHook(() => useChat());
+  let first!: Promise<void>;
+  act(() => {
+    first = result.current.send("Hi");
+  });
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  act(() => result.current.setTier("smart"));
+  await act(async () => {
+    s.push({
+      type: "conversation",
+      id: "c1",
+      title: "t",
+      model: "claude-haiku-5-5",
+    });
+    s.push({ type: "saved" });
+    s.push({ type: "done", model: "claude-haiku-5-5", changed: false });
+    s.close();
+    await first;
+  });
+  expect(sent(0)).toMatchObject({ tier: "quick" });
+  fetchMock.mockResolvedValueOnce(ndjson(finished()));
+  await act(() => result.current.send("Next"));
+  expect(sent(1)).toEqual({
+    conversationId: "c1",
+    tier: "smart",
+    text: "Next",
+  });
+});
+
+it("shows a waiting delete as cancelled when the owner types instead", async () => {
+  actions.openChat.mockResolvedValue({
+    conversation: { id: "c2", title: "t", model: "claude-haiku-5-5" },
+    items: [
+      { kind: "user", text: "Delete guitar" },
+      { kind: "confirm", toolUseId: "tu2", prompt: "Delete area “Guitar”?" },
+    ],
+    pending: false,
+  });
+  const { result } = renderHook(() => useChat());
+  await act(() => result.current.load("c2"));
+  fetchMock.mockResolvedValueOnce(ndjson([{ type: "saved" }, ...finished()]));
+  await act(() => result.current.send("Never mind"));
+  expect(result.current.items).toEqual([
+    { kind: "user", text: "Delete guitar" },
+    { kind: "tool", summary: "Cancelled", batchId: null, error: false },
+    { kind: "user", text: "Never mind" },
   ]);
 });

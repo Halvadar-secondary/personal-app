@@ -33,6 +33,11 @@ const FAILED: ChatError = {
   retryable: true,
 };
 
+const UNANSWERED: ChatError = {
+  message: "Claude didn't answer this. Try again.",
+  retryable: true,
+};
+
 function failureFor(status: number): ChatError {
   if (status === 429)
     return {
@@ -117,9 +122,14 @@ export function useChat() {
       setLoading(true);
       const generation = live.current.generation;
       try {
-        const { conversation, items } = await openChat(id);
+        const { conversation, items, pending } = await openChat(id);
         if (generation !== live.current.generation) return;
         startOver(id, items, tierOf(conversation.model) ?? "quick");
+        // The last turn failed or was cut off: the server has the message.
+        if (pending) {
+          live.current.retry = { conversationId: id, retry: true };
+          setError(UNANSWERED);
+        }
       } catch {
         if (generation !== live.current.generation) return;
         startOver(null, [], "quick");
@@ -152,6 +162,9 @@ export function useChat() {
       // Assistant items this turn added: `done` names their model.
       const added = new Set<ChatItem>();
       let heard = false;
+      // The server stored the message (or answer): sending it again would
+      // add it twice.
+      let saved = false;
       let finished = false;
       let failed = false;
       const flush = () => {
@@ -169,15 +182,19 @@ export function useChat() {
         setStreaming("");
         setError(e);
         // Once the server has the turn, Retry asks it to answer again.
-        if (heard && l.conversationId && e.retryable)
+        if (saved && l.conversationId && e.retryable)
           l.retry = { conversationId: l.conversationId, retry: true };
       };
 
       const apply = (e: ChatEvent) => {
-        // The server has the turn, and with it any tier it carried.
-        if (!heard && body.tier) l.tierChanged = false;
+        // The server has the turn, and with it any tier it carried; a tier
+        // picked since still goes with the next message.
+        if (!heard && body.tier === l.tier) l.tierChanged = false;
         heard = true;
         switch (e.type) {
+          case "saved":
+            saved = true;
+            break;
           case "conversation":
             l.conversationId = e.id;
             model = e.model;
@@ -276,7 +293,21 @@ export function useChat() {
   const send = useCallback(
     async (text: string) => {
       if (!text.trim() || busy()) return;
-      setItems((xs) => [...xs, { kind: "user", text }]);
+      // Typing instead of answering declines a waiting delete, as the
+      // conversation shows when reopened.
+      setItems((xs) => [
+        ...xs.map((x): ChatItem =>
+          x.kind === "confirm"
+            ? {
+                kind: "tool",
+                summary: "Cancelled",
+                batchId: null,
+                error: false,
+              }
+            : x,
+        ),
+        { kind: "user", text },
+      ]);
       await run({ ...target(), text });
     },
     [run],
