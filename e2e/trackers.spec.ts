@@ -50,3 +50,32 @@ test("log a moment from Capture, see it on the tracker, delete and undo", async 
   await page.goto("/review");
   await expect(page.getByRole("region", { name: "Patterns" })).toBeVisible();
 });
+
+test("log a moment with one tap on Today, then add a note", async ({
+  page,
+}) => {
+  const name = uniqueName("Snap");
+  const note = uniqueName("tired");
+
+  await page.goto("/trackers");
+  await page.getByRole("button", { name: "New tracker" }).click();
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill(name);
+  await page.getByRole("button", { name: "Add tracker" }).click();
+  await expect(page.getByRole("region", { name })).toBeVisible();
+
+  await page.goto("/today");
+  const row = page.getByRole("region", { name: "Trackers" });
+  await row.getByRole("button", { name: `Log ${name}` }).click();
+  await expect(page.getByText(`Logged ${name}`)).toBeVisible();
+  await page.getByRole("button", { name: "Add note" }).click();
+  const dialog = page.getByRole("dialog", { name: `Note for ${name}` });
+  await dialog.getByRole("textbox", { name: "Note" }).fill(note);
+  await dialog.getByRole("button", { name: "Save note" }).click();
+  await expect(dialog).toBeHidden();
+  await expectNoSideScroll(page);
+
+  await page.goto("/trackers");
+  const card = page.getByRole("region", { name });
+  await expect(card.getByText("This week so far: 1")).toBeVisible();
+  await expect(card.getByText(note)).toBeVisible();
+});

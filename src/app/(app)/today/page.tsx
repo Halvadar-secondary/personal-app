@@ -3,10 +3,12 @@ import { Suspense } from "react";
 import { CaptureButton } from "@/components/app/capture-button";
 import { DayList } from "@/components/app/day-list";
 import { DaySkeleton } from "@/components/app/page-skeletons";
+import { QuickLog } from "@/components/app/quick-log";
 import { buttonVariants } from "@/components/ui/button";
 import { dayLabel } from "@/lib/plan";
 import { read } from "@/server/actions/run";
 import { getDay } from "@/server/domain/plan";
+import { listTrackers } from "@/server/domain/trackers";
 
 export default function TodayPage() {
   return (
@@ -19,7 +21,10 @@ export default function TodayPage() {
 }
 
 async function Today() {
-  const d = await read(getDay, {});
+  const [d, { trackers }] = await Promise.all([
+    read(getDay, {}),
+    read(listTrackers, {}),
+  ]);
   const empty = d.sections.work.length + d.sections.spare.length === 0;
   return (
     <>
@@ -38,6 +43,16 @@ async function Today() {
           <CaptureButton />
         </div>
       </header>
+      <QuickLog
+        trackers={trackers
+          .filter((t) => !t.archivedAt)
+          .map(({ id, name, emoji, thisWeek }) => ({
+            id,
+            name,
+            emoji,
+            thisWeek,
+          }))}
+      />
       {empty && (
         <div className="flex flex-col items-start gap-2 rounded-[12px] border border-dashed p-4">
           <p className="text-sm text-muted-foreground">

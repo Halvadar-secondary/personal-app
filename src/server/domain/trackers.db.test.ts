@@ -15,6 +15,7 @@ import {
   listTrackers,
   logMoment,
   moveTracker,
+  noteMoment,
   updateTracker,
 } from "./trackers";
 import { undoBatch } from "./undo";
@@ -87,6 +88,20 @@ describe("trackers", () => {
     });
     expect(m).toMatchObject({ intensity: 4, note: "traffic" });
     expect(m.at.toISOString()).toBe("2026-03-10T12:00:00.000Z");
+  });
+
+  it("adds a note to a logged moment, undoably; blank clears it", async () => {
+    const m = await run(logMoment, { trackerId: anger });
+    const noted = await run(noteMoment, { momentId: m.id, note: " traffic " });
+    expect(noted.note).toBe("traffic");
+    const batch = await lastBatch();
+    await run(undoBatch, { batchId: batch });
+    const [back] = await run(listMoments, { trackerId: anger });
+    expect(back!.note).toBeNull();
+    await run(noteMoment, { momentId: m.id, note: "x" });
+    expect((await run(noteMoment, { momentId: m.id, note: "  " })).note).toBe(
+      null,
+    );
   });
 
   it("counts this week so far, last week to the same moment, and 8 weeks", async () => {

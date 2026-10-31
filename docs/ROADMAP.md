@@ -149,6 +149,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Trackers page: this week so far vs the same point last week, 8 weekly bars, moments with delete and Undo
 - [x] Patterns in the Sunday review
 - [x] AI tools for trackers and moments
+- [x] One-tap logging from Today (no score; Undo and Add note in the toast)
 
 ---
 
