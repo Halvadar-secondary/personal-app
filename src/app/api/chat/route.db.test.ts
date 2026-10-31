@@ -83,7 +83,11 @@ it("ends the stream with one error line when the engine throws", async () => {
   const res = await post({ text: "hi" });
   const lines = (await res.text()).trim().split("\n");
   expect(lines.map((l) => JSON.parse(l))).toEqual([
-    { type: "error", message: "Claude couldn't answer. Try again.", retryable: true },
+    {
+      type: "error",
+      message: "Claude couldn't answer. Try again.",
+      retryable: true,
+    },
   ]);
 });
 

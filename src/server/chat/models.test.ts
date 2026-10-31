@@ -18,7 +18,11 @@ beforeEach(() => resetModelCache());
 const NOW = new Date("2026-10-31T12:00:00Z");
 
 it("picks the newest version in a family", () => {
-  const list = [m("claude-sonnet-5-5"), m("claude-sonnet-6"), m("claude-sonnet-5")];
+  const list = [
+    m("claude-sonnet-5-5"),
+    m("claude-sonnet-6"),
+    m("claude-sonnet-5"),
+  ];
   expect(pickNewest(list, "sonnet")?.id).toBe("claude-sonnet-6");
 });
 
@@ -38,7 +42,10 @@ it("falls back when list throws", async () => {
   const list = vi.fn().mockRejectedValue(new Error("down"));
   const t = await resolveTiers({ list, overrides: {}, now: NOW });
   expect(t.quick).toEqual({ id: "claude-haiku-5-5", name: "Claude Haiku 5.5" });
-  expect(t.smart).toEqual({ id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5" });
+  expect(t.smart).toEqual({
+    id: "claude-sonnet-5-5",
+    name: "Claude Sonnet 5.5",
+  });
   expect(t.deep).toEqual({ id: "claude-opus-5-5", name: "Claude Opus 5.5" });
 });
 
@@ -62,9 +69,17 @@ it("lets an override win", async () => {
 it("caches the list for 24 hours", async () => {
   const list = vi.fn().mockResolvedValue([m("claude-sonnet-6")]);
   await resolveTiers({ list, overrides: {}, now: NOW });
-  await resolveTiers({ list, overrides: {}, now: new Date(+NOW + 23 * 3600e3) });
+  await resolveTiers({
+    list,
+    overrides: {},
+    now: new Date(+NOW + 23 * 3600e3),
+  });
   expect(list).toHaveBeenCalledTimes(1);
-  await resolveTiers({ list, overrides: {}, now: new Date(+NOW + 25 * 3600e3) });
+  await resolveTiers({
+    list,
+    overrides: {},
+    now: new Date(+NOW + 25 * 3600e3),
+  });
   expect(list).toHaveBeenCalledTimes(2);
 });
 

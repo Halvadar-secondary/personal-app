@@ -33,7 +33,11 @@ export const TIERS: Record<
   },
 };
 
-export type ModelInfo = { id: string; display_name: string; created_at: string };
+export type ModelInfo = {
+  id: string;
+  display_name: string;
+  created_at: string;
+};
 export type Resolved = { id: string; name: string };
 
 const FAMILY_NAMES: Record<Family, string> = {
@@ -69,7 +73,10 @@ function compareVersions(a: number[], b: number[]): number {
   return 0;
 }
 
-export function pickNewest(models: ModelInfo[], family: Family): Resolved | null {
+export function pickNewest(
+  models: ModelInfo[],
+  family: Family,
+): Resolved | null {
   let best: { model: ModelInfo; version: number[] } | null = null;
   for (const model of models) {
     const version = versionOf(model.id, family);
@@ -136,7 +143,11 @@ export function listModels(client: Anthropic): () => Promise<ModelInfo[]> {
   return async () => {
     const all: ModelInfo[] = [];
     for await (const m of client.models.list()) {
-      all.push({ id: m.id, display_name: m.display_name, created_at: m.created_at });
+      all.push({
+        id: m.id,
+        display_name: m.display_name,
+        created_at: m.created_at,
+      });
     }
     return all;
   };

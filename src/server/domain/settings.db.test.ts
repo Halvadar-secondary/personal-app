@@ -59,7 +59,10 @@ it("stores chat model overrides, validates them, and clears with null", async ()
     smart: "claude-opus-5",
     deep: null,
   });
-  await run(updateSettings, { chatModelSmart: null, chatModelDeep: "claude-opus-6" });
+  await run(updateSettings, {
+    chatModelSmart: null,
+    chatModelDeep: "claude-opus-6",
+  });
   expect(await run(getChatModelOverrides, {})).toEqual({
     quick: null,
     smart: null,
