@@ -148,6 +148,17 @@ export const logMoment = defineAction(
   },
 );
 
+/** A note added after a quick log; blank clears it. */
+export const noteMoment = defineAction(
+  z.object({ momentId: z.uuid(), note: z.string().trim().max(1000) }),
+  async (ctx, { momentId, note }) => {
+    const before = await findLive(ctx, trackerMoments, momentId);
+    return updateRecorded(ctx, "tracker_moment", trackerMoments, before, {
+      note: note || null,
+    });
+  },
+);
+
 export const deleteMoment = defineAction(
   z.object({ momentId: z.uuid() }),
   async (ctx, { momentId }) => {

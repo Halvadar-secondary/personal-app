@@ -149,6 +149,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Trackers page: this week so far vs the same point last week, 8 weekly bars, moments with delete and Undo
 - [x] Patterns in the Sunday review
 - [x] AI tools for trackers and moments
+- [x] One-tap logging from Today (no score; Undo and Add note in the toast)
 
 ## M8 — In-app chat
 *Done when: the owner can talk to Claude inside the app, which uses the same actions as the AI tools, with a model choice per conversation and Settings overrides.*
