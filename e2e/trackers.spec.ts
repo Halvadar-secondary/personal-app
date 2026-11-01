@@ -40,6 +40,8 @@ test("log a moment with details from its card, delete and undo", async ({
 
   await card.getByRole("button", { name: "Delete moment" }).first().click();
   await page.getByRole("button", { name: "Undo" }).click();
+  // The undo is saved before reloading, not just shown.
+  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(card.getByText(note)).toBeVisible();
 

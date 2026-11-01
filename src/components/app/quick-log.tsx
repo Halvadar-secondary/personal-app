@@ -80,18 +80,17 @@ export function QuickLog({ trackers }: { trackers: QuickTracker[] }) {
             <button
               key={t.id}
               type="button"
-              // Says what the tap does and includes what's on the button.
-              aria-label={`Log ${t.name} ${count} today`}
               onClick={() => void log(t)}
               className="inline-flex min-h-11 items-center gap-2 rounded-full border bg-card px-4 text-base font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:scale-95 md:min-h-9 md:px-3.5 md:text-sm"
             >
-              {t.emoji ? `${t.emoji} ${t.name}` : t.name}
-              <span
-                title="Today"
-                className="min-w-6 rounded-full bg-muted px-1.5 text-center text-sm text-muted-foreground tabular-nums"
-              >
+              {/* Read out as "Log Anger 3 today": what the tap does, built
+                  from what's on the button so the two always match. */}
+              <span className="sr-only">Log</span>{" "}
+              {t.emoji ? `${t.emoji} ${t.name}` : t.name}{" "}
+              <span className="min-w-6 rounded-full bg-muted px-1.5 text-center text-sm text-muted-foreground tabular-nums">
                 {count}
-              </span>
+              </span>{" "}
+              <span className="sr-only">today</span>
             </button>
           );
         })}

@@ -89,6 +89,8 @@ test("a task moved to the week's list waits on Week, then gets a day", async ({
   await expect(
     page.getByRole("region", { name: "Work" }).getByText(title),
   ).toBeHidden();
+  // The move is saved before leaving, not just shown.
+  await page.waitForLoadState("networkidle");
 
   await page.goto("/week");
   const list = page.getByRole("region", { name: "This week's list" });
