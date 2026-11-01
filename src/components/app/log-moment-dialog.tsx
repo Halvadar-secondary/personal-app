@@ -36,7 +36,7 @@ export function LogMomentButton({ tracker }: { tracker: Tracker }) {
       <Button
         variant="outline"
         size="sm"
-        aria-label={`Log ${tracker.name} with details`}
+        aria-label={`Log with details for ${tracker.name}`}
         onClick={() => setOpen(true)}
       >
         <SlidersHorizontal /> Log with details

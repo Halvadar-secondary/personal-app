@@ -23,7 +23,9 @@ test("log a moment with details from its card, delete and undo", async ({
   const card = page.getByRole("region", { name });
   await expect(card.getByText("This week so far: 0")).toBeVisible();
 
-  await card.getByRole("button", { name: `Log ${name} with details` }).click();
+  await card
+    .getByRole("button", { name: `Log with details for ${name}` })
+    .click();
   const dialog = page.getByRole("dialog", { name: `Log ${name}` });
   await dialog.getByRole("button", { name: "Intensity 3" }).click();
   await dialog.getByRole("textbox", { name: "Note" }).fill(note);
@@ -60,7 +62,9 @@ test("log a moment with one tap on Today, then add a note", async ({
 
   await page.goto("/today");
   const row = page.getByRole("region", { name: "Trackers" });
-  await row.getByRole("button", { name: `Log ${name}` }).click();
+  await row
+    .getByRole("button", { name: new RegExp(`^Log ${name} \\d+ today$`) })
+    .click();
   await expect(page.getByText(`Logged ${name}`)).toBeVisible();
   await page.getByRole("button", { name: "Add note" }).click();
   const dialog = page.getByRole("dialog", { name: `Note for ${name}` });

@@ -163,7 +163,7 @@ it("an active tracker logs with details from its card; an archived one can't", (
     <TrackerCard clock={CLOCK} tracker={tracker()} moments={[]} />,
   );
   expect(
-    screen.getByRole("button", { name: "Log Anger with details" }),
+    screen.getByRole("button", { name: "Log with details for Anger" }),
   ).toBeVisible();
   expect(screen.getByText("Today: 1")).toBeVisible();
   unmount();
@@ -175,6 +175,6 @@ it("an active tracker logs with details from its card; an archived one can't", (
     />,
   );
   expect(
-    screen.queryByRole("button", { name: "Log Anger with details" }),
+    screen.queryByRole("button", { name: "Log with details for Anger" }),
   ).toBeNull();
 });

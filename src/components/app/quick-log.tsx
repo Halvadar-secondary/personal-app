@@ -74,23 +74,27 @@ export function QuickLog({ trackers }: { trackers: QuickTracker[] }) {
     <section aria-label="Trackers">
       {/* Every tracker in view: they wrap, never scroll. */}
       <div className="flex flex-wrap gap-2">
-        {trackers.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            aria-label={`Log ${t.name}`}
-            onClick={() => void log(t)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border bg-card px-4 text-base font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:scale-95 md:min-h-9 md:px-3.5 md:text-sm"
-          >
-            {t.emoji ? `${t.emoji} ${t.name}` : t.name}
-            <span
-              title="Today"
-              className="min-w-6 rounded-full bg-muted px-1.5 text-center text-sm text-muted-foreground tabular-nums"
+        {trackers.map((t) => {
+          const count = t.today + (pending[t.id] ?? 0);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              // Says what the tap does and includes what's on the button.
+              aria-label={`Log ${t.name} ${count} today`}
+              onClick={() => void log(t)}
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border bg-card px-4 text-base font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:scale-95 md:min-h-9 md:px-3.5 md:text-sm"
             >
-              {t.today + (pending[t.id] ?? 0)}
-            </span>
-          </button>
-        ))}
+              {t.emoji ? `${t.emoji} ${t.name}` : t.name}
+              <span
+                title="Today"
+                className="min-w-6 rounded-full bg-muted px-1.5 text-center text-sm text-muted-foreground tabular-nums"
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
       <NoteDialog noting={noting} onClose={() => setNoting(null)} />
     </section>

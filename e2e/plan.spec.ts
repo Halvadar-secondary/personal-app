@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { expectNoSideScroll, uniqueName } from "./helpers/app";
+import { chooseKind, expectNoSideScroll, uniqueName } from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
 
 test.beforeEach(async ({ page }) => {
@@ -59,6 +59,7 @@ test("today: a repeating loose task shows up and can be ticked", async ({
   await page.goto("/today");
   await page.waitForLoadState("networkidle");
   await page.keyboard.press("c");
+  await chooseKind(page, "Task");
   const dialog = page.getByRole("dialog", { name: "New task" });
   await dialog.getByRole("textbox", { name: "Title" }).fill(title);
   await dialog.getByRole("button", { name: /^Repeat/ }).click();

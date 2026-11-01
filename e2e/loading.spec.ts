@@ -129,8 +129,10 @@ test("navigation shows while the page loads", async ({ browser }, testInfo) => {
   const page = await openWithoutScripts(browser, testInfo, "/");
   if (testInfo.project.name === "phone") {
     const tabs = page.getByRole("navigation", { name: "Tabs" });
-    for (const name of ["Today", "Areas", "Week", "Search"])
+    for (const name of ["Today", "Areas", "Trackers"])
       await expect(tabs.getByRole("link", { name })).toBeVisible();
+    for (const name of ["Capture", "More"])
+      await expect(tabs.getByRole("button", { name })).toBeVisible();
   } else {
     const main = page.getByRole("navigation", { name: "Main" });
     for (const name of [

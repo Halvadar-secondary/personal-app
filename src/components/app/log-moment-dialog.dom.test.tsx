@@ -36,7 +36,7 @@ beforeEach(() => {
 async function openIt() {
   render(<LogMomentButton tracker={anger} />);
   await userEvent.click(
-    screen.getByRole("button", { name: "Log Anger with details" }),
+    screen.getByRole("button", { name: "Log with details for Anger" }),
   );
   return screen.getByRole("dialog", { name: "Log 😠 Anger" });
 }
