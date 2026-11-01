@@ -8,11 +8,18 @@ import { markDayPlannedAction } from "@/server/actions/plan";
 import { perform } from "./use-mutate";
 
 /** Marks the day planned (the evening reminder skips it) and goes to Today. */
-export function DonePlanning({ day }: { day: string }) {
+export function DonePlanning({
+  day,
+  ...props
+}: { day: string } & Pick<
+  React.ComponentProps<typeof Button>,
+  "className" | "size"
+>) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   return (
     <Button
+      {...props}
       disabled={busy}
       onClick={async () => {
         setBusy(true);

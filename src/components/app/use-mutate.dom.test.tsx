@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import type { Result } from "@/server/actions/run";
@@ -47,6 +47,10 @@ function deferred() {
   });
   return { promise, resolve, reject };
 }
+
+// A dismissed toast removes itself 200ms later. Let that run out before the
+// test environment goes, or it fires with no window and fails the run.
+afterAll(() => new Promise((done) => setTimeout(done, 400)));
 
 beforeEach(() => {
   toast.dismiss();
