@@ -39,7 +39,7 @@ async function Review({
   return (
     <>
       <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-center gap-1 md:justify-start">
           <Link
             href={`/review?start=${addDays(r.start, -7)}`}
             aria-label="Previous week"

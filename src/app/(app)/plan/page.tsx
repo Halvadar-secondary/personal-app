@@ -41,8 +41,10 @@ async function Plan({
   const nav = buttonVariants({ variant: "ghost", size: "icon-sm" });
   return (
     <>
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
+      {/* Phone: the day switcher centred on its own row, Done planning below
+          on the right. Wider screens: one row. */}
+      <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center justify-center gap-1 md:justify-start">
           <Link
             href={`/plan?day=${addDays(day, -1)}`}
             aria-label="Previous day"
@@ -50,7 +52,7 @@ async function Plan({
           >
             <ChevronLeft />
           </Link>
-          <div>
+          <div className="text-center md:text-left">
             <h1 className="text-xl font-bold md:text-2xl">Plan {title}</h1>
             <p className="text-sm text-muted-foreground">{dayLabel(day)}</p>
           </div>
@@ -62,7 +64,9 @@ async function Plan({
             <ChevronRight />
           </Link>
         </div>
-        <DonePlanning day={day} />
+        <div className="self-end md:self-auto">
+          <DonePlanning day={day} />
+        </div>
       </header>
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
         <DayList key={day} day={day} today={d.today} sections={d.sections} />

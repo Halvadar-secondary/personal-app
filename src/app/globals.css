@@ -161,4 +161,15 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+  /* iOS zooms into any field under 16px when it's tapped and stays zoomed,
+     pushing headers off the screen. On phones no field goes below 16px. */
+  @media (max-width: 767px) {
+    :is(input, textarea, select):is(
+      [class*="text-xs"],
+      [class*="text-sm"],
+      [class*="text-[0."]
+    ) {
+      font-size: 16px !important;
+    }
+  }
 }
