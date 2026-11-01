@@ -41,8 +41,8 @@ async function Plan({
   const nav = buttonVariants({ variant: "ghost", size: "icon-sm" });
   return (
     <>
-      {/* Phone: the day switcher centred on its own row, Done planning below
-          on the right. Wider screens: one row. */}
+      {/* Phone: the day switcher centred, and Done planning at the end of
+          the page, after the lists. Wider screens: both in one header row. */}
       <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center justify-center gap-1 md:justify-start">
           <Link
@@ -64,14 +64,13 @@ async function Plan({
             <ChevronRight />
           </Link>
         </div>
-        <div className="self-end md:self-auto">
-          <DonePlanning day={day} />
-        </div>
+        <DonePlanning day={day} className="hidden md:inline-flex" />
       </header>
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
         <DayList key={day} day={day} today={d.today} sections={d.sections} />
         <PickList key={`pick-${day}`} day={day} options={options} />
       </div>
+      <DonePlanning day={day} size="lg" className="w-full md:hidden" />
     </>
   );
 }
