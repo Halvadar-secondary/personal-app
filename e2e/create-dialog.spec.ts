@@ -153,3 +153,25 @@ test("on a phone the dialog fills the screen and Create stays in view", async ({
     page.getByRole("button", { name: "Create task" }),
   ).toBeInViewport();
 });
+
+// iOS zooms the page into any field under 16px when it's tapped and stays
+// zoomed, which pushes the header off the screen.
+test("on a phone no field in the dialog is small enough to zoom", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isPhone(testInfo), "phone layout only");
+  await page.goto("/");
+  await openCapture(page, testInfo);
+  const smallFields = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll("input, textarea, select")]
+        .filter((el) => (el as HTMLElement).offsetParent !== null)
+        .map((el) => parseFloat(getComputedStyle(el).fontSize))
+        .filter((px) => px < 16),
+    );
+  await page.getByRole("button", { name: "Deadline" }).click();
+  expect(await smallFields()).toEqual([]);
+  await page.getByRole("button", { name: /Inbox/ }).click();
+  await expect(page.getByPlaceholder("Move to…")).toBeVisible();
+  expect(await smallFields()).toEqual([]);
+});
