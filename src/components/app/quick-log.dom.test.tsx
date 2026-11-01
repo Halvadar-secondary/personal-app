@@ -25,8 +25,8 @@ vi.mock("sonner", () => ({
 }));
 
 const TRACKERS = [
-  { id: "t-anger", name: "Anger", emoji: "😠", thisWeek: 3 },
-  { id: "t-kind", name: "Kindness", emoji: null, thisWeek: 0 },
+  { id: "t-anger", name: "Anger", emoji: "😠", today: 3 },
+  { id: "t-kind", name: "Kindness", emoji: null, today: 0 },
 ];
 
 type ToastOpts = {
@@ -56,17 +56,23 @@ describe("QuickLog", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows one button per tracker with this week's count", () => {
+  it("shows one button per tracker with today's count", () => {
     render(<QuickLog trackers={TRACKERS} />);
-    const anger = screen.getByRole("button", { name: "Log Anger" });
+    const anger = screen.getByRole("button", {
+      name: /^Log 😠 Anger \d+ today$/,
+    });
     expect(anger).toHaveTextContent("😠 Anger");
     expect(anger).toHaveTextContent("3");
-    expect(screen.getByRole("button", { name: "Log Kindness" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Log Kindness 0 today" }),
+    ).toBeVisible();
   });
 
   it("logs a moment with one tap, no score, and offers Undo", async () => {
     render(<QuickLog trackers={TRACKERS} />);
-    await userEvent.click(screen.getByRole("button", { name: "Log Anger" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Log 😠 Anger \d+ today$/ }),
+    );
     expect(server.logMomentAction).toHaveBeenCalledWith({
       trackerId: "t-anger",
     });
@@ -77,9 +83,23 @@ describe("QuickLog", () => {
     expect(server.undoAction).toHaveBeenCalledWith({ batchId: "b1" });
   });
 
+  it("counts the tap at once, and takes it back if the log fails", async () => {
+    render(<QuickLog trackers={TRACKERS} />);
+    const anger = screen.getByRole("button", {
+      name: /^Log 😠 Anger \d+ today$/,
+    });
+    await userEvent.click(anger);
+    expect(anger).toHaveTextContent("4");
+    server.logMomentAction.mockResolvedValueOnce({ ok: false, message: "No." });
+    await userEvent.click(anger);
+    expect(anger).toHaveTextContent("4");
+  });
+
   it("logs again on every tap", async () => {
     render(<QuickLog trackers={TRACKERS} />);
-    const anger = screen.getByRole("button", { name: "Log Anger" });
+    const anger = screen.getByRole("button", {
+      name: /^Log 😠 Anger \d+ today$/,
+    });
     await userEvent.click(anger);
     await userEvent.click(anger);
     expect(server.logMomentAction).toHaveBeenCalledTimes(2);
@@ -87,7 +107,9 @@ describe("QuickLog", () => {
 
   it("adds a note to the logged moment from the toast", async () => {
     render(<QuickLog trackers={TRACKERS} />);
-    await userEvent.click(screen.getByRole("button", { name: "Log Anger" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Log 😠 Anger \d+ today$/ }),
+    );
     const [, opts] = lastToast();
     expect(opts.cancel.label).toBe("Add note");
     opts.cancel.onClick();
@@ -111,7 +133,9 @@ describe("QuickLog", () => {
       message: "That moment is gone.",
     });
     render(<QuickLog trackers={TRACKERS} />);
-    await userEvent.click(screen.getByRole("button", { name: "Log Anger" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Log 😠 Anger \d+ today$/ }),
+    );
     lastToast()[1].cancel.onClick();
     await userEvent.type(
       await screen.findByRole("textbox", { name: "Note" }),
@@ -130,7 +154,9 @@ describe("QuickLog", () => {
       message: "That tracker is archived.",
     });
     render(<QuickLog trackers={TRACKERS} />);
-    const anger = screen.getByRole("button", { name: "Log Anger" });
+    const anger = screen.getByRole("button", {
+      name: /^Log 😠 Anger \d+ today$/,
+    });
     await userEvent.click(anger);
     expect(server.error).toHaveBeenCalledWith("That tracker is archived.");
     server.logMomentAction.mockRejectedValueOnce(new Error("stale"));

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { BackBar } from "@/components/app/back-bar";
 import { CaptureProvider } from "@/components/app/capture-context";
 import { ChatButton } from "@/components/app/chat/chat-button";
 import { ChatProvider } from "@/components/app/chat/chat-panel";
@@ -21,12 +22,22 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           </Suspense>
           {/* Bottom padding keeps the phone tab bar and the Claude button off the content. */}
           <main className="min-w-0 flex-1 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-20">
+            {/* It reads the URL, so it waits for it: Suspense. */}
+            <Suspense fallback={null}>
+              <BackBar />
+            </Suspense>
             {children}
           </main>
         </div>
         <CreateDialog />
         <ChatButton />
-        <Toaster position="bottom-center" />
+        {/* On the phone, above the tab bar and the Claude button. */}
+        <Toaster
+          position="bottom-center"
+          mobileOffset={{
+            bottom: "calc(9.5rem + env(safe-area-inset-bottom))",
+          }}
+        />
         <VersionBanner current={process.env.APP_BUILD_ID ?? "dev"} />
       </ChatProvider>
     </CaptureProvider>
@@ -49,7 +60,7 @@ async function Nav() {
   return (
     <>
       <Sidebar inboxCount={o.inboxCount} areas={areas} />
-      <TabBar />
+      <TabBar inboxCount={o.inboxCount} />
       {/* Here, not beside Capture: it lists the areas Nav already read. */}
       <CommandPalette areas={areas} />
     </>

@@ -3,11 +3,13 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   addAchievements,
   addTasks,
+  chooseKind,
   createAchievementInDialog,
   createArea,
   isPhone,
   keyboardDrag,
   saved,
+  switchToAchievement,
   uniqueName,
 } from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
@@ -97,12 +99,11 @@ test.describe("signed in", () => {
       .filter({ visible: true })
       .first()
       .click();
+    await expectNoAxeViolations(page);
+    await chooseKind(page, "Task");
     await expect(page.getByRole("dialog", { name: "New task" })).toBeVisible();
     await expectNoAxeViolations(page);
-    await page
-      .getByRole("group", { name: "Kind" })
-      .getByRole("button", { name: "Achievement" })
-      .click();
+    await switchToAchievement(page);
     await expect(
       page.getByRole("dialog", { name: "New achievement" }),
     ).toBeVisible();
@@ -222,6 +223,7 @@ test.describe("dark", () => {
         .filter({ visible: true })
         .first()
         .click();
+      await chooseKind(page, "Achievement");
       await expect(
         page.getByRole("dialog", { name: "New achievement" }),
       ).toBeVisible();

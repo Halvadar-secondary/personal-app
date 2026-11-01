@@ -1,6 +1,13 @@
 "use client";
 
-import { CalendarDays, Plus, X } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  ListChecks,
+  Plus,
+  Trophy,
+  X,
+} from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,13 +25,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Status } from "@/lib/placement";
-import type { Section } from "@/lib/plan";
+import { SECTION_LABELS, SECTIONS, type Section } from "@/lib/plan";
 import type { Recurrence } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
 import type { Effort } from "@/lib/xp";
 import { createCategoryAction } from "@/server/actions/categories";
 import { createItemAction, createOptionsAction } from "@/server/actions/create";
-import { logMomentAction } from "@/server/actions/trackers";
 import { STATUS_LABELS, STATUSES } from "./board-state";
 import { type CreatePreset, useCapture } from "./capture-context";
 import {
@@ -35,7 +41,6 @@ import {
 import { chipClass } from "./chip";
 import {
   type Destination,
-  type DialogKind,
   defaultDestination,
   destinationFor,
   type Kind,
@@ -49,11 +54,9 @@ import { EffortPicker } from "./effort-picker";
 import {
   type ChipPlan,
   type ChipTarget,
-  SectionPicker,
   TargetPicker,
   WhenPicker,
 } from "./plan-chips";
-import { MomentFields } from "./moment-fields";
 import { RecurrencePicker } from "./recurrence-picker";
 import { perform, undo } from "./use-mutate";
 
@@ -106,19 +109,11 @@ function CreateForm({
   const { page } = useCapture();
   const [prefs] = useState(() => loadPrefs());
   const [kind, setKind] = useState<Kind>(
-    () =>
-      preset.kind ??
-      kindForPage(page, prefs.kind === "moment" ? "task" : prefs.kind),
+    () => preset.kind ?? kindForPage(page, lastKind(prefs.kind)),
   );
-  // A tracker moment instead of an item: only when nothing asked for one.
-  const [moment, setMoment] = useState(
-    () => !preset.kind && !page && prefs.kind === "moment",
-  );
-  const [trackerId, setTrackerId] = useState<string | null>(
-    prefs.tracker ?? null,
-  );
-  const [intensity, setIntensity] = useState<number | null>(null);
-  const [at, setAt] = useState<string | null>(null);
+  // The phone asks what to make first, unless the button already said.
+  const [phone] = useState(isPhone);
+  const [choosing, setChoosing] = useState(() => phone && !preset.kind);
   const [more, setMore] = useState(prefs.more);
   const [dest, setDest] = useState<Destination>(() =>
     defaultDestination(kind, page),
@@ -140,7 +135,6 @@ function CreateForm({
   const [target, setTarget] = useState<ChipTarget>(null);
   const [status, setStatus] = useState<Status>(preset.status ?? "backlog");
   const [options, setOptions] = useState<Options | null>(null);
-  const [optionsFailed, setOptionsFailed] = useState(false);
   const [extra, setExtra] = useState<PickerCategory[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
@@ -157,7 +151,7 @@ function CreateForm({
     const k =
       preset.kind || kindTouched
         ? kind
-        : kindForPage(page, prefs.kind === "moment" ? "task" : prefs.kind);
+        : kindForPage(page, lastKind(prefs.kind));
     setKind(k);
     setDest(destinationFor(k, dest, picked, page));
   }
@@ -168,8 +162,8 @@ function CreateForm({
     let live = true;
     createOptionsAction({ areaId })
       .then((o) => live && setOptions(o))
-      // Title, notes and Create work without them; a moment needs trackers.
-      .catch(() => live && setOptionsFailed(true));
+      // Title, notes and Create work without them.
+      .catch(() => {});
     return () => {
       live = false;
     };
@@ -178,80 +172,21 @@ function CreateForm({
   }, []);
 
   const categories = [...(options?.categories ?? []), ...extra];
-  const noun = moment ? "moment" : kind === "task" ? "task" : "achievement";
-  const trackers = options?.trackers ?? null;
-  // The remembered tracker if it's still active, else the first.
-  const tracker =
-    trackers?.find((t) => t.id === trackerId) ?? trackers?.[0] ?? null;
+  const noun = kind === "task" ? "task" : "achievement";
   const mac =
     typeof navigator !== "undefined" &&
     /Mac|iP(hone|ad)/.test(navigator.platform);
 
-  function remember(next: {
-    kind?: DialogKind;
-    more?: boolean;
-    tracker?: string;
-  }) {
-    savePrefs({
-      kind: next.kind ?? (moment ? "moment" : kind),
-      more: next.more ?? more,
-      ...((next.tracker ?? tracker?.id)
-        ? { tracker: next.tracker ?? tracker!.id }
-        : {}),
-    });
+  function remember(next: { kind?: Kind; more?: boolean }) {
+    savePrefs({ kind: next.kind ?? kind, more: next.more ?? more });
   }
 
-  function switchKind(next: DialogKind) {
-    if (next === "moment") {
-      if (moment) return;
-      setMoment(true);
-      remember({ kind: "moment" });
-      return;
-    }
-    if (next === kind && !moment) return;
-    setMoment(false);
+  function switchKind(next: Kind) {
+    if (next === kind) return;
     setKind(next);
     setKindTouched(true);
     setDest(destinationFor(next, dest, picked, page));
     remember({ kind: next });
-  }
-
-  async function logIt() {
-    if (!tracker || busy.current) return;
-    busy.current = true;
-    setSaving(true);
-    setError(null);
-    setCreated(null);
-    const note = notes.trim();
-    let r: Awaited<ReturnType<typeof logMomentAction>> | null;
-    try {
-      r = await logMomentAction({
-        trackerId: tracker.id,
-        ...(intensity ? { intensity } : {}),
-        ...(note ? { note } : {}),
-        ...(at ? { at: new Date(at).toISOString() } : {}),
-      });
-    } catch {
-      r = null;
-    }
-    busy.current = false;
-    setSaving(false);
-    if (!r || !r.ok) {
-      setError(r?.message ?? RELOAD);
-      return;
-    }
-    if (more) {
-      setNotes("");
-      setIntensity(null);
-      setAt(null);
-      setCreated(tracker.name);
-      return;
-    }
-    onClose();
-    const batchId = r.batchId;
-    toast(`Logged ${tracker.name}`, {
-      action: { label: "Undo", onClick: () => void undo(batchId) },
-    });
   }
 
   function requestClose() {
@@ -260,7 +195,6 @@ function CreateForm({
   }
 
   async function save() {
-    if (moment) return logIt();
     const t = title.trim();
     if (!t || busy.current) return;
     busy.current = true;
@@ -373,269 +307,367 @@ function CreateForm({
         className="inset-0 flex h-[var(--sheet-height,100dvh)] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-none md:inset-auto md:top-[15%] md:left-1/2 md:h-auto md:max-w-[620px] md:-translate-x-1/2 md:rounded-xl"
       >
         <DialogTitle className="sr-only">
-          {moment ? "Log a moment" : `New ${noun}`}
+          {choosing ? "Capture" : `New ${noun}`}
         </DialogTitle>
         <DialogDescription className="sr-only">
-          Ctrl+Enter creates it.
+          {choosing ? "What do you want to add?" : "Ctrl+Enter creates it."}
         </DialogDescription>
-        <div className="flex min-w-0 items-center gap-2 px-4 pt-3 pr-12 text-xs text-muted-foreground">
-          <div
-            role="group"
-            aria-label="Kind"
-            className="flex shrink-0 rounded-md border p-0.5"
-          >
-            {(["task", "achievement", "moment"] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                aria-pressed={k === "moment" ? moment : !moment && kind === k}
-                onClick={() => switchKind(k)}
-                className={cn(
-                  "rounded-[5px] px-2 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  (k === "moment" ? moment : !moment && kind === k)
-                    ? "bg-accent font-medium text-accent-foreground"
-                    : "hover:text-foreground",
-                )}
-              >
-                {k === "task"
-                  ? "Task"
-                  : k === "achievement"
-                    ? "Achievement"
-                    : "Moment"}
-              </button>
-            ))}
-          </div>
-          {moment ? (
-            <span className="shrink-0">Log a moment</span>
-          ) : (
-            <>
-              <DestinationPicker
-                kind={kind}
-                planned={kind === "task" && plan !== null}
-                value={dest}
-                targets={options?.targets ?? null}
-                onChange={(d) => {
-                  setDest(d);
-                  setPicked(true);
-                }}
-              />
-              <span aria-hidden className="shrink-0">
-                › New {noun}
-              </span>
-            </>
-          )}
-        </div>
-        <div className="flex flex-col px-4 pt-2">
-          {!moment && (
-            <input
-              ref={titleRef}
-              aria-label="Title"
-              placeholder={kind === "task" ? "Task title" : "Achievement title"}
-              value={title}
-              maxLength={kind === "task" ? 300 : 200}
-              autoFocus
-              onChange={(e) => {
-                setTitle(e.target.value);
-                setError(null);
-                setCreated(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
-                  e.preventDefault();
-                  void save();
-                }
-              }}
-              className="w-full bg-transparent py-1.5 text-xl font-semibold outline-none placeholder:text-faint"
-            />
-          )}
-          <textarea
-            aria-label="Notes"
-            placeholder={moment ? "What was happening?" : "Add notes…"}
-            value={notes}
-            maxLength={10_000}
-            rows={2}
-            onChange={(e) => setNotes(e.target.value)}
-            className="field-sizing-content max-h-60 min-h-12 w-full resize-none bg-transparent pb-3 text-sm outline-none placeholder:text-faint"
+        {choosing ? (
+          <Chooser
+            onPick={(k) => {
+              switchKind(k);
+              setChoosing(false);
+            }}
           />
-        </div>
-        <div className="flex flex-wrap gap-1.5 px-4 pb-3">
-          {moment ? (
-            <MomentFields
-              trackers={trackers}
-              trackerId={tracker?.id ?? null}
-              onTracker={(id) => {
-                setTrackerId(id);
-                remember({ tracker: id });
-              }}
-              intensity={intensity}
-              onIntensity={setIntensity}
-              at={at}
-              onAt={setAt}
-            />
-          ) : kind === "task" ? (
-            <>
-              <EffortPicker
-                value={effort}
-                onChange={setEffort}
-                prefix="Effort: "
-                className={chipClass(true)}
+        ) : (
+          <>
+            {phone ? (
+              // The phone: a plain heading, a way back to the choice, and the
+              // destination on its own line so nothing runs off the screen.
+              <div className="flex flex-col gap-1 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pr-14">
+                <div className="flex items-center gap-1">
+                  {!preset.kind && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Back"
+                      className="-ml-2"
+                      onClick={() => setChoosing(true)}
+                    >
+                      <ArrowLeft />
+                    </Button>
+                  )}
+                  <h2 aria-hidden className="text-lg font-semibold">
+                    New {noun}
+                  </h2>
+                </div>
+                <div className="flex min-w-0 text-sm text-muted-foreground">
+                  <DestinationPicker
+                    kind={kind}
+                    planned={kind === "task" && plan !== null}
+                    value={dest}
+                    targets={options?.targets ?? null}
+                    onChange={(d) => {
+                      setDest(d);
+                      setPicked(true);
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex min-w-0 items-center gap-2 px-4 pt-3 pr-12 text-xs text-muted-foreground">
+                {!preset.kind && (
+                  <div
+                    role="group"
+                    aria-label="Kind"
+                    className="flex shrink-0 rounded-md border p-0.5"
+                  >
+                    {(["task", "achievement"] as const).map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        aria-pressed={kind === k}
+                        onClick={() => switchKind(k)}
+                        className={cn(
+                          "rounded-[5px] px-2 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          kind === k
+                            ? "bg-accent font-medium text-accent-foreground"
+                            : "hover:text-foreground",
+                        )}
+                      >
+                        {k === "task" ? "Task" : "Achievement"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <DestinationPicker
+                  kind={kind}
+                  planned={kind === "task" && plan !== null}
+                  value={dest}
+                  targets={options?.targets ?? null}
+                  onChange={(d) => {
+                    setDest(d);
+                    setPicked(true);
+                  }}
+                />
+                <span aria-hidden className="shrink-0">
+                  › New {noun}
+                </span>
+              </div>
+            )}
+            <div className="flex flex-col px-4 pt-2">
+              <input
+                ref={titleRef}
+                aria-label="Title"
+                placeholder={
+                  kind === "task" ? "Task title" : "Achievement title"
+                }
+                value={title}
+                maxLength={kind === "task" ? 300 : 200}
+                autoFocus
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setError(null);
+                  setCreated(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    void save();
+                  }
+                }}
+                className="w-full bg-transparent py-1.5 text-xl font-semibold outline-none placeholder:text-faint"
               />
-              <WhenPicker
-                value={plan}
-                today={options?.today ?? ""}
-                weekStart={options?.weekStart ?? 1}
-                // A repeating task's rule is its plan.
-                disabled={!options || recurrence !== null}
-                onChange={setPlan}
+              <textarea
+                aria-label="Notes"
+                placeholder="Add notes…"
+                value={notes}
+                maxLength={10_000}
+                rows={2}
+                onChange={(e) => setNotes(e.target.value)}
+                className="field-sizing-content max-h-60 min-h-12 w-full resize-none bg-transparent pb-3 text-base outline-none placeholder:text-faint md:text-sm"
               />
-              {plan?.type === "day" && (
-                <SectionPicker value={section} onChange={setSection} />
+            </div>
+            {kind === "task" && plan?.type === "day" && (
+              <SectionSwitch value={section} onChange={setSection} />
+            )}
+            <div className="flex flex-wrap gap-2 px-4 pb-3 md:gap-1.5">
+              {kind === "task" ? (
+                <>
+                  <EffortPicker
+                    value={effort}
+                    onChange={setEffort}
+                    prefix="Effort: "
+                    className={chipClass(true)}
+                  />
+                  <WhenPicker
+                    value={plan}
+                    today={options?.today ?? ""}
+                    weekStart={options?.weekStart ?? 1}
+                    // A repeating task's rule is its plan.
+                    disabled={!options || recurrence !== null}
+                    onChange={setPlan}
+                  />
+                  <DeadlineChip value={deadline} onChange={setDeadline} />
+                  <TargetPicker
+                    value={target}
+                    disabled={recurrence !== null}
+                    onChange={setTarget}
+                  />
+                  <RecurrencePicker
+                    value={recurrence}
+                    today={options?.today ?? ""}
+                    locked={false}
+                    disabled={!options || plan !== null || target !== null}
+                    onSave={setRecurrence}
+                    emptyLabel="Repeat"
+                    className={chipClass(recurrence !== null)}
+                  />
+                  {categoryIds.map((id) => {
+                    const c = categories.find((x) => x.id === id);
+                    if (!c) return null;
+                    return (
+                      <span key={id} className={chipClass(true)}>
+                        <span
+                          aria-hidden
+                          className="size-2 rounded-full"
+                          style={{ background: c.color }}
+                        />
+                        {c.name}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${c.name}`}
+                          onClick={() =>
+                            setCategoryIds((ids) => ids.filter((x) => x !== id))
+                          }
+                          className="text-faint hover:text-foreground"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                  <CategoryPicker
+                    categories={categories}
+                    value={categoryIds}
+                    onChange={setCategoryIds}
+                    onCreate={createCategory}
+                    trigger={
+                      <button
+                        type="button"
+                        disabled={!options}
+                        className={chipClass(false)}
+                      >
+                        <Plus className="size-3" aria-hidden />
+                        Category
+                      </button>
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <StatusChip value={status} onChange={setStatus} />
+                  <DeadlineChip value={deadline} onChange={setDeadline} />
+                </>
               )}
-              <DeadlineChip value={deadline} onChange={setDeadline} />
-              <TargetPicker
-                value={target}
-                disabled={recurrence !== null}
-                onChange={setTarget}
-              />
-              <RecurrencePicker
-                value={recurrence}
-                today={options?.today ?? ""}
-                locked={false}
-                disabled={!options || plan !== null || target !== null}
-                onSave={setRecurrence}
-                emptyLabel="Repeat"
-                className={chipClass(recurrence !== null)}
-              />
-              {categoryIds.map((id) => {
-                const c = categories.find((x) => x.id === id);
-                if (!c) return null;
-                return (
-                  <span key={id} className={chipClass(true)}>
-                    <span
-                      aria-hidden
-                      className="size-2 rounded-full"
-                      style={{ background: c.color }}
-                    />
-                    {c.name}
+            </div>
+            <div className="px-4">
+              {error && (
+                <p role="alert" className="pb-2 text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+              {created && (
+                <p role="status" className="pb-2 text-sm text-muted-foreground">
+                  {`Created “${created}”`}
+                </p>
+              )}
+            </div>
+            <div className="mt-auto flex items-center gap-3 border-t px-4 py-2.5 md:mt-0">
+              {confirming ? (
+                <>
+                  <span className="text-sm">Discard this {noun}?</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto"
+                    autoFocus
+                    onClick={() => {
+                      setConfirming(false);
+                      titleRef.current?.focus();
+                    }}
+                  >
+                    Keep editing
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={onClose}>
+                    Discard
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <button
                       type="button"
-                      aria-label={`Remove ${c.name}`}
-                      onClick={() =>
-                        setCategoryIds((ids) => ids.filter((x) => x !== id))
-                      }
-                      className="text-faint hover:text-foreground"
+                      role="switch"
+                      aria-checked={more}
+                      aria-label="Create more"
+                      onClick={() => {
+                        setMore(!more);
+                        remember({ more: !more });
+                      }}
+                      className={cn(
+                        "relative h-4 w-7 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        more ? "bg-primary" : "bg-input",
+                      )}
                     >
-                      <X className="size-3" />
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "absolute top-0.5 size-3 rounded-full bg-background transition-[left]",
+                          more ? "left-3.5" : "left-0.5",
+                        )}
+                      />
                     </button>
-                  </span>
-                );
-              })}
-              <CategoryPicker
-                categories={categories}
-                value={categoryIds}
-                onChange={setCategoryIds}
-                onCreate={createCategory}
-                trigger={
-                  <button
-                    type="button"
-                    disabled={!options}
-                    className={chipClass(false)}
+                    Create more
+                  </label>
+                  <Button
+                    className="ml-auto"
+                    disabled={!title.trim() || saving}
+                    onClick={() => void save()}
                   >
-                    <Plus className="size-3" aria-hidden />
-                    Category
-                  </button>
-                }
-              />
-            </>
-          ) : (
-            <>
-              <StatusChip value={status} onChange={setStatus} />
-              <DeadlineChip value={deadline} onChange={setDeadline} />
-            </>
-          )}
-        </div>
-        <div className="px-4">
-          {moment && optionsFailed && !error && (
-            <p role="alert" className="pb-2 text-sm text-destructive">
-              {RELOAD}
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="pb-2 text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          {created && (
-            <p role="status" className="pb-2 text-sm text-muted-foreground">
-              {moment ? `Logged ${created}` : `Created “${created}”`}
-            </p>
-          )}
-        </div>
-        <div className="mt-auto flex items-center gap-3 border-t px-4 py-2.5 md:mt-0">
-          {confirming ? (
-            <>
-              <span className="text-sm">Discard this {noun}?</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto"
-                autoFocus
-                onClick={() => {
-                  setConfirming(false);
-                  titleRef.current?.focus();
-                }}
-              >
-                Keep editing
-              </Button>
-              <Button variant="destructive" size="sm" onClick={onClose}>
-                Discard
-              </Button>
-            </>
-          ) : (
-            <>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={more}
-                  aria-label="Create more"
-                  onClick={() => {
-                    setMore(!more);
-                    remember({ more: !more });
-                  }}
-                  className={cn(
-                    "relative h-4 w-7 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    more ? "bg-primary" : "bg-input",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "absolute top-0.5 size-3 rounded-full bg-background transition-[left]",
-                      more ? "left-3.5" : "left-0.5",
-                    )}
-                  />
-                </button>
-                Create more
-              </label>
-              <Button
-                className="ml-auto"
-                disabled={(moment ? !tracker : !title.trim()) || saving}
-                onClick={() => void save()}
-              >
-                {moment ? "Log moment" : `Create ${noun}`}
-                <kbd
-                  aria-hidden
-                  className="rounded border border-primary-foreground/40 px-1 text-[11px] font-normal"
-                >
-                  {mac ? "⌘" : "Ctrl"} ↵
-                </kbd>
-              </Button>
-            </>
-          )}
-        </div>
+                    Create {noun}
+                    <kbd
+                      aria-hidden
+                      className="hidden rounded border border-primary-foreground/40 px-1 text-[11px] font-normal md:inline"
+                    >
+                      {mac ? "⌘" : "Ctrl"} ↵
+                    </kbd>
+                  </Button>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+const PHONE = "(max-width: 767px)";
+
+/** Below md the dialog is a phone sheet with its own flow. */
+function isPhone(): boolean {
+  return typeof window !== "undefined" && !!window.matchMedia?.(PHONE).matches;
+}
+
+/** A remembered kind from before moments left Capture. */
+const lastKind = (k: Kind | "moment"): Kind => (k === "moment" ? "task" : k);
+
+/** The phone's first step: two big choices. */
+function Chooser({ onPick }: { onPick: (kind: Kind) => void }) {
+  const choice =
+    "flex min-h-20 items-center gap-4 rounded-xl border bg-card p-4 text-left outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]";
+  return (
+    <div className="flex flex-1 flex-col gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <h2 aria-hidden className="pr-10 text-lg font-semibold">
+        What do you want to add?
+      </h2>
+      <button type="button" className={choice} onClick={() => onPick("task")}>
+        <ListChecks className="size-6 shrink-0 text-primary" aria-hidden />
+        <span className="flex flex-col">
+          <span className="text-base font-semibold">Task</span>
+          <span className="text-sm text-muted-foreground">Something to do</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        className={choice}
+        onClick={() => onPick("achievement")}
+      >
+        <Trophy className="size-6 shrink-0 text-primary" aria-hidden />
+        <span className="flex flex-col">
+          <span className="text-base font-semibold">Achievement</span>
+          <span className="text-sm text-muted-foreground">
+            Something to work toward
+          </span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
+/** Work or Spare time, for a task planned on a day: one tap, always visible. */
+function SectionSwitch({
+  value,
+  onChange,
+}: {
+  value: Section;
+  onChange: (s: Section) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Section"
+      className="mx-4 mb-3 grid grid-cols-2 rounded-lg border p-1"
+    >
+      {SECTIONS.map((s) => (
+        <button
+          key={s}
+          type="button"
+          role="radio"
+          aria-checked={value === s}
+          onClick={() => onChange(s)}
+          className={cn(
+            "min-h-10 rounded-md text-base outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-8 md:text-sm",
+            value === s
+              ? "bg-primary font-medium text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {SECTION_LABELS[s]}
+        </button>
+      ))}
+    </div>
   );
 }
 

@@ -101,6 +101,15 @@ function ChatPanel({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 hidden bg-black/10 md:block" />
         <DialogPrimitive.Content
+          // Straight to typing, not to the model picker.
+          onOpenAutoFocus={(e) => {
+            const input = (e.currentTarget as HTMLElement).querySelector(
+              "textarea",
+            );
+            if (!input) return;
+            e.preventDefault();
+            input.focus();
+          }}
           // Full screen on the phone, a right-hand sheet from md up.
           className="fixed inset-0 z-50 flex flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:left-auto md:w-[28rem] md:border-l md:pt-0 md:pb-0 md:shadow-xl"
         >

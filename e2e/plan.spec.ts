@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { expectNoSideScroll, uniqueName } from "./helpers/app";
+import { chooseKind, expectNoSideScroll, uniqueName } from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
 
 test.beforeEach(async ({ page }) => {
@@ -10,17 +10,18 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-/** Adds a task to a day's section from its "Add to …" button. */
+/** Adds a task to a day's section: Add task, then Work or Spare time. */
 async function addTo(
   page: Page,
   section: "Work" | "Spare time",
   title: string,
 ) {
-  await page
-    .getByRole("region", { name: section })
-    .getByRole("button", { name: `Add to ${section}` })
-    .click();
+  await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "New task" });
+  await dialog
+    .getByRole("radiogroup", { name: "Section" })
+    .getByRole("radio", { name: section })
+    .click();
   await expect(
     dialog.getByRole("button", { name: "Destination: No achievement" }),
   ).toBeVisible();
@@ -58,6 +59,7 @@ test("today: a repeating loose task shows up and can be ticked", async ({
   await page.goto("/today");
   await page.waitForLoadState("networkidle");
   await page.keyboard.press("c");
+  await chooseKind(page, "Task");
   const dialog = page.getByRole("dialog", { name: "New task" });
   await dialog.getByRole("textbox", { name: "Title" }).fill(title);
   await dialog.getByRole("button", { name: /^Repeat/ }).click();
@@ -87,6 +89,8 @@ test("a task moved to the week's list waits on Week, then gets a day", async ({
   await expect(
     page.getByRole("region", { name: "Work" }).getByText(title),
   ).toBeHidden();
+  // The move is saved before leaving, not just shown.
+  await page.waitForLoadState("networkidle");
 
   await page.goto("/week");
   const list = page.getByRole("region", { name: "This week's list" });

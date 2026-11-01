@@ -2,7 +2,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { DayItem, Sections } from "@/server/domain/plan";
-import { CaptureProvider } from "./capture-context";
+import { CaptureProvider, useCapture } from "./capture-context";
 import { DayList } from "./day-list";
 
 const server = vi.hoisted(() => ({
@@ -178,4 +178,26 @@ it("shows a target's progress with a log button", () => {
   expect(
     screen.getByRole("button", { name: "Log progress on Read" }),
   ).toBeVisible();
+});
+
+function Probe() {
+  const { open, preset } = useCapture();
+  return open ? (
+    <output aria-label="Opened">{JSON.stringify(preset)}</output>
+  ) : null;
+}
+
+it("one Add task button opens a task for that day, starting in Work", async () => {
+  render(
+    <CaptureProvider>
+      <DayList day={TODAY} today={TODAY} sections={{ work: [], spare: [] }} />
+      <Probe />
+    </CaptureProvider>,
+  );
+  expect(screen.queryByRole("button", { name: /^Add to/ })).toBeNull();
+  await userEvent.click(screen.getByRole("button", { name: "Add task" }));
+  expect(JSON.parse(screen.getByLabelText("Opened").textContent!)).toEqual({
+    kind: "task",
+    plan: { type: "day", date: TODAY, section: "work" },
+  });
 });

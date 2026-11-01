@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectNoSideScroll, openCapture, uniqueName } from "./helpers/app";
+import { expectNoSideScroll, uniqueName } from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
 
 test.beforeEach(async ({ page }) => {
@@ -10,9 +10,9 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("log a moment from Capture, see it on the tracker, delete and undo", async ({
+test("log a moment with details from its card, delete and undo", async ({
   page,
-}, testInfo) => {
+}) => {
   const name = uniqueName("Temper");
   const note = uniqueName("traffic");
 
@@ -23,15 +23,12 @@ test("log a moment from Capture, see it on the tracker, delete and undo", async 
   const card = page.getByRole("region", { name });
   await expect(card.getByText("This week so far: 0")).toBeVisible();
 
-  await openCapture(page, testInfo);
-  await page
-    .getByRole("group", { name: "Kind" })
-    .getByRole("button", { name: "Moment" })
+  await card
+    .getByRole("button", { name: `Log with details for ${name}` })
     .click();
-  const dialog = page.getByRole("dialog", { name: "Log a moment" });
-  await dialog.getByRole("radio", { name }).click();
+  const dialog = page.getByRole("dialog", { name: `Log ${name}` });
   await dialog.getByRole("button", { name: "Intensity 3" }).click();
-  await dialog.getByRole("textbox", { name: "Notes" }).fill(note);
+  await dialog.getByRole("textbox", { name: "Note" }).fill(note);
   await dialog.getByRole("button", { name: "Log moment" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByText(`Logged ${name}`)).toBeVisible();
@@ -43,6 +40,8 @@ test("log a moment from Capture, see it on the tracker, delete and undo", async 
 
   await card.getByRole("button", { name: "Delete moment" }).first().click();
   await page.getByRole("button", { name: "Undo" }).click();
+  // The undo is saved before reloading, not just shown.
+  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(card.getByText(note)).toBeVisible();
 
@@ -65,7 +64,9 @@ test("log a moment with one tap on Today, then add a note", async ({
 
   await page.goto("/today");
   const row = page.getByRole("region", { name: "Trackers" });
-  await row.getByRole("button", { name: `Log ${name}` }).click();
+  await row
+    .getByRole("button", { name: new RegExp(`^Log ${name} \\d+ today$`) })
+    .click();
   await expect(page.getByText(`Logged ${name}`)).toBeVisible();
   await page.getByRole("button", { name: "Add note" }).click();
   const dialog = page.getByRole("dialog", { name: `Note for ${name}` });

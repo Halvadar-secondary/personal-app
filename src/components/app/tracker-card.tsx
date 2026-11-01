@@ -22,6 +22,7 @@ import {
 import type { TrackerMoment } from "@/server/db/goals";
 import type { TrackerSummary } from "@/server/domain/trackers";
 import { InlineText } from "./inline-text";
+import { LogMomentButton } from "./log-moment-dialog";
 import { Trend, trackerLabel } from "./tracker-text";
 import { perform, useMutate } from "./use-mutate";
 
@@ -90,7 +91,7 @@ export function TrackerCard({
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               aria-label={`Tracker menu ${tracker.name}`}
             >
               <MoreHorizontal />
@@ -157,6 +158,7 @@ export function TrackerCard({
       </div>
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-sm font-medium">Today: {tracker.today}</span>
         <span className="text-sm font-medium">
           This week so far: {tracker.thisWeek}
         </span>
@@ -170,6 +172,8 @@ export function TrackerCard({
           </span>
         )}
       </div>
+
+      {!tracker.archivedAt && <LogMomentButton tracker={tracker} />}
 
       <ol aria-label="Last 8 weeks" className="flex h-12 items-end gap-1">
         {tracker.weeks.map((w) => (

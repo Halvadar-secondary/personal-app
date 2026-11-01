@@ -208,6 +208,7 @@ function liveTrackers(ctx: Ctx, activeOnly = false) {
 }
 
 export type TrackerSummary = Tracker & {
+  today: number;
   thisWeek: number;
   lastWeek: number;
   avgIntensity: number | null;
@@ -220,6 +221,7 @@ export const listTrackers = defineAction(
   async (ctx): Promise<{ trackers: TrackerSummary[] }> => {
     const now = ctx.now();
     const thisStart = weekStartOf(localDate(now, ctx.timeZone), ctx.weekStart);
+    const todayLocal = localDate(now, ctx.timeZone);
     // A day of slack covers any time zone's week edge.
     const from = new Date(now.getTime() - (WEEKS * 7 + 1) * DAY_MS);
     const rows = await momentsSince(ctx, from);
@@ -236,6 +238,8 @@ export const listTrackers = defineAction(
         return {
           ...t,
           ...counts,
+          today: at.filter((a) => localDate(a, ctx.timeZone) === todayLocal)
+            .length,
           avgIntensity: thisWeek.length
             ? thisWeek.reduce((s, m) => s + m.intensity!, 0) / thisWeek.length
             : null,
@@ -245,15 +249,6 @@ export const listTrackers = defineAction(
     };
   },
 );
-
-/** For the Capture dialog: active trackers, in order. */
-export async function activeTrackers(ctx: Ctx) {
-  return (await liveTrackers(ctx, true)).map(({ id, name, emoji }) => ({
-    id,
-    name,
-    emoji,
-  }));
-}
 
 /** A tracker's moments, newest first, a page at a time. */
 export const listMoments = defineAction(

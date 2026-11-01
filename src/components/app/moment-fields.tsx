@@ -1,14 +1,9 @@
 "use client";
 
 import { Clock, X } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { chipClass } from "./chip";
-
-export type MomentTracker = { id: string; name: string; emoji: string | null };
-
-const label = (t: MomentTracker) => (t.emoji ? `${t.emoji} ${t.name}` : t.name);
 
 /** "YYYY-MM-DDTHH:MM" of now, for a datetime-local's max. */
 function localNow(): string {
@@ -18,22 +13,15 @@ function localNow(): string {
 }
 
 /**
- * A moment's properties in the Capture dialog: which tracker, how strong,
- * and when (now unless set earlier).
+ * A moment's details on the Trackers page: how strong, and when (now unless
+ * set earlier).
  */
 export function MomentFields({
-  trackers,
-  trackerId,
-  onTracker,
   intensity,
   onIntensity,
   at,
   onAt,
 }: {
-  /** Null until the dialog's options arrive. */
-  trackers: MomentTracker[] | null;
-  trackerId: string | null;
-  onTracker: (id: string) => void;
   intensity: number | null;
   onIntensity: (n: number | null) => void;
   /** A datetime-local value, or null for now. */
@@ -42,42 +30,13 @@ export function MomentFields({
 }) {
   const [picking, setPicking] = useState(false);
 
-  if (trackers && trackers.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No trackers yet.{" "}
-        <Link href="/trackers" className="text-primary underline">
-          Add one
-        </Link>
-      </p>
-    );
-  }
   return (
     <div className="flex flex-col gap-2">
-      <div
-        role="radiogroup"
-        aria-label="Tracker"
-        className="flex flex-wrap gap-1.5"
-      >
-        {(trackers ?? []).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="radio"
-            aria-checked={trackerId === t.id}
-            aria-label={label(t)}
-            onClick={() => onTracker(t.id)}
-            className={chipClass(trackerId === t.id)}
-          >
-            {label(t)}
-          </button>
-        ))}
-      </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <div
           role="group"
           aria-label="Intensity"
-          className="flex items-center gap-1 text-xs text-muted-foreground"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground md:text-xs"
         >
           <span aria-hidden>Intensity</span>
           {[1, 2, 3, 4, 5].map((n) => (
@@ -88,7 +47,7 @@ export function MomentFields({
               aria-pressed={intensity === n}
               onClick={() => onIntensity(intensity === n ? null : n)}
               className={cn(
-                "size-6 rounded-full border text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "size-9 rounded-full border text-sm outline-none md:size-7 md:text-xs focus-visible:ring-2 focus-visible:ring-ring",
                 intensity !== null && n <= intensity
                   ? "border-primary/30 bg-accent text-accent-foreground"
                   : "hover:text-foreground",

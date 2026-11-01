@@ -47,7 +47,7 @@ export function ModelPicker({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Model: ${tiers[value].label}`}
-        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex min-h-10 items-center gap-1 rounded-lg px-3 py-2 text-base font-medium md:min-h-0 md:px-2 md:py-1 md:text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
       >
         {tiers[value].label}
         <ChevronDown aria-hidden className="size-3.5 text-muted-foreground" />

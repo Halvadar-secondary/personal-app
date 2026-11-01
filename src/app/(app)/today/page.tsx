@@ -46,12 +46,7 @@ async function Today() {
       <QuickLog
         trackers={trackers
           .filter((t) => !t.archivedAt)
-          .map(({ id, name, emoji, thisWeek }) => ({
-            id,
-            name,
-            emoji,
-            thisWeek,
-          }))}
+          .map(({ id, name, emoji, today }) => ({ id, name, emoji, today }))}
       />
       {empty && (
         <div className="flex flex-col items-start gap-2 rounded-[12px] border border-dashed p-4">

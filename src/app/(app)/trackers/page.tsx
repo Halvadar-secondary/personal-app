@@ -12,8 +12,9 @@ export default function TrackersPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-xl font-bold md:text-2xl">Trackers</h1>
         <p className="text-sm text-muted-foreground">
-          Log a moment from Capture (C): pick Moment, the tracker, and what was
-          happening.
+          Tap a tracker on Today to log it. Here: add trackers, see how
+          they&apos;re going, and log one with a score, an earlier time or a
+          note.
         </p>
       </header>
       <Suspense fallback={<TrackersSkeleton />}>

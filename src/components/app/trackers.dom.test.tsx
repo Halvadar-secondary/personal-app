@@ -44,6 +44,7 @@ const tracker = (over: Partial<TrackerSummary> = {}): TrackerSummary => ({
   createdAt: new Date(0),
   updatedAt: new Date(0),
   deletedAt: null,
+  today: 1,
   thisWeek: 2,
   lastWeek: 5,
   avgIntensity: 2.5,
@@ -155,4 +156,25 @@ it("starters create common trackers in one tap; the form makes any", async () =>
     emoji: null,
     direction: "less",
   });
+});
+
+it("an active tracker logs with details from its card; an archived one can't", () => {
+  const { unmount } = render(
+    <TrackerCard clock={CLOCK} tracker={tracker()} moments={[]} />,
+  );
+  expect(
+    screen.getByRole("button", { name: "Log with details for Anger" }),
+  ).toBeVisible();
+  expect(screen.getByText("Today: 1")).toBeVisible();
+  unmount();
+  render(
+    <TrackerCard
+      clock={CLOCK}
+      tracker={tracker({ archivedAt: new Date(0) })}
+      moments={[]}
+    />,
+  );
+  expect(
+    screen.queryByRole("button", { name: "Log with details for Anger" }),
+  ).toBeNull();
 });
