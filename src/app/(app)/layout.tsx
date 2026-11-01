@@ -22,7 +22,10 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           </Suspense>
           {/* Bottom padding keeps the phone tab bar and the Claude button off the content. */}
           <main className="min-w-0 flex-1 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-20">
-            <BackBar />
+            {/* It reads the URL, so it waits for it: Suspense. */}
+            <Suspense fallback={null}>
+              <BackBar />
+            </Suspense>
             {children}
           </main>
         </div>
