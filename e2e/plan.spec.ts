@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
-import { chooseKind, expectNoSideScroll, uniqueName } from "./helpers/app";
+import {
+  chooseKind,
+  expectNoSideScroll,
+  isPhone,
+  uniqueName,
+} from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
 
 test.beforeEach(async ({ page }) => {
@@ -105,5 +110,45 @@ test("a task moved to the week's list waits on Week, then gets a day", async ({
   await expect(
     page.getByRole("region", { name: label }).getByText(title),
   ).toBeVisible();
+  await expectNoSideScroll(page);
+});
+
+test("on a phone the day switcher is centred with Done planning below on the right", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isPhone(testInfo), "phone layout only");
+  await page.goto("/plan");
+  const prev = (await page
+    .getByRole("link", { name: "Previous day" })
+    .boundingBox())!;
+  const next = (await page
+    .getByRole("link", { name: "Next day" })
+    .boundingBox())!;
+  const done = (await page
+    .getByRole("button", { name: "Done planning" })
+    .boundingBox())!;
+  const width = page.viewportSize()!.width;
+  // Centred: as much room left of Previous as right of Next.
+  expect(
+    Math.abs(prev.x - (width - (next.x + next.width))),
+  ).toBeLessThanOrEqual(2);
+  // Its own row below, against the right edge.
+  expect(done.y).toBeGreaterThanOrEqual(next.y + next.height);
+  expect(width - (done.x + done.width)).toBeLessThanOrEqual(20);
+});
+
+test("on a phone the week switcher is centred", async ({ page }, testInfo) => {
+  test.skip(!isPhone(testInfo), "phone layout only");
+  await page.goto("/week");
+  const prev = (await page
+    .getByRole("link", { name: "Previous week" })
+    .boundingBox())!;
+  const next = (await page
+    .getByRole("link", { name: "Next week" })
+    .boundingBox())!;
+  const width = page.viewportSize()!.width;
+  expect(
+    Math.abs(prev.x - (width - (next.x + next.width))),
+  ).toBeLessThanOrEqual(2);
   await expectNoSideScroll(page);
 });

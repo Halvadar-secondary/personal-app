@@ -27,8 +27,10 @@ async function Week({
   const nav = buttonVariants({ variant: "ghost", size: "icon-sm" });
   return (
     <>
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
+      {/* Phone: the week switcher centred on its own row, the links below
+          on the right. Wider screens: one row. */}
+      <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center justify-center gap-1 md:justify-start">
           <Link
             href={`/week?start=${addDays(w.start, -7)}`}
             aria-label="Previous week"
@@ -36,7 +38,7 @@ async function Week({
           >
             <ChevronLeft />
           </Link>
-          <h1 className="text-xl font-bold md:text-2xl">
+          <h1 className="text-center text-xl font-bold md:text-left md:text-2xl">
             Week of {formatDeadline(w.start)}
           </h1>
           <Link
@@ -47,7 +49,7 @@ async function Week({
             <ChevronRight />
           </Link>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Link href="/goals" className={buttonVariants({ variant: "ghost" })}>
             Goals
           </Link>
