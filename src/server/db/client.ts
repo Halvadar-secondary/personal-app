@@ -1,11 +1,63 @@
 import "server-only";
+import { EventEmitter } from "node:events";
 import { attachDatabasePool } from "@vercel/functions";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 import * as schema from "./schema";
 import type { Db } from "./types";
 
 let db: Db | undefined;
+
+type Guardable = EventEmitter & {
+  query: (...args: never[]) => unknown;
+  release: (err?: Error | boolean) => void;
+};
+
+const broken = Symbol("broken connection");
+const guarded = Symbol("guarded");
+type State = { [broken]?: Error; [guarded]?: true };
+
+/** Errors after which a connection can't be trusted with another request. */
+function breaksConnection(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    /Query read timeout|Connection terminated|not queryable/i.test(err.message)
+  );
+}
+
+/**
+ * Remembers when a checked-out connection breaks, and makes its release
+ * discard it instead of handing it to the next request. Drizzle's transaction
+ * releases without passing the error, so without this a connection whose
+ * query timed out (the database still busy with it, the transaction still
+ * open) goes back into the pool, and every request that borrows it hangs.
+ */
+export function guardClient(client: Guardable): void {
+  const c = client as Guardable & State;
+  if (!c[guarded]) {
+    c[guarded] = true;
+    // The pool listens for errors only while a connection is idle. One that
+    // drops while in use (Neon ending a transaction a frozen function left
+    // open) would emit "error" with no listener, which Node throws, taking
+    // down every request on the instance.
+    c.on("error", (err: Error) => {
+      c[broken] ??= err;
+      console.error("database connection error", err);
+    });
+    const query = c.query.bind(c) as (...args: unknown[]) => unknown;
+    c.query = ((...args: unknown[]) => {
+      const r = query(...args);
+      if (r instanceof Promise)
+        r.catch((err: unknown) => {
+          if (breaksConnection(err)) c[broken] ??= err as Error;
+        });
+      return r;
+    }) as Guardable["query"];
+  }
+  // The pool sets a fresh release on every checkout, so wrap it each time.
+  const release = c.release;
+  c.release = (err?: Error | boolean) => release(err || c[broken]);
+}
 
 export function createPool(connectionString: string | undefined): Pool {
   const pool = new Pool({
@@ -15,15 +67,16 @@ export function createPool(connectionString: string | undefined): Pool {
     connectionTimeoutMillis: 5_000,
     query_timeout: 10_000,
   });
-  // The pool handles errors on idle connections only. One that drops while a
-  // request holds it (Neon ends a transaction a frozen function left open)
-  // emits "error" with no listener, which Node throws, taking down every
-  // request on the instance. The query in flight still fails on its own.
-  pool.on("connect", (client) => {
-    client.on("error", (err) =>
-      console.error("database connection error", err),
-    );
-  });
+  // A connection that errors before it's ever handed out is still covered.
+  pool.on("connect", (client) => guardClient(client as unknown as Guardable));
+  // Transactions take a connection with connect(); guard each checkout.
+  const connect = pool.connect.bind(pool) as () => Promise<PoolClient>;
+  pool.connect = (async (...args: unknown[]) => {
+    if (args.length) return (connect as (...a: unknown[]) => unknown)(...args);
+    const client = await connect();
+    guardClient(client as unknown as Guardable);
+    return client;
+  }) as Pool["connect"];
   return pool;
 }
 
