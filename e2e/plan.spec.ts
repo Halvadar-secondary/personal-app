@@ -113,7 +113,7 @@ test("a task moved to the week's list waits on Week, then gets a day", async ({
   await expectNoSideScroll(page);
 });
 
-test("on a phone the day switcher is centred with Done planning below on the right", async ({
+test("on a phone the day switcher is centred and Done planning ends the page", async ({
   page,
 }, testInfo) => {
   test.skip(!isPhone(testInfo), "phone layout only");
@@ -124,17 +124,20 @@ test("on a phone the day switcher is centred with Done planning below on the rig
   const next = (await page
     .getByRole("link", { name: "Next day" })
     .boundingBox())!;
-  const done = (await page
-    .getByRole("button", { name: "Done planning" })
-    .boundingBox())!;
   const width = page.viewportSize()!.width;
   // Centred: as much room left of Previous as right of Next.
   expect(
     Math.abs(prev.x - (width - (next.x + next.width))),
   ).toBeLessThanOrEqual(2);
-  // Its own row below, against the right edge.
-  expect(done.y).toBeGreaterThanOrEqual(next.y + next.height);
-  expect(width - (done.x + done.width)).toBeLessThanOrEqual(20);
+  // One Done planning, full width, after the day's list and the pick list.
+  const done = page.getByRole("button", { name: "Done planning" });
+  await expect(done).toHaveCount(1);
+  const box = (await done.boundingBox())!;
+  const add = (await page
+    .getByRole("button", { name: "Add task" })
+    .boundingBox())!;
+  expect(box.y).toBeGreaterThan(add.y + add.height);
+  expect(box.width).toBeGreaterThan(width - 40);
 });
 
 test("on a phone the week switcher is centred", async ({ page }, testInfo) => {
