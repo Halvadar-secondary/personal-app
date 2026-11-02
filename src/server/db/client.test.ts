@@ -73,3 +73,31 @@ it("an ordinary query error keeps the connection", async () => {
   (client.release as () => void)();
   expect(release).toHaveBeenCalledWith(undefined);
 });
+
+// Vercel pauses an instance once no request is running. A request that's cut
+// short (the visitor moved on) can leave its transaction mid-way; paused, the
+// connection sits "idle in transaction" until Neon kills it five minutes later,
+// and meanwhile it's one of the pool's five. Each checkout keeps the instance
+// running until the connection is back.
+const vercel = vi.hoisted(() => ({ waitUntil: vi.fn() }));
+vi.mock("@vercel/functions", async (orig) => ({
+  ...(await orig<typeof import("@vercel/functions")>()),
+  waitUntil: vercel.waitUntil,
+}));
+
+it("the instance stays running while a connection is checked out", async () => {
+  const pool = createPool("postgres://u:p@127.0.0.1:1/db");
+  const { client } = fakeClient();
+  vercel.waitUntil.mockClear();
+  pool.emit("acquire", client);
+  expect(vercel.waitUntil).toHaveBeenCalledTimes(1);
+  const held = vercel.waitUntil.mock.calls[0]?.[0] as Promise<void>;
+  let done = false;
+  held.then(() => (done = true));
+  await Promise.resolve();
+  expect(done).toBe(false);
+  pool.emit("release", undefined, client);
+  await held;
+  expect(done).toBe(true);
+  await pool.end();
+});

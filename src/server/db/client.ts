@@ -1,6 +1,6 @@
 import "server-only";
 import { EventEmitter } from "node:events";
-import { attachDatabasePool } from "@vercel/functions";
+import { attachDatabasePool, waitUntil } from "@vercel/functions";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool, type PoolClient } from "pg";
 import * as schema from "./schema";
@@ -66,6 +66,18 @@ export function createPool(connectionString: string | undefined): Pool {
     // pg waits forever by default; an unreachable db must fail fast, not hang every request.
     connectionTimeoutMillis: 5_000,
     query_timeout: 10_000,
+  });
+  // Vercel pauses an instance once no request is running, and a request cut
+  // short (the visitor moved on) can leave a transaction mid-way. Paused, it
+  // sits "idle in transaction" until Neon kills it five minutes later, holding
+  // one of the five connections all along. Keep running until it's back.
+  const out = new WeakMap<object, () => void>();
+  pool.on("acquire", (client) => {
+    waitUntil(new Promise<void>((done) => out.set(client, done)));
+  });
+  pool.on("release", (_err, client) => {
+    out.get(client)?.();
+    out.delete(client);
   });
   // A connection that errors before it's ever handed out is still covered.
   pool.on("connect", (client) => guardClient(client as unknown as Guardable));
