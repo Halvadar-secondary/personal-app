@@ -258,7 +258,7 @@ export function TargetPicker({
           }}
         >
           <div className="flex gap-2">
-            <label className="flex flex-1 flex-col gap-1 text-xs">
+            <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs">
               Amount
               <input
                 type="number"
@@ -266,15 +266,15 @@ export function TargetPicker({
                 step="any"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="rounded-md border bg-transparent px-2 py-1 text-sm"
+                className="min-h-10 w-full min-w-0 rounded-md border bg-transparent px-2 py-1 text-sm md:min-h-0"
               />
             </label>
-            <label className="flex flex-1 flex-col gap-1 text-xs">
+            <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs">
               Unit
               <select
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                className="rounded-md border bg-transparent px-1 py-1 text-sm"
+                className="min-h-10 w-full min-w-0 rounded-md border bg-transparent px-2 py-1 text-sm md:min-h-0"
               >
                 {UNITS.map((u) => (
                   <option key={u} value={u}>
@@ -292,7 +292,7 @@ export function TargetPicker({
                 value={word}
                 maxLength={20}
                 onChange={(e) => setWord(e.target.value)}
-                className="rounded-md border bg-transparent px-2 py-1 text-sm"
+                className="min-h-10 w-full min-w-0 rounded-md border bg-transparent px-2 py-1 text-sm md:min-h-0"
               />
             </label>
           )}
