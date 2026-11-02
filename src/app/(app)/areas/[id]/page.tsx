@@ -3,6 +3,7 @@ import { AreaSkeleton } from "@/components/app/page-skeletons";
 import { AreaBoard } from "@/components/app/area-board";
 import { AreaHeader } from "@/components/app/area-header";
 import { CaptureDestination } from "@/components/app/capture-context";
+import { TaskList } from "@/components/app/task-list";
 import { read } from "@/server/actions/run";
 import { listCategories } from "@/server/domain/categories";
 import { getAreaBoard } from "@/server/domain/views";
@@ -27,6 +28,24 @@ async function Area({ params }: Pick<PageProps<"/areas/[id]">, "params">) {
     <>
       <CaptureDestination area={board.area} />
       <AreaHeader area={board.area} progress={board.progress} />
+      {/* Things to do here that aren't part of an achievement. */}
+      <div className="flex flex-col gap-1">
+        <h2 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          Tasks
+        </h2>
+        <TaskList
+          key={`tasks-${board.area.id}`}
+          tasks={board.tasks}
+          today={board.today}
+          weekStart={board.weekStart}
+          categories={categories.map(({ id, name, color, usedInArea }) => ({
+            id,
+            name,
+            color,
+            usedInArea,
+          }))}
+        />
+      </div>
       {/* Keyed by area so client state never carries over between areas. */}
       <AreaBoard
         key={board.area.id}

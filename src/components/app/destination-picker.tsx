@@ -33,7 +33,8 @@ export function crumbsOf(dest: Destination, planned = false): string[] {
 
 /**
  * The dialog's breadcrumb: where the new item goes, and a searchable list
- * to send it elsewhere (areas for an achievement, achievements for a task).
+ * to send it elsewhere (areas for an achievement; for a task, an area itself
+ * or one of its achievements).
  */
 export function DestinationPicker({
   kind,
@@ -104,28 +105,38 @@ export function DestinationPicker({
                 ))}
               </CommandGroup>
             ) : (
-              targets?.map(
-                (a) =>
-                  a.achievements.length > 0 && (
-                    <CommandGroup key={a.id} heading={areaName(a)}>
-                      {a.achievements.map((ach) => (
-                        <CommandItem
-                          key={ach.id}
-                          value={`achievement ${ach.id} ${ach.title}`}
-                          keywords={[ach.title, a.name]}
-                          onSelect={() =>
-                            pick({
-                              area: { id: a.id, name: a.name, emoji: a.emoji },
-                              achievement: { id: ach.id, title: ach.title },
-                            })
-                          }
-                        >
-                          {ach.title}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  ),
-              )
+              targets?.map((a) => (
+                <CommandGroup key={a.id} heading={areaName(a)}>
+                  {/* Straight in the area, not under an achievement. */}
+                  <CommandItem
+                    value={`area ${a.id} ${a.name}`}
+                    keywords={[a.name]}
+                    onSelect={() =>
+                      pick({
+                        area: { id: a.id, name: a.name, emoji: a.emoji },
+                        achievement: null,
+                      })
+                    }
+                  >
+                    {areaName(a)}
+                  </CommandItem>
+                  {a.achievements.map((ach) => (
+                    <CommandItem
+                      key={ach.id}
+                      value={`achievement ${ach.id} ${ach.title}`}
+                      keywords={[ach.title, a.name]}
+                      onSelect={() =>
+                        pick({
+                          area: { id: a.id, name: a.name, emoji: a.emoji },
+                          achievement: { id: ach.id, title: ach.title },
+                        })
+                      }
+                    >
+                      {ach.title}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))
             )}
           </CommandList>
         </Command>

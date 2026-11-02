@@ -144,7 +144,7 @@ export const TOOLS: ToolDef[] = [
   }),
   tool({
     name: "create_tasks",
-    description: `Add tasks to an achievement (or with achievementId null, a loose task), appended in the order given. Prefer one achievement with 5–15 ordered tasks, easiest first. Creating them in one call makes one undo step. ${PLAN} ${TARGET} A loose task with a plan is not in the Inbox.`,
+    description: `Add tasks to an achievement, or with achievementId null, straight into an area (areaId) or loose, appended in the order given. A task straight in an area suits a standalone thing to do there ("learn this song") that isn't part of an achievement. Prefer one achievement with 5–15 ordered tasks, easiest first. Creating them in one call makes one undo step. ${PLAN} ${TARGET} A loose task with a plan is not in the Inbox.`,
     action: createTasks,
     summary: (o) =>
       o.length === 1
@@ -160,7 +160,7 @@ export const TOOLS: ToolDef[] = [
   tool({
     name: "move_task",
     description:
-      "Move a task to another achievement (null for the Inbox) or position (afterId/beforeId are sibling task ids).",
+      "Move a task to another achievement (achievementId), straight into an area (areaId), to the Inbox (both null), or to a position (afterId/beforeId are sibling task ids). Pass neither to only reorder.",
     action: moveTask,
     summary: (o) => `Moved task ${q(o.title)}`,
   }),
@@ -189,7 +189,7 @@ export const TOOLS: ToolDef[] = [
   tool({
     name: "file_item",
     description:
-      "File an Inbox item: an achievement into an area (areaId, lands in backlog), or a task into an achievement (achievementId).",
+      "File an Inbox item: an achievement into an area (areaId, lands in backlog), or a task into an achievement (achievementId) or straight into an area (areaId).",
     action: fileItem,
     summary: (_o, i) => `Filed ${i.kind}`,
   }),

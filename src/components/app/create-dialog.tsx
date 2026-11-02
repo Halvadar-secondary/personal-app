@@ -209,6 +209,10 @@ function CreateForm({
           ? {
               kind,
               achievementId: dest.achievement?.id ?? null,
+              // Straight in an area when there's no achievement.
+              ...(!dest.achievement && dest.area
+                ? { areaId: dest.area.id }
+                : {}),
               title: t,
               notes: n,
               effort,

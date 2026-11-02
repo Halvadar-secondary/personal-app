@@ -25,6 +25,7 @@ import {
   taskCompletions,
   tasks,
 } from "@/server/db/schema";
+import { liveAreaTasksOf, taskListItems } from "./achievements";
 import { listAreas } from "./areas";
 import { type Ctx, callAction, defineAction } from "./context";
 import { type AreaProgress, areaProgress } from "./progress";
@@ -239,6 +240,7 @@ export const getOverview = defineAction(
         and(
           eq(tasks.ownerId, ctx.ownerId),
           isNull(tasks.achievementId),
+          isNull(tasks.areaId),
           isNull(tasks.deletedAt),
           isNull(tasks.plannedOn),
           isNull(tasks.plannedWeek),
@@ -349,7 +351,16 @@ export const getAreaBoard = defineAction(
       categoryIds: cats.get(a.id)!,
     }));
     const progress = (await areaProgress(ctx, [areaId])).get(areaId)!;
-    return { area, achievements: cards, progress };
+    // The tasks that sit straight in the area, not under an achievement.
+    const own = await taskListItems(ctx, await liveAreaTasksOf(ctx, areaId));
+    return {
+      area,
+      achievements: cards,
+      progress,
+      tasks: own,
+      today: localDate(ctx.now(), ctx.timeZone),
+      weekStart: ctx.weekStart,
+    };
   },
 );
 

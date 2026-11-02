@@ -41,6 +41,7 @@ type Patch = Partial<
   Pick<
     TaskItem,
     | "title"
+    | "notes"
     | "effort"
     | "deadline"
     | "recurrence"
@@ -119,7 +120,7 @@ export function TaskList({
 
   const patch = (
     id: string,
-    p: Pick<Patch, "title" | "effort" | "deadline" | "recurrence">,
+    p: Pick<Patch, "title" | "notes" | "effort" | "deadline" | "recurrence">,
   ) =>
     run({ type: "patch", id, patch: p }, () =>
       updateTaskAction({ taskId: id, ...p }),

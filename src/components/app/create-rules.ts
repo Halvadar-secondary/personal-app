@@ -18,24 +18,20 @@ export type Destination = {
 const INBOX: Destination = { area: null, achievement: null };
 
 /**
- * The spec's table: a task goes to the page's achievement, else the Inbox;
- * an achievement goes to the page's area, else the Inbox.
+ * Where a new item goes by default: the page's achievement for a task, else
+ * the page's area (a task can sit straight in one), else the Inbox.
  */
 export function defaultDestination(kind: Kind, page: PageContext): Destination {
   if (!page) return INBOX;
-  if (kind === "task") {
-    return page.achievement
-      ? { area: page.area, achievement: page.achievement }
-      : INBOX;
+  if (kind === "task" && page.achievement) {
+    return { area: page.area, achievement: page.achievement };
   }
   return { area: page.area, achievement: null };
 }
 
-/** Can `dest` hold `kind`? A task can't sit in an area, an achievement can't in an achievement. */
+/** Can `dest` hold `kind`? A task goes anywhere; an achievement not in an achievement. */
 function holds(kind: Kind, dest: Destination) {
-  return kind === "task"
-    ? dest.achievement !== null || dest.area === null
-    : dest.achievement === null;
+  return kind === "task" || dest.achievement === null;
 }
 
 /** A hand-picked destination sticks while it can hold the kind. */

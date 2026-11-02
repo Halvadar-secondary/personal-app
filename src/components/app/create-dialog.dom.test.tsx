@@ -357,6 +357,24 @@ it("a destination picked by hand sticks while it can hold the kind", async () =>
   );
 });
 
+it("a task can go straight into an area, with no achievement", async () => {
+  setup();
+  await open();
+  await userEvent.click(destination());
+  await userEvent.click(screen.getByRole("option", { name: "🎸 Guitar" }));
+  expect(destination()).toHaveAccessibleName("Destination: 🎸 Guitar");
+  await userEvent.type(title(), "Learn Wonderwall");
+  await submit();
+  expect(server.createItemAction).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: "task",
+      achievementId: null,
+      areaId: "g",
+      title: "Learn Wonderwall",
+    }),
+  );
+});
+
 it("the kind and Create more are remembered", async () => {
   setup();
   await open();
@@ -436,7 +454,8 @@ it("a kind flipped by hand survives a late page", async () => {
   await userEvent.click(within(kind).getByRole("button", { name: "Task" }));
   rerender(ui(true));
   expect(screen.getByRole("dialog", { name: "New task" })).toBeVisible();
-  expect(destination()).toHaveAccessibleName("Destination: Inbox");
+  // A task on an area page goes straight into the area.
+  expect(destination()).toHaveAccessibleName("Destination: 🎸 Guitar");
 });
 
 it("on a phone the sheet is as tall as what the keyboard leaves", async () => {

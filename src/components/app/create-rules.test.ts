@@ -29,7 +29,7 @@ describe("defaultDestination", () => {
       "achievement",
       { area: guitar, achievement: null },
     ],
-    ["area page", onArea, "task", inbox],
+    ["area page", onArea, "task", { area: guitar, achievement: null }],
     ["area page", onArea, "achievement", { area: guitar, achievement: null }],
     ["no page", null, "task", inbox],
     ["no page", null, "achievement", inbox],
@@ -73,17 +73,18 @@ describe("destinationFor", () => {
     });
   });
 
-  it("drops a picked area when flipping to task", () => {
+  it("keeps a picked area when flipping to task: a task can sit in it", () => {
     const area = { area: guitar, achievement: null };
-    expect(destinationFor("task", area, true, onArea)).toEqual(inbox);
-    expect(destinationFor("task", area, true, onAchievement)).toEqual({
-      area: guitar,
-      achievement: sweep,
-    });
+    expect(destinationFor("task", area, true, onAchievement)).toEqual(area);
+    expect(destinationFor("task", area, true, null)).toEqual(area);
   });
 
   it("an unpicked destination follows the table", () => {
-    expect(destinationFor("task", other, false, onArea)).toEqual(inbox);
+    expect(destinationFor("task", other, false, onArea)).toEqual({
+      area: guitar,
+      achievement: null,
+    });
+    expect(destinationFor("task", other, false, null)).toEqual(inbox);
   });
 });
 
