@@ -175,3 +175,25 @@ test("on a phone no field in the dialog is small enough to zoom", async ({
   await expect(page.getByPlaceholder("Move to…")).toBeVisible();
   expect(await smallFields()).toEqual([]);
 });
+
+test("the Target picker's fields stay inside it", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await openCapture(page, testInfo);
+  await page.getByRole("button", { name: "Target: none" }).click();
+  const popover = page.locator("[data-slot=popover-content]");
+  await expect(popover).toBeVisible();
+  // "other…" adds the unit name field too.
+  await popover.getByRole("combobox", { name: "Unit" }).selectOption("other");
+  const box = (await popover.boundingBox())!;
+  for (const field of [
+    popover.getByRole("spinbutton", { name: "Amount" }),
+    popover.getByRole("combobox", { name: "Unit" }),
+    popover.getByRole("textbox", { name: "Unit name" }),
+  ]) {
+    const f = (await field.boundingBox())!;
+    expect(f.x).toBeGreaterThanOrEqual(box.x);
+    expect(f.x + f.width).toBeLessThanOrEqual(box.x + box.width);
+  }
+});
