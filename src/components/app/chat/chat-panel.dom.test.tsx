@@ -82,7 +82,7 @@ async function say(text: string) {
   await userEvent.click(screen.getByRole("button", { name: "Send" }));
 }
 
-it("the button opens a new, empty conversation every time", async () => {
+it("closing and reopening picks up the same conversation", async () => {
   setup();
   expect(screen.queryByRole("dialog")).toBeNull();
   await openPanel();
@@ -98,13 +98,30 @@ it("the button opens a new, empty conversation every time", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Close" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   await openPanel();
-  expect(screen.queryByText("Hello there.")).toBeNull();
-  expect(screen.getByRole("button", { name: "Plan my day" })).toBeVisible();
+  expect(screen.getByText("Hello there.")).toBeVisible();
 
-  // The next message starts a new conversation.
+  // The next message carries on in it.
   fetchMock.mockResolvedValueOnce(ndjson(reply("Again.")));
   await say("Hi again");
   await screen.findByText("Again.");
+  expect(sent(1)).toEqual({ conversationId: "c1", text: "Hi again" });
+});
+
+it("New conversation starts an empty one", async () => {
+  setup();
+  await openPanel();
+  fetchMock.mockResolvedValueOnce(ndjson(reply("Hello there.")));
+  await say("Hi");
+  await screen.findByText("Hello there.");
+
+  await userEvent.click(
+    screen.getByRole("button", { name: "New conversation" }),
+  );
+  expect(screen.queryByText("Hello there.")).toBeNull();
+  expect(screen.getByRole("button", { name: "Plan my day" })).toBeVisible();
+  fetchMock.mockResolvedValueOnce(ndjson(reply("Fresh.")));
+  await say("Hi again");
+  await screen.findByText("Fresh.");
   expect(sent(1)).toEqual({ tier: "quick", text: "Hi again" });
 });
 
