@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
+import { NavProgressEnd } from "@/components/app/nav-progress";
+import { NAV_PROGRESS_SCRIPT } from "@/lib/nav-progress";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,7 +44,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* Before React: a tap on a link shows the bar at once, even while the
+            app's scripts are still loading. */}
+        <script dangerouslySetInnerHTML={{ __html: NAV_PROGRESS_SCRIPT }} />
+        <div aria-hidden data-slot="nav-progress" />
+        {children}
+        {/* It reads the URL, so it waits for it: Suspense. */}
+        <Suspense fallback={null}>
+          <NavProgressEnd />
+        </Suspense>
+      </body>
     </html>
   );
 }
