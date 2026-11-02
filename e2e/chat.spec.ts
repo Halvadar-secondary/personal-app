@@ -106,6 +106,40 @@ test("ask Claude: the reply streams in with an Undo line", async ({ page }) => {
   expect(posts).toEqual([{ tier: "quick", text: "Add guitar area" }]);
 });
 
+test("the conversation is still there after closing and changing page", async ({
+  page,
+}) => {
+  const id = randomUUID();
+  const posts = await answerFromScript(
+    page,
+    script(id, "Add guitar area", randomUUID()),
+  );
+  await page.goto("/today");
+  let panel = await openChat(page);
+  await panel
+    .getByRole("textbox", { name: "Message Claude" })
+    .fill("Add guitar area");
+  await panel.getByRole("button", { name: "Send" }).click();
+  await expectTurn(panel);
+  await panel.getByRole("button", { name: "Close" }).click();
+  await expect(panel).toBeHidden();
+
+  // In the app, not a reload: the tab bar or the sidebar.
+  await page
+    .getByRole("link", { name: "Trackers" })
+    .filter({ visible: true })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/trackers$/);
+  panel = await openChat(page);
+  await expectTurn(panel);
+
+  await panel.getByRole("textbox", { name: "Message Claude" }).fill("Thanks");
+  await panel.getByRole("button", { name: "Send" }).click();
+  await expect.poll(() => posts.length).toBe(2);
+  expect(posts[1]).toEqual({ conversationId: id, text: "Thanks" });
+});
+
 test("a past conversation reopens with the same items", async ({
   page,
 }, testInfo) => {

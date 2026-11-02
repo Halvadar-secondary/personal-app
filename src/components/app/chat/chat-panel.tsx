@@ -11,7 +11,7 @@ import { FALLBACK_TIERS, ModelPicker, type Tiers } from "./model-picker";
 import { type Chat, useChat } from "./use-chat";
 
 type ChatPanelControls = {
-  /** Opens the panel: on that conversation, or on a new, empty one. */
+  /** Opens the panel: on that conversation, or where it was left. */
   openChat: (conversationId?: string) => void;
 };
 
@@ -29,16 +29,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"chat" | "list">("chat");
   const [tiers, setTiers] = useState<Tiers | null>(null);
-  const { reset, load } = chat;
+  const { load } = chat;
 
+  // Closing and reopening, on any page, carries on the same conversation;
+  // New conversation in the header starts a fresh one.
   const openChat = useCallback(
     (conversationId?: string) => {
       if (conversationId) void load(conversationId);
-      else reset();
       setView("chat");
       setOpen(true);
     },
-    [load, reset],
+    [load],
   );
 
   useEffect(() => {
