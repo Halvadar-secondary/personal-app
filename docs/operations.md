@@ -118,14 +118,14 @@ PR ("Configure Renovate") confirms it sees `renovate.json`; merge it.
 ## Sessions
 
 Sign-in checks read a signed copy of the session from a cookie that lasts
-5 minutes (`SESSION_CACHE_SECONDS` in `src/server/auth/auth.ts`), so most
+a day (`SESSION_CACHE_SECONDS` in `src/server/auth/auth.ts`), so most
 page loads don't wait on the database to confirm who you are. When the copy
 expires, the next request checks the database and the proxy sends a fresh
 copy back.
 
 - Signing out on a device ends its session there at once.
 - A session ended anywhere else (signed out on another device, or its row
-  deleted) keeps working for up to 5 minutes on devices holding a copy.
+  deleted) keeps working for up to a day on devices holding a copy.
 - To cut every device off immediately, rotate `BETTER_AUTH_SECRET` in
   Vercel and redeploy: every cookie signed with the old secret stops
   working, so everyone has to sign in again.
