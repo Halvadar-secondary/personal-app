@@ -50,10 +50,14 @@ test("before the app is ready, a tap shows the loading bar at once", async ({
 }) => {
   // The app's scripts held back until the tap has been checked (a fixed delay
   // can run out first while the page itself is slow): the tap is a plain page
-  // load, which a Home Screen app shows no browser loading bar for.
+  // load, which a Home Screen app shows no browser loading bar for. Only the
+  // scripts: the page's stylesheets must load for it to finish parsing.
   let ready!: () => void;
   const tapped = new Promise<void>((r) => (ready = r));
-  await page.route("**/_next/static/chunks/**", async (route) => {
+  const script = (url: URL) =>
+    url.pathname.startsWith("/_next/static/chunks/") &&
+    url.pathname.endsWith(".js");
+  await page.route(script, async (route) => {
     await tapped;
     await route.continue();
   });
