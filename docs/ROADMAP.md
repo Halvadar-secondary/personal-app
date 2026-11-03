@@ -114,7 +114,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Sidebar and tab bar stay on screen while a page loads
 - [x] Layout-shaped placeholders on every page (pulse off for reduced motion; dark mode)
 - [x] Search box appears at once; results dim while a new search runs
-- [x] Sign-in check reads a 5-minute signed session cookie instead of the database
+- [x] Sign-in check reads a signed session cookie (a day; was 5 minutes) instead of the database
 - [x] Placeholders for Login and OAuth consent
 
 ## M6.2 — Create dialog

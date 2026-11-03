@@ -49,7 +49,7 @@ test("export refuses a visitor who isn't signed in", async ({ request }) => {
   expect(res.status()).toBe(401);
 });
 
-// The signed session copy lasts 5 minutes; when it's missing or expired the
+// The signed session copy lasts a day; when it's missing or expired the
 // proxy reads the database and must hand the browser a fresh one.
 test("the proxy hands back a fresh session cookie", async ({
   page,
