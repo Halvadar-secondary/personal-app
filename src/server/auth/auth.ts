@@ -29,10 +29,12 @@ export function mcpResource(env: AuthEnv): string {
 
 /**
  * How long a signed copy of the session in a cookie answers sign-in checks
- * without the database (owner-approved 2026-10-25). A session revoked
+ * without the database (owner-approved: 5 minutes on 2026-10-25, a day on
+ * 2026-11-04). Neon sleeps after 5 idle minutes, so a shorter copy made most
+ * opens wait for it to wake just to confirm who you are. A session revoked
  * elsewhere keeps working this long; signing out here ends it at once.
  */
-export const SESSION_CACHE_SECONDS = 5 * 60;
+export const SESSION_CACHE_SECONDS = 24 * 60 * 60;
 
 export function createAuth(db: Db, env: AuthEnv) {
   // Previews have no BETTER_AUTH_URL: MCP needs a fixed base for issuer and audience.
