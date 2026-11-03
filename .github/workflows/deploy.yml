@@ -57,7 +57,7 @@ jobs:
       - name: Deploy (not yet live)
         id: deploy
         run: |
-          url=$(pnpm dlx vercel@latest deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN")
+          url=$(pnpm dlx vercel@latest deploy --prebuilt --archive=tgz --prod --skip-domain --token="$VERCEL_TOKEN")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "schema=$(node -p "require('./drizzle/meta/_journal.json').entries.length")" >> "$GITHUB_OUTPUT"
       - name: Smoke the new deployment

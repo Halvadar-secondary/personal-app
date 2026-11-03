@@ -64,7 +64,7 @@ jobs:
           APP_BUILD_ID="${{ github.sha }}" pnpm dlx vercel@latest build --token="$VERCEL_TOKEN"
           # Vercel promotes any deploy to production while the project has none, whatever
           # the flags; a production deployment must always exist. The next step checks it.
-          url=$(pnpm dlx vercel@latest deploy --prebuilt --environment=preview --token="$VERCEL_TOKEN" \
+          url=$(pnpm dlx vercel@latest deploy --prebuilt --archive=tgz --environment=preview --token="$VERCEL_TOKEN" \
             --env DATABASE_URL="$DATABASE_URL")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "schema=$(node -p "require('./drizzle/meta/_journal.json').entries.length")" >> "$GITHUB_OUTPUT"
