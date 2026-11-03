@@ -3,6 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, MoreHorizontal } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -30,6 +31,7 @@ import {
   WhenPicker,
 } from "./plan-chips";
 import { RecurrencePicker } from "./recurrence-picker";
+import { TaskNotes, TaskNotesEditor } from "./task-notes";
 
 /** A task's plan as the When chip shows it. */
 export function planOf(
@@ -54,7 +56,7 @@ export type TaskRowHandlers = {
   onPatch: (
     id: string,
     patch: Partial<
-      Pick<TaskItem, "title" | "effort" | "deadline" | "recurrence">
+      Pick<TaskItem, "title" | "notes" | "effort" | "deadline" | "recurrence">
     >,
   ) => void;
   onPlan: (id: string, plan: ChipPlan) => void;
@@ -78,6 +80,7 @@ export function TaskRow({
   weekStart: number;
 } & TaskRowHandlers) {
   const draft = task.id.startsWith("draft-");
+  const [editingNotes, setEditingNotes] = useState(false);
   const {
     attributes,
     listeners,
@@ -144,6 +147,25 @@ export function TaskRow({
               done && !rule && "text-muted-foreground line-through",
             )}
           />
+        )}
+        {editingNotes ? (
+          <TaskNotesEditor
+            value={task.notes ?? ""}
+            onCancel={() => setEditingNotes(false)}
+            onSave={(notes) => {
+              setEditingNotes(false);
+              if (notes !== task.notes) on.onPatch(task.id, { notes });
+            }}
+          />
+        ) : (
+          task.notes &&
+          !draft && (
+            <TaskNotes
+              notes={task.notes}
+              title={task.title}
+              onEdit={() => setEditingNotes(true)}
+            />
+          )
         )}
         {!draft && (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -240,6 +262,9 @@ export function TaskRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => setEditingNotes(true)}>
+              {task.notes ? "Edit notes" : "Add notes"}
+            </DropdownMenuItem>
             <DropdownMenuItem
               variant="destructive"
               onSelect={() => on.onDelete(task.id)}

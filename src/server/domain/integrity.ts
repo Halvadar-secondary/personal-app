@@ -67,6 +67,19 @@ export async function assertParentsAndChildren(
           ),
         );
       for (const k of kids) add("achievement", k.id, k.title);
+      // And the tasks that sit straight in it.
+      const own = await ctx.db
+        .select({ id: tasks.id, title: tasks.title })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.ownerId, ctx.ownerId),
+            eq(tasks.areaId, entityId),
+            isNull(tasks.achievementId),
+            isNull(tasks.deletedAt),
+          ),
+        );
+      for (const k of own) add("task", k.id, k.title);
     } else if (entityType === "achievement") {
       const ach = await byId(ctx, achievements, entityId);
       if (!ach) continue;
@@ -127,9 +140,14 @@ export async function assertParentsAndChildren(
       if (tracker?.deletedAt) add("tracker", tracker.id, tracker.name);
     } else if (entityType === "task") {
       const task = await byId(ctx, tasks, entityId);
-      if (!task || task.deletedAt || !task.achievementId) continue;
-      const ach = await byId(ctx, achievements, task.achievementId);
-      if (ach?.deletedAt) add("achievement", ach.id, ach.title);
+      if (!task || task.deletedAt) continue;
+      if (task.achievementId) {
+        const ach = await byId(ctx, achievements, task.achievementId);
+        if (ach?.deletedAt) add("achievement", ach.id, ach.title);
+      } else if (task.areaId) {
+        const area = await byId(ctx, areas, task.areaId);
+        if (area?.deletedAt) add("area", area.id, area.name);
+      }
     }
   }
   if (changed.size) {
@@ -189,9 +207,14 @@ function siblingScope(table: Sortable, row: Record<string, unknown>) {
     );
   }
   if (table === tasks) {
-    return row.achievementId
-      ? eq(tasks.achievementId, row.achievementId as string)
-      : isNull(tasks.achievementId);
+    if (row.achievementId)
+      return eq(tasks.achievementId, row.achievementId as string);
+    return and(
+      isNull(tasks.achievementId),
+      row.areaId
+        ? eq(tasks.areaId, row.areaId as string)
+        : isNull(tasks.areaId),
+    );
   }
   return undefined;
 }

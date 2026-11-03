@@ -9,6 +9,7 @@ import type { TaskItem } from "./task-row";
 const actions = vi.hoisted(() => ({
   completeTaskAction: vi.fn(),
   uncompleteTaskAction: vi.fn(),
+  updateTaskAction: vi.fn(),
 }));
 vi.mock("@/server/actions/tasks", () => actions);
 const plan = vi.hoisted(() => ({
@@ -175,4 +176,86 @@ it("a target task shows its progress", () => {
   expect(
     screen.getByRole("button", { name: "Target: 400 pages" }),
   ).toBeVisible();
+});
+
+it("a task's notes show under it, with web links you can tap", () => {
+  render(
+    <TaskList
+      tasks={[
+        {
+          ...task("t1", "Learn Wonderwall"),
+          notes: "Capo 2. Tab: https://tabs.example.com/wonderwall",
+        },
+      ]}
+      categories={[]}
+      today={TODAY}
+      weekStart={1}
+    />,
+  );
+  expect(screen.getByText(/Capo 2\. Tab:/)).toBeVisible();
+  const link = screen.getByRole("link", {
+    name: "https://tabs.example.com/wonderwall",
+  });
+  expect(link).toHaveAttribute("href", "https://tabs.example.com/wonderwall");
+  // Opens outside the app, without handing it this page.
+  expect(link).toHaveAttribute("target", "_blank");
+  expect(link).toHaveAttribute("rel", "noopener noreferrer");
+});
+
+it("notes are added from the task's menu and saved", async () => {
+  actions.updateTaskAction.mockResolvedValue({
+    ok: true,
+    data: undefined,
+    batchId: "b",
+  });
+  render(
+    <TaskList
+      tasks={[task("t1", "Learn Wonderwall")]}
+      categories={[]}
+      today={TODAY}
+      weekStart={1}
+    />,
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: "Task menu Learn Wonderwall" }),
+  );
+  await userEvent.click(screen.getByRole("menuitem", { name: "Add notes" }));
+  const box = screen.getByRole("textbox", { name: "Notes" });
+  await userEvent.type(box, "Song: https://youtu.be/x");
+  await userEvent.click(screen.getByRole("button", { name: "Save notes" }));
+  expect(actions.updateTaskAction).toHaveBeenCalledWith({
+    taskId: "t1",
+    notes: "Song: https://youtu.be/x",
+  });
+  expect(
+    screen.getByRole("link", { name: "https://youtu.be/x" }),
+  ).toBeVisible();
+});
+
+it("existing notes are edited in place, and clearing them removes them", async () => {
+  actions.updateTaskAction.mockResolvedValue({
+    ok: true,
+    data: undefined,
+    batchId: "b",
+  });
+  render(
+    <TaskList
+      tasks={[{ ...task("t1", "Learn Wonderwall"), notes: "Capo 2" }]}
+      categories={[]}
+      today={TODAY}
+      weekStart={1}
+    />,
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: "Edit notes for Learn Wonderwall" }),
+  );
+  const box = screen.getByRole("textbox", { name: "Notes" });
+  expect(box).toHaveValue("Capo 2");
+  await userEvent.clear(box);
+  await userEvent.click(screen.getByRole("button", { name: "Save notes" }));
+  expect(actions.updateTaskAction).toHaveBeenCalledWith({
+    taskId: "t1",
+    notes: null,
+  });
+  expect(screen.queryByText("Capo 2")).toBeNull();
 });

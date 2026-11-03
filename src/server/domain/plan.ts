@@ -78,40 +78,47 @@ const today = (ctx: Ctx) => localDate(ctx.now(), ctx.timeZone);
 
 /** Tasks with their achievement and area, for building items. */
 function withParents(ctx: Ctx) {
-  return ctx.db
-    .select({
-      task: tasks,
-      achievement: {
-        id: achievements.id,
-        title: achievements.title,
-        status: achievements.status,
-        deletedAt: achievements.deletedAt,
-        areaId: achievements.areaId,
-      },
-      area: {
-        id: areas.id,
-        name: areas.name,
-        emoji: areas.emoji,
-        deletedAt: areas.deletedAt,
-      },
-    })
-    .from(tasks)
-    .leftJoin(achievements, eq(achievements.id, tasks.achievementId))
-    .leftJoin(areas, eq(areas.id, achievements.areaId));
+  return (
+    ctx.db
+      .select({
+        task: tasks,
+        achievement: {
+          id: achievements.id,
+          title: achievements.title,
+          status: achievements.status,
+          deletedAt: achievements.deletedAt,
+          areaId: achievements.areaId,
+        },
+        area: {
+          id: areas.id,
+          name: areas.name,
+          emoji: areas.emoji,
+          deletedAt: areas.deletedAt,
+        },
+      })
+      .from(tasks)
+      .leftJoin(achievements, eq(achievements.id, tasks.achievementId))
+      // The task's own areaId: copied from its achievement, or set directly.
+      .leftJoin(areas, eq(areas.id, tasks.areaId))
+  );
 }
 
 type Row = Awaited<ReturnType<ReturnType<typeof withParents>["where"]>>[number];
 
-/** Loose, or under a live achievement (and a live area if it has one). */
+/** Loose, straight in a live area, or under a live achievement (and its live area). */
 function liveParents(r: Row): boolean {
-  if (!r.task.achievementId) return true;
+  if (!r.task.achievementId)
+    return !r.task.areaId || (!!r.area && !r.area.deletedAt);
   if (!r.achievement || r.achievement.deletedAt) return false;
   return !r.achievement.areaId || (!!r.area && !r.area.deletedAt);
 }
 
-/** Repeating tasks show on days only when loose or under an active achievement. */
+/**
+ * Repeating tasks show on days only when loose, straight in a live area, or
+ * under an active achievement.
+ */
 function inDayScope(r: Row): boolean {
-  if (!r.task.achievementId) return true;
+  if (!r.task.achievementId) return liveParents(r);
   return (
     liveParents(r) &&
     r.achievement!.status === "active" &&
@@ -124,10 +131,9 @@ function parentsOf(r: Row) {
     achievement: r.achievement
       ? { id: r.achievement.id, title: r.achievement.title }
       : null,
-    area:
-      r.area && r.achievement?.areaId
-        ? { id: r.area.id, name: r.area.name, emoji: r.area.emoji }
-        : null,
+    area: r.area
+      ? { id: r.area.id, name: r.area.name, emoji: r.area.emoji }
+      : null,
   };
 }
 

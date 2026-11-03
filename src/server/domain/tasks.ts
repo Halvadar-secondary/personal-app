@@ -6,6 +6,7 @@ import { isDueOn } from "@/lib/recurrence";
 import { type Effort, xpForEffort } from "@/lib/xp";
 import {
   achievements,
+  areas,
   type Task,
   taskCompletions,
   tasks,
@@ -82,22 +83,43 @@ async function newTaskValues(
 }
 
 /** The task's parents: an achievement and its area, or neither (Inbox). */
-async function parentsOf(ctx: Ctx, achievementId: string | null) {
-  if (!achievementId) return { achievementId: null, areaId: null };
-  const ach = await findLive(ctx, achievements, achievementId);
-  return { achievementId, areaId: ach.areaId };
+type Parents = { achievementId: string | null; areaId: string | null };
+
+/**
+ * Where a task lives: under an achievement (its area copied from it),
+ * straight in an area, or neither (the Inbox, or planned loose).
+ */
+async function parentsOf(
+  ctx: Ctx,
+  achievementId: string | null,
+  areaId: string | null = null,
+): Promise<Parents> {
+  if (achievementId) {
+    // One parent: an achievement brings its own area.
+    if (areaId) throw new DomainError("invalid_input", { areaId });
+    const ach = await findLive(ctx, achievements, achievementId);
+    return { achievementId, areaId: ach.areaId };
+  }
+  if (areaId) await findLive(ctx, areas, areaId);
+  return { achievementId: null, areaId };
 }
 
-function siblings(ctx: Ctx, achievementId: string | null, exceptId?: string) {
+/** The tasks a task is ordered among: its achievement's, its area's own, or the loose ones. */
+function siblings(ctx: Ctx, parents: Parents, exceptId?: string) {
   return ctx.db
     .select({ id: tasks.id, sortKey: tasks.sortKey })
     .from(tasks)
     .where(
       and(
         eq(tasks.ownerId, ctx.ownerId),
-        achievementId
-          ? eq(tasks.achievementId, achievementId)
-          : isNull(tasks.achievementId),
+        parents.achievementId
+          ? eq(tasks.achievementId, parents.achievementId)
+          : and(
+              isNull(tasks.achievementId),
+              parents.areaId
+                ? eq(tasks.areaId, parents.areaId)
+                : isNull(tasks.areaId),
+            ),
         isNull(tasks.deletedAt),
         exceptId ? ne(tasks.id, exceptId) : undefined,
       ),
@@ -105,11 +127,17 @@ function siblings(ctx: Ctx, achievementId: string | null, exceptId?: string) {
     .orderBy(asc(tasks.sortKey), asc(tasks.id));
 }
 
+/** A task's parent on create: an achievement, or (with none) an area. */
+const zParent = {
+  achievementId: z.uuid().nullable(),
+  areaId: z.uuid().nullish(),
+};
+
 export const createTask = defineAction(
-  zTaskFields.extend({ achievementId: z.uuid().nullable() }),
-  async (ctx, { achievementId, ...fields }) => {
-    const parents = await parentsOf(ctx, achievementId);
-    const sortKey = sortKeyFor(await siblings(ctx, achievementId), {});
+  zTaskFields.extend(zParent),
+  async (ctx, { achievementId, areaId, ...fields }) => {
+    const parents = await parentsOf(ctx, achievementId, areaId);
+    const sortKey = sortKeyFor(await siblings(ctx, parents), {});
     return insertRecorded(ctx, "task", tasks, {
       ...(await newTaskValues(ctx, fields)),
       ...parents,
@@ -121,12 +149,12 @@ export const createTask = defineAction(
 /** Many tasks at once ("15 tasks for this"), appended in order, one undo step. */
 export const createTasks = defineAction(
   z.object({
-    achievementId: z.uuid().nullable(),
+    ...zParent,
     tasks: z.array(zTaskFields).min(1).max(50),
   }),
   async (ctx, input) => {
-    const parents = await parentsOf(ctx, input.achievementId);
-    const existing = await siblings(ctx, input.achievementId);
+    const parents = await parentsOf(ctx, input.achievementId, input.areaId);
+    const existing = await siblings(ctx, parents);
     const keys = keysAfter(
       existing.at(-1)?.sortKey ?? null,
       input.tasks.length,
@@ -181,18 +209,27 @@ export const updateTask = defineAction(
   },
 );
 
-/** Reorders within its achievement, or moves to another one (null = Inbox). */
+/**
+ * Reorders among its siblings, or moves it: to an achievement, straight into
+ * an area, or (both null) to the Inbox. Neither given keeps where it is.
+ */
 export const moveTask = defineAction(
   zPosition.extend({
     taskId: z.uuid(),
     achievementId: z.uuid().nullable().optional(),
+    areaId: z.uuid().nullable().optional(),
   }),
-  async (ctx, { taskId, achievementId, ...pos }) => {
+  async (ctx, { taskId, achievementId, areaId, ...pos }) => {
     const before = await findLive(ctx, tasks, taskId);
-    const target =
-      achievementId === undefined ? before.achievementId : achievementId;
-    const parents = await parentsOf(ctx, target);
-    const sortKey = sortKeyFor(await siblings(ctx, target, taskId), pos);
+    const staying = achievementId === undefined && areaId === undefined;
+    const parents = staying
+      ? await parentsOf(
+          ctx,
+          before.achievementId,
+          before.achievementId ? null : before.areaId,
+        )
+      : await parentsOf(ctx, achievementId ?? null, areaId ?? null);
+    const sortKey = sortKeyFor(await siblings(ctx, parents, taskId), pos);
     return updateRecorded(ctx, "task", tasks, before, { ...parents, sortKey });
   },
 );

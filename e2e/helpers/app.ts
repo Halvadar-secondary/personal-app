@@ -78,8 +78,12 @@ export async function addAchievements(
   }
 }
 
-/** Adds tasks on the open achievement page through "Add task". */
+/**
+ * Adds tasks on the achievement page through "Add task". Waits for that page
+ * first: the area page has an "Add task" of its own.
+ */
 export async function addTasks(page: Page, titles: string[]): Promise<void> {
+  await expect(page).toHaveURL(/\/achievements\//);
   await page.getByRole("button", { name: "Add task" }).click();
   await fillCreateDialog(page, titles);
   const list = page.getByRole("region", { name: "Tasks" });

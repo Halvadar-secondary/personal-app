@@ -127,12 +127,10 @@ export const tasks = pgTable(
       "tasks_target_once",
       sql`${t.targetAmount} is null or ${t.recurrence} is null`,
     ),
-    // Filed means under an achievement: never directly in an area.
-    check(
-      "tasks_area_needs_achievement",
-      sql`${t.achievementId} is not null or ${t.areaId} is null`,
-    ),
+    // A task can sit straight in an area (achievementId null, areaId set);
+    // under an achievement, areaId is copied from it.
     index().on(t.ownerId, t.achievementId, t.sortKey),
+    index().on(t.ownerId, t.areaId, t.sortKey),
     index().on(t.ownerId, t.plannedOn),
     index().on(t.ownerId, t.plannedWeek),
   ],

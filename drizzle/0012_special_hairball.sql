@@ -1,0 +1,2 @@
+ALTER TABLE "tasks" DROP CONSTRAINT "tasks_area_needs_achievement";--> statement-breakpoint
+CREATE INDEX "tasks_owner_id_area_id_sort_key_index" ON "tasks" USING btree ("owner_id","area_id","sort_key");

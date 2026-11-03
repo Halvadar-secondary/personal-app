@@ -11,7 +11,7 @@ import { deleteTracker } from "./trackers";
 // Thin actions for the MCP tools that cover several UI actions (spec §7.2).
 // Each runs in the caller's batch, so one tool call is one undo step.
 
-/** Files an Inbox achievement into an area, or an Inbox task into an achievement. */
+/** Files an Inbox achievement into an area, or an Inbox task into an achievement or straight into an area. */
 export const fileItem = defineAction(
   z
     .object({
@@ -21,8 +21,11 @@ export const fileItem = defineAction(
       achievementId: z.uuid().optional(),
     })
     .refine(
-      (i) => (i.kind === "achievement" ? !!i.areaId : !!i.achievementId),
-      "an achievement needs areaId; a task needs achievementId",
+      (i) =>
+        i.kind === "achievement"
+          ? !!i.areaId
+          : !!i.achievementId !== !!i.areaId,
+      "an achievement needs areaId; a task needs achievementId or areaId",
     ),
   async (ctx, i): Promise<{ id: string; title: string }> =>
     i.kind === "achievement"
@@ -30,10 +33,13 @@ export const fileItem = defineAction(
           achievementId: i.id,
           areaId: i.areaId!,
         })
-      : callAction(ctx, fileTask, {
-          taskId: i.id,
-          achievementId: i.achievementId!,
-        }),
+      : callAction(
+          ctx,
+          fileTask,
+          i.achievementId
+            ? { taskId: i.id, achievementId: i.achievementId }
+            : { taskId: i.id, areaId: i.areaId! },
+        ),
 );
 
 const DELETERS = {

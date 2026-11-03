@@ -130,4 +130,25 @@ describe("MCP tools over the domain", () => {
     });
     expect(r.isError).toBe(true);
   });
+
+  it("tasks can go straight into an area: create, move and file", async () => {
+    const area = await runAction(deps(), createArea, { name: "Music" });
+    await call("create_tasks", {
+      achievementId: null,
+      areaId: area.id,
+      tasks: [{ title: "Learn Wonderwall" }],
+    });
+    const loose = await runAction(deps(), captureItem, { text: "Blackbird" });
+    await call("file_item", { kind: "task", id: loose.id, areaId: area.id });
+    const other = await runAction(deps(), captureItem, { text: "Yesterday" });
+    await call("move_task", { taskId: other.id, areaId: area.id });
+
+    const rows = await db.select().from(tasks).where(eq(tasks.areaId, area.id));
+    expect(rows.map((t) => t.title).sort()).toEqual([
+      "Blackbird",
+      "Learn Wonderwall",
+      "Yesterday",
+    ]);
+    expect(rows.every((t) => t.achievementId === null)).toBe(true);
+  });
 });

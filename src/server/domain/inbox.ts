@@ -8,8 +8,9 @@ import { findLive } from "./rows";
 import { createTask, moveTask } from "./tasks";
 
 /**
- * Quick capture (spec §5.6). A leading "!" makes an achievement; in an area
- * it is always an achievement, since a task can't sit directly in an area.
+ * Quick capture (spec §5.6). A leading "!" makes an achievement; captured in
+ * an area it is always an achievement (the area page's own Add task makes a
+ * task there).
  */
 export const captureItem = defineAction(
   z.object({
@@ -58,8 +59,12 @@ export const fileAchievement = defineAction(
     }),
 );
 
+/** Files a task under an achievement, or straight into an area. */
 export const fileTask = defineAction(
-  z.object({ taskId: z.uuid(), achievementId: z.uuid() }),
+  z.union([
+    z.object({ taskId: z.uuid(), achievementId: z.uuid() }),
+    z.object({ taskId: z.uuid(), areaId: z.uuid() }),
+  ]),
   (ctx, input) => callAction(ctx, moveTask, input),
 );
 
@@ -83,6 +88,8 @@ export const listInbox = defineAction(z.object({}), async (ctx) => ({
       and(
         eq(tasks.ownerId, ctx.ownerId),
         isNull(tasks.achievementId),
+        // Straight in an area is filed.
+        isNull(tasks.areaId),
         isNull(tasks.deletedAt),
         // Planned or repeating loose tasks already have a "when".
         isNull(tasks.plannedOn),

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { achievements, areas, tasks } from "@/server/db/schema";
 import { type Ctx, defineAction } from "./context";
@@ -61,7 +61,7 @@ export const reorderArea = defineAction(
   },
 );
 
-/** Soft-deletes the area, its achievements and their tasks, in one batch. */
+/** Soft-deletes the area, its achievements, their tasks and its own, in one batch. */
 export const deleteArea = defineAction(
   z.object({ areaId: z.uuid() }),
   async (ctx, { areaId }) => {
@@ -76,21 +76,17 @@ export const deleteArea = defineAction(
           isNull(achievements.deletedAt),
         ),
       );
-    const taskRows = achs.length
-      ? await ctx.db
-          .select()
-          .from(tasks)
-          .where(
-            and(
-              eq(tasks.ownerId, ctx.ownerId),
-              inArray(
-                tasks.achievementId,
-                achs.map((a) => a.id),
-              ),
-              isNull(tasks.deletedAt),
-            ),
-          )
-      : [];
+    // Its achievements' tasks carry its areaId, as do its own.
+    const taskRows = await ctx.db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.ownerId, ctx.ownerId),
+          eq(tasks.areaId, areaId),
+          isNull(tasks.deletedAt),
+        ),
+      );
     for (const t of taskRows) await softDeleteRecorded(ctx, "task", tasks, t);
     for (const a of achs) {
       await softDeleteRecorded(ctx, "achievement", achievements, a);

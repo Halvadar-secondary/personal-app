@@ -58,13 +58,13 @@ describe("goals schema", () => {
     expect(ach.status).toBe("backlog");
   });
 
-  it("rejects a task in an area without an achievement", async () => {
+  it("allows a task straight in an area, with no achievement", async () => {
     const { area } = await chain();
-    await expect(
-      db
-        .insert(tasks)
-        .values({ ownerId: "u1", areaId: area.id, title: "x", sortKey: "a1" }),
-    ).rejects.toThrow();
+    const [t] = await db
+      .insert(tasks)
+      .values({ ownerId: "u1", areaId: area.id, title: "x", sortKey: "a1" })
+      .returning();
+    expect(t).toMatchObject({ areaId: area.id, achievementId: null });
   });
 
   it("rejects effort outside 1–5", async () => {

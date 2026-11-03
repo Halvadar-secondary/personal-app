@@ -176,72 +176,97 @@ export const listAchievements = defineAction(
       ),
 );
 
+/** The tasks that sit straight in an area, in order. */
+export function liveAreaTasksOf(ctx: Ctx, areaId: string) {
+  return ctx.db
+    .select()
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.ownerId, ctx.ownerId),
+        eq(tasks.areaId, areaId),
+        isNull(tasks.achievementId),
+        isNull(tasks.deletedAt),
+      ),
+    )
+    .orderBy(asc(tasks.sortKey), asc(tasks.id));
+}
+
+export type TaskListItem = Task & {
+  categoryIds: string[];
+  recentDone: string[];
+  hasCompletions: boolean;
+  /** Toward the target, for tasks that have one. */
+  progress: number | null;
+};
+
+/** What a task list shows for each task: categories, recent days, progress. */
+export async function taskListItems(
+  ctx: Ctx,
+  rows: Task[],
+): Promise<TaskListItem[]> {
+  const ids = await categoryIdsByTask(
+    ctx,
+    rows.map((t) => t.id),
+  );
+  const today = localDate(ctx.now(), ctx.timeZone);
+  // Completions inside the 4-week strip, for repeating tasks' history.
+  const from = addDays(weekStartOf(today, ctx.weekStart), -21);
+  const repeating = rows.filter((t) => t.recurrence).map((t) => t.id);
+  const recent = repeating.length
+    ? await ctx.db
+        .select({
+          taskId: taskCompletions.taskId,
+          day: taskCompletions.occurrenceDate,
+        })
+        .from(taskCompletions)
+        .where(
+          and(
+            eq(taskCompletions.ownerId, ctx.ownerId),
+            inArray(taskCompletions.taskId, repeating),
+            gte(taskCompletions.occurrenceDate, from),
+          ),
+        )
+        .orderBy(asc(taskCompletions.occurrenceDate))
+    : [];
+  // A task with any completion can't switch between one-off and repeating.
+  const completed = rows.length
+    ? await ctx.db
+        .selectDistinct({ taskId: taskCompletions.taskId })
+        .from(taskCompletions)
+        .where(
+          and(
+            eq(taskCompletions.ownerId, ctx.ownerId),
+            inArray(
+              taskCompletions.taskId,
+              rows.map((t) => t.id),
+            ),
+          ),
+        )
+    : [];
+  const hasCompletions = new Set(completed.map((c) => c.taskId));
+  const progress = await targetProgress(
+    ctx,
+    rows.filter((t) => t.targetAmount !== null).map((t) => t.id),
+  );
+  return rows.map((t) => ({
+    ...t,
+    categoryIds: ids.get(t.id)!,
+    recentDone: recent.filter((r) => r.taskId === t.id).map((r) => r.day),
+    hasCompletions: hasCompletions.has(t.id),
+    progress: progress.get(t.id) ?? null,
+  }));
+}
+
 export const getAchievement = defineAction(
   z.object({ achievementId: z.uuid() }),
   async (ctx, { achievementId }) => {
     const achievement = await findLive(ctx, achievements, achievementId);
     const rows = await liveTasksOf(ctx, achievementId);
-    const ids = await categoryIdsByTask(
-      ctx,
-      rows.map((t) => t.id),
-    );
-    const today = localDate(ctx.now(), ctx.timeZone);
-    // Completions inside the 4-week strip, for repeating tasks' history.
-    const from = addDays(weekStartOf(today, ctx.weekStart), -21);
-    const repeating = rows.filter((t) => t.recurrence).map((t) => t.id);
-    const recent = repeating.length
-      ? await ctx.db
-          .select({
-            taskId: taskCompletions.taskId,
-            day: taskCompletions.occurrenceDate,
-          })
-          .from(taskCompletions)
-          .where(
-            and(
-              eq(taskCompletions.ownerId, ctx.ownerId),
-              inArray(taskCompletions.taskId, repeating),
-              gte(taskCompletions.occurrenceDate, from),
-            ),
-          )
-          .orderBy(asc(taskCompletions.occurrenceDate))
-      : [];
-    // A task with any completion can't switch between one-off and repeating.
-    const completed = rows.length
-      ? await ctx.db
-          .selectDistinct({ taskId: taskCompletions.taskId })
-          .from(taskCompletions)
-          .where(
-            and(
-              eq(taskCompletions.ownerId, ctx.ownerId),
-              inArray(
-                taskCompletions.taskId,
-                rows.map((t) => t.id),
-              ),
-            ),
-          )
-      : [];
-    const hasCompletions = new Set(completed.map((c) => c.taskId));
-    const progress = await targetProgress(
-      ctx,
-      rows.filter((t) => t.targetAmount !== null).map((t) => t.id),
-    );
-    const withCategories: (Task & {
-      categoryIds: string[];
-      recentDone: string[];
-      hasCompletions: boolean;
-      /** Toward the target, for tasks that have one. */
-      progress: number | null;
-    })[] = rows.map((t) => ({
-      ...t,
-      categoryIds: ids.get(t.id)!,
-      recentDone: recent.filter((r) => r.taskId === t.id).map((r) => r.day),
-      hasCompletions: hasCompletions.has(t.id),
-      progress: progress.get(t.id) ?? null,
-    }));
     return {
       achievement,
-      tasks: withCategories,
-      today,
+      tasks: await taskListItems(ctx, rows),
+      today: localDate(ctx.now(), ctx.timeZone),
       weekStart: ctx.weekStart,
     };
   },
