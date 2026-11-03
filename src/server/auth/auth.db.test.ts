@@ -77,7 +77,19 @@ describe("session cookie cache", () => {
     await close();
   });
 
-  it("goes back to the database after 5 minutes", async () => {
+  // Neon sleeps after 5 idle minutes. Opening the app later the same day must
+  // not wait for it to wake just to confirm who you are.
+  it("answers from the cookie for most of a day", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const { auth, close, deleteSessions, cookies } = await signedIn();
+    await deleteSessions();
+    vi.setSystemTime(Date.now() + 23 * 60 * 60 * 1000);
+    const session = await auth.api.getSession({ headers: cookies });
+    expect(session?.user.email).toBe("me@x.com");
+    await close();
+  });
+
+  it("goes back to the database once the cookie has expired", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const { auth, close, deleteSessions, cookies } = await signedIn();
     await deleteSessions();
