@@ -251,6 +251,8 @@ test("no page scrolls sideways on a phone", async ({ page }, testInfo) => {
     .getByRole("link", { name: /An achievement with a long title/ })
     .filter({ visible: true })
     .click();
+  // The area page has its own "Add task"; wait until we are past it.
+  await expect(page).toHaveURL(/\/achievements\//);
   await expect(page.getByRole("button", { name: "Add task" })).toBeVisible();
   await expectNoSideScroll(page);
   for (const path of [

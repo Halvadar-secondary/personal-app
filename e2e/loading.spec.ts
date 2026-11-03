@@ -36,6 +36,8 @@ test.beforeAll(async ({ browser }) => {
     .getByRole("link", { name: title, exact: true })
     .filter({ visible: true })
     .click();
+  // The area page has its own "Add task"; wait until we are past it.
+  await expect(page).toHaveURL(/\/achievements\//);
   await expect(page.getByRole("button", { name: "Add task" })).toBeVisible();
   achievement = new URL(page.url()).pathname;
   await page.close();
