@@ -62,9 +62,14 @@ export function guardClient(client: Guardable): void {
 export function createPool(connectionString: string | undefined): Pool {
   const pool = new Pool({
     connectionString,
-    max: 5,
-    // pg waits forever by default; an unreachable db must fail fast, not hang every request.
-    connectionTimeoutMillis: 5_000,
+    // A page load prefetches about ten pages at once, each holding a
+    // connection for its whole transaction. Fewer connections, or a short
+    // wait, turns that ordinary burst into failed requests.
+    max: 10,
+    // pg waits forever by default; an unreachable db must fail, not hang every
+    // request. The same limit covers waiting for a free connection, so it
+    // allows a burst to drain.
+    connectionTimeoutMillis: 15_000,
     query_timeout: 10_000,
   });
   // Vercel pauses an instance once no request is running, and a request cut
