@@ -65,8 +65,32 @@ test("before the app is ready, a tap shows the loading bar at once", async ({
   await page.goto("/today", { waitUntil: "domcontentloaded" });
   const bar = page.locator("[data-slot=nav-progress]");
   await expect(bar).toHaveCSS("opacity", "0");
+  // Once the tap starts a page load, Playwright reads nothing from the page
+  // until the next one arrives, so the page reports the bar itself.
+  let shown!: () => void;
+  const barShown = new Promise<void>((r) => (shown = r));
+  await page.exposeFunction("reportBar", (opacity: string) => {
+    if (opacity === "1") shown();
+  });
+  await page.evaluate(() => {
+    const el = document.querySelector("[data-slot=nav-progress]")!;
+    const report = (window as unknown as { reportBar: (o: string) => void })
+      .reportBar;
+    setInterval(() => report(getComputedStyle(el).opacity), 50);
+  });
   await trackersLink(page).click({ noWaitAfter: true });
-  await expect(bar).toHaveCSS("opacity", "1", { timeout: 1_000 });
-  ready();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, fail) => {
+    timer = setTimeout(
+      () => fail(new Error("no loading bar within 1s of the tap")),
+      1_000,
+    );
+  });
+  try {
+    await Promise.race([barShown, late]);
+  } finally {
+    clearTimeout(timer);
+    ready();
+  }
   await expect(heading(page)).toBeVisible({ timeout: 20_000 });
 });
