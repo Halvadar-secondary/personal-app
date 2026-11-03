@@ -101,3 +101,13 @@ it("the instance stays running while a connection is checked out", async () => {
   expect(done).toBe(true);
   await pool.end();
 });
+
+// A page load prefetches about ten pages at once. With five connections and a
+// five-second wait, that burst failed requests with "timeout exceeded when
+// trying to connect" (pg's message for waiting on a free connection).
+it("a burst of ten requests each gets a connection without failing", () => {
+  const pool = createPool("postgres://u:p@127.0.0.1:1/db");
+  expect(pool.options.max).toBeGreaterThanOrEqual(10);
+  expect(pool.options.connectionTimeoutMillis).toBeGreaterThanOrEqual(15_000);
+  return pool.end();
+});
