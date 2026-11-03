@@ -48,10 +48,13 @@ test("once the app is ready, a tap shows the next page's skeleton at once", asyn
 test("before the app is ready, a tap shows the loading bar at once", async ({
   page,
 }) => {
-  // The app's scripts held back: the tap is a plain page load, which a Home
-  // Screen app shows no browser loading bar for.
+  // The app's scripts held back until the tap has been checked (a fixed delay
+  // can run out first while the page itself is slow): the tap is a plain page
+  // load, which a Home Screen app shows no browser loading bar for.
+  let ready!: () => void;
+  const tapped = new Promise<void>((r) => (ready = r));
   await page.route("**/_next/static/chunks/**", async (route) => {
-    await new Promise((r) => setTimeout(r, 6_000));
+    await tapped;
     await route.continue();
   });
   await slowTrackers(page);
@@ -60,5 +63,6 @@ test("before the app is ready, a tap shows the loading bar at once", async ({
   await expect(bar).toHaveCSS("opacity", "0");
   await trackersLink(page).click({ noWaitAfter: true });
   await expect(bar).toHaveCSS("opacity", "1", { timeout: 1_000 });
+  ready();
   await expect(heading(page)).toBeVisible({ timeout: 20_000 });
 });
