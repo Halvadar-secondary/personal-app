@@ -156,7 +156,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 - [x] Chat panel with streaming replies, model picker (Quick / Smart / Deepest) and past conversations
 - [x] Settings: pin a model per tier or stay on the newest
-- [ ] `ANTHROPIC_API_KEY` set in Vercel with a monthly spend limit; live smoke on production
+- [x] `ANTHROPIC_API_KEY` set in Vercel with a monthly spend limit; live smoke on production
 - [ ] Microphone dictation checked in the iPhone Home Screen app
 
 ---
