@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { createArea, expectNoSideScroll, uniqueName } from "./helpers/app";
+import {
+  createArea,
+  expectNoSideScroll,
+  saved,
+  uniqueName,
+} from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
 
 test.beforeEach(async ({ page }) => {
@@ -34,7 +39,10 @@ test("a task straight in an area: add it there, give it notes with a link, tick 
   await tasks
     .getByRole("textbox", { name: "Notes" })
     .fill("Capo 2. Tab: https://tabs.example.com/wonderwall");
-  await tasks.getByRole("button", { name: "Save notes" }).click();
+  // Reloading before the save has landed would lose the notes.
+  await saved(page, () =>
+    tasks.getByRole("button", { name: "Save notes" }).click(),
+  );
   const link = tasks.getByRole("link", {
     name: "https://tabs.example.com/wonderwall",
   });

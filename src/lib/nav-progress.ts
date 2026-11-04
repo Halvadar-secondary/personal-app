@@ -31,12 +31,17 @@ export function startNavProgress(doc: Document): () => void {
     // Never stuck on: a navigation that fails or is cancelled.
     timer = setTimeout(clear, 20_000);
   };
+  // Back to a page kept in memory (iOS back swipe): it isn't loading. Not
+  // this page's own first load finishing: a tap made before then is still
+  // on its way to the next page.
+  const onShow = (e: PageTransitionEvent) => {
+    if (e.persisted) clear();
+  };
   doc.addEventListener("click", onClick, true);
-  // Back to a page kept in memory (iOS back swipe): it isn't loading.
-  doc.defaultView?.addEventListener("pageshow", clear);
+  doc.defaultView?.addEventListener("pageshow", onShow);
   return () => {
     doc.removeEventListener("click", onClick, true);
-    doc.defaultView?.removeEventListener("pageshow", clear);
+    doc.defaultView?.removeEventListener("pageshow", onShow);
     clear();
   };
 }

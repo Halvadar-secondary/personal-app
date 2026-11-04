@@ -76,3 +76,29 @@ it("the bar goes once the new page is showing", () => {
   rerender(<NavProgressEnd />);
   expect(marked()).toBe(false);
 });
+
+// A tap before the app is ready, then the current page finishes loading (its
+// scripts arrive late on a slow connection). The next page is still on its
+// way, so the bar stays.
+it("the current page finishing loading leaves the bar on", () => {
+  tap({ href: "/trackers" });
+  window.dispatchEvent(
+    new PageTransitionEvent("pageshow", { persisted: false }),
+  );
+  expect(marked()).toBe(true);
+});
+
+it("the app starting up leaves the bar on", () => {
+  nav.path = "/today";
+  tap({ href: "/trackers" });
+  render(<NavProgressEnd />);
+  expect(marked()).toBe(true);
+});
+
+it("back to a page kept in memory clears the bar", () => {
+  tap({ href: "/trackers" });
+  window.dispatchEvent(
+    new PageTransitionEvent("pageshow", { persisted: true }),
+  );
+  expect(marked()).toBe(false);
+});
