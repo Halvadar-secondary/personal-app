@@ -3,6 +3,7 @@ import {
   chooseKind,
   expectNoSideScroll,
   isPhone,
+  saved,
   uniqueName,
 } from "./helpers/app";
 import { loginWithPassword } from "./helpers/login";
@@ -70,11 +71,17 @@ test("today: a repeating loose task shows up and can be ticked", async ({
   await dialog.getByRole("button", { name: /^Repeat/ }).click();
   await page.getByRole("radio", { name: "Daily" }).check();
   await page.getByRole("button", { name: "Save" }).click();
-  await dialog.getByRole("button", { name: "Create task" }).click();
+  // Tick it only once it's saved, and reload only once the tick is: either
+  // done too early is lost.
+  await saved(page, () =>
+    dialog.getByRole("button", { name: "Create task" }).click(),
+  );
   await expect(dialog).toBeHidden();
   const spare = page.getByRole("region", { name: "Spare time" });
   await expect(spare.getByText(title)).toBeVisible();
-  await spare.getByRole("checkbox", { name: `Complete ${title}` }).click();
+  await saved(page, () =>
+    spare.getByRole("checkbox", { name: `Complete ${title}` }).click(),
+  );
   await page.reload();
   await expect(
     spare.getByRole("checkbox", { name: `Complete ${title}` }),
