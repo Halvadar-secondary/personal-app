@@ -4,6 +4,46 @@ How the running app is looked after: backups, errors, clean-up and
 updates. Everything here runs from GitHub Actions or from the owner's own
 terminal; nothing needs a server of its own.
 
+## Hosting: Cloud Run for now, Vercel later
+
+On 2026-11-05 Vercel paused the account (Hobby fair use: active CPU, used
+up by a Vercel preview plus the full e2e suite on every PR). It unpauses on
+2026-12-05. Until we move back, production runs on **Google Cloud Run**:
+service `life-goals` in `us-east4`, the free tier, no instance kept warm.
+
+- **Which host deploys:** the `HOST` repository variable. `cloudrun` runs
+  the `deploy-cloudrun` job in `deploy.yml`; anything else runs the Vercel
+  job, which is unchanged.
+- **PR tests** run the app on the GitHub runner against the PR's Neon
+  branch, on either host; previews are no longer deployed anywhere.
+- **Setup** (re-runnable): `bash scripts/cloudrun-setup.sh <gcp-project-id>`
+  with `.env.secrets` filled in (see the script). It creates the image
+  repository, service accounts, GitHub sign-in (Workload Identity, `main`
+  only), the secrets in Secret Manager, the service, and the GitHub
+  variables, including `PROD_URL`.
+- **Roll back a bad deploy:** in the Cloud Run console, Revisions → the
+  previous one → Manage traffic → 100%; or
+  `gcloud run services update-traffic life-goals --region us-east4 --to-revisions <rev>=100`.
+- **Logs:** Cloud Run console → `life-goals` → Logs.
+
+### Moving back to Vercel
+
+The address changes back to `https://halvadar-life-goals.vercel.app`, so the
+same one-off steps as the move apply in reverse:
+
+1. In Vercel, set `BETTER_AUTH_SECRET`, `VAPID_PUBLIC_KEY`,
+   `VAPID_PRIVATE_KEY` (production) to the values in Secret Manager
+   (`gcloud secrets versions access latest --secret <name>`), and
+   `VAPID_SUBJECT` back to the Vercel address in Vercel and in GitHub's
+   production environment. The auth secret also encrypts the MCP signing
+   keys stored in the database, so it must stay the same.
+2. `gh variable set PROD_URL --body https://halvadar-life-goals.vercel.app`
+   and `gh variable delete HOST`, then re-run the latest `deploy`.
+3. On the phone: re-add the Home Screen app from the Vercel address, sign
+   in with Google, turn reminders back on. Reconnect the Claude connector to
+   the Vercel address.
+4. Delete the Cloud Run service (or leave it; idle, it costs nothing).
+
 ## Backups and restore drill
 
 `backup.yml` runs every night at 03:00 UTC (and on demand from the Actions
