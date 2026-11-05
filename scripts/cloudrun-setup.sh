@@ -12,6 +12,7 @@
 #   GOOGLE_CLIENT_SECRET=
 #   ANTHROPIC_API_KEY=
 #   SENTRY_DSN=          optional
+#   BETTER_AUTH_SECRET=  optional: the one Vercel had, if you saved it
 # It makes a new BETTER_AUTH_SECRET and Web Push key pair on the first run
 # (Vercel won't reveal the old ones) and keeps them on later runs. Prints no
 # secret values.
@@ -98,7 +99,8 @@ put database-url "$DATABASE_URL"
 put google-client-secret "$GOOGLE_CLIENT_SECRET"
 put anthropic-api-key "$ANTHROPIC_API_KEY"
 NEW_KEYS=0
-has better-auth-secret || put better-auth-secret "$(openssl rand -base64 32)"
+# The old one if you still have it (keeps MCP signing keys readable), else new.
+has better-auth-secret || put better-auth-secret "${BETTER_AUTH_SECRET:-$(openssl rand -base64 32)}"
 if ! has vapid-private-key; then
   KEYS=$(node -e "process.stdout.write(JSON.stringify(require('web-push').generateVAPIDKeys()))")
   field() { printf %s "$KEYS" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s)['$1']))"; }
