@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 import { securityHeaders } from "./src/security-headers";
 
 const nextConfig: NextConfig = {
+  // Cloud Run runs a self-contained server (see Dockerfile); Vercel builds
+  // its own output and leaves this unset.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   cacheComponents: true,
   partialPrefetching: true,
   env: {

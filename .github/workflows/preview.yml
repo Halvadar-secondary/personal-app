@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: preview-${{ github.event.number }}
@@ -20,9 +19,6 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      APP_ENV: preview
       E2E_OWNER_EMAIL: ${{ secrets.E2E_OWNER_EMAIL }}
       E2E_OWNER_PASSWORD: ${{ secrets.E2E_OWNER_PASSWORD }}
       E2E_INTRUDER_EMAIL: ${{ secrets.E2E_INTRUDER_EMAIL }}
@@ -57,41 +53,41 @@ jobs:
         env:
           MIGRATION_DATABASE_URL: ${{ steps.db.outputs.db_url }}
 
-      - name: Build and deploy preview
-        id: deploy
+      # The app runs here, on the runner: a Vercel preview per PR used up the
+      # Vercel account's free CPU allowance (2026-11-05).
+      - name: Build
+        run: pnpm build
+        env:
+          APP_ENV: preview
+          APP_BUILD_ID: ${{ github.sha }}
+          BETTER_AUTH_URL: build-time-placeholder
+      - name: Start the app
         run: |
-          pnpm dlx vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
-          APP_BUILD_ID="${{ github.sha }}" pnpm dlx vercel@latest build --token="$VERCEL_TOKEN"
-          # Vercel promotes any deploy to production while the project has none, whatever
-          # the flags; a production deployment must always exist. The next step checks it.
-          url=$(pnpm dlx vercel@latest deploy --prebuilt --archive=tgz --environment=preview --token="$VERCEL_TOKEN" \
-            --env DATABASE_URL="$DATABASE_URL")
-          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "schema=$(node -p "require('./drizzle/meta/_journal.json').entries.length")" >> "$GITHUB_OUTPUT"
+        id: app
+      - run: nohup pnpm start > app.log 2>&1 &
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          APP_ENV: preview
+          APP_BUILD_ID: ${{ github.sha }}
+          BETTER_AUTH_URL: http://localhost:3000
           DATABASE_URL: ${{ steps.db.outputs.db_url_with_pooler }}
-      - name: Check the deployment is a preview
+          OWNER_EMAIL: ${{ secrets.E2E_OWNER_EMAIL }}
+          ENABLE_PASSWORD_LOGIN: "true"
+      - name: Check the app is a preview
         run: >
-          pnpm smoke "${{ steps.deploy.outputs.url }}" --env preview --build "${{ github.sha }}"
-          --schema "${{ steps.deploy.outputs.schema }}"
-        env:
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-
-      - uses: marocchino/sticky-pull-request-comment@v3
-        with:
-          header: preview
-          message: |
-            **Preview:** ${{ steps.deploy.outputs.url }}
-            Database: Neon branch `pr-${{ github.event.number }}` (copy of `seed`). Sign in with the test owner.
+          curl -fsS --retry 30 --retry-delay 2 --retry-all-errors -o /dev/null http://localhost:3000/api/health &&
+          pnpm smoke http://localhost:3000 --env preview --build "${{ github.sha }}"
+          --schema "${{ steps.app.outputs.schema }}"
 
       - run: pnpm exec playwright install --with-deps chromium
       - name: E2E
         run: pnpm e2e
         env:
           CI: "true"
-          E2E_BASE_URL: ${{ steps.deploy.outputs.url }}
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          E2E_BASE_URL: http://localhost:3000
+          # Lets the chat tests that store a conversation run too.
+          DATABASE_URL: ${{ steps.db.outputs.db_url_with_pooler }}
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -99,4 +95,5 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            app.log
           retention-days: 7
