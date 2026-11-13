@@ -1,4 +1,6 @@
-// Post-deploy check: pnpm smoke <url> --env <environment> [--build <sha>] [--schema <n>] [--expect-no-password]
+// Post-deploy check: pnpm smoke <url> --env <environment> [--build <sha>] [--schema <n>] [--expect-no-password] [--origin <url>]
+// --origin: the app's own address, when <url> is a trial address the app doesn't
+// accept sign-ins from (a Cloud Run revision tag).
 // VERCEL_AUTOMATION_BYPASS_SECRET, when set, gets the probes past deployment protection.
 import { parseArgs } from "node:util";
 import {
@@ -19,6 +21,7 @@ const { values, positionals } = parseArgs({
     build: { type: "string" },
     schema: { type: "string" },
     "expect-no-password": { type: "boolean", default: false },
+    origin: { type: "string" },
   },
 });
 
@@ -64,7 +67,7 @@ async function checkPassword(): Promise<Verdict> {
     headers: {
       ...headers,
       "content-type": "application/json",
-      origin: baseUrl!,
+      origin: values.origin ?? baseUrl!,
     },
     body: JSON.stringify({
       email: "smoke@invalid.test",

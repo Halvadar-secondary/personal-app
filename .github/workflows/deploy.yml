@@ -141,7 +141,7 @@ jobs:
       - name: Smoke the new revision
         run: >
           pnpm smoke "${{ steps.deploy.outputs.url }}" --env production --build "${{ github.sha }}"
-          --schema "${{ steps.deploy.outputs.schema }}" --expect-no-password
+          --schema "${{ steps.deploy.outputs.schema }}" --expect-no-password --origin "${{ vars.PROD_URL }}"
       - name: Promote
         run: gcloud run services update-traffic "$SERVICE" --region "$REGION" --to-latest --quiet
       - name: Smoke production
