@@ -1,0 +1,5 @@
+# The image needs only the standalone build, its static files and public/.
+*
+!.next/standalone
+!.next/static
+!public

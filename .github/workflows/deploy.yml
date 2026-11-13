@@ -31,8 +31,12 @@ jobs:
         env:
           MIGRATION_DATABASE_URL: ${{ secrets.SEED_MIGRATION_DATABASE_URL }}
 
+  # Where production runs: the HOST repository variable. "cloudrun" while the
+  # Vercel account is blocked (docs/operations.md, "Hosting"); anything else,
+  # or unset, is Vercel.
   deploy:
     needs: migrate
+    if: vars.HOST != 'cloudrun'
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -85,4 +89,64 @@ jobs:
       - name: MCP smoke production
         # Unauthenticated: 401 + discovery metadata naming the production origin.
         # The authorized flow is covered by e2e/mcp.spec.ts on every PR.
+        run: pnpm exec tsx scripts/mcp-smoke.ts "${{ vars.PROD_URL }}"
+
+  deploy-cloudrun:
+    needs: migrate
+    if: vars.HOST == 'cloudrun'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write # Workload Identity: GitHub's token, no stored Google key
+    env:
+      REGION: ${{ vars.GCP_REGION }}
+      SERVICE: ${{ vars.GCP_SERVICE }}
+      IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/app/web:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_OUTPUT: standalone
+          APP_ENV: production
+          APP_BUILD_ID: ${{ github.sha }}
+          # The build must never use runtime secrets; the service has the real values.
+          BETTER_AUTH_URL: build-time-placeholder
+          NEXT_PUBLIC_SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Push the image
+        run: |
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+      # A new revision that serves no traffic, reachable at its own "next" URL.
+      # Proven there, then given all traffic. Manual undo: move traffic back to
+      # the previous revision (docs/operations.md).
+      - name: Deploy (not yet live)
+        id: deploy
+        run: |
+          gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION"             --no-traffic --tag next --quiet
+          url=$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json             | jq -r '.status.traffic[] | select(.tag == "next") | .url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "schema=$(node -p "require('./drizzle/meta/_journal.json').entries.length")" >> "$GITHUB_OUTPUT"
+      - name: Smoke the new revision
+        run: >
+          pnpm smoke "${{ steps.deploy.outputs.url }}" --env production --build "${{ github.sha }}"
+          --schema "${{ steps.deploy.outputs.schema }}" --expect-no-password
+      - name: Promote
+        run: gcloud run services update-traffic "$SERVICE" --region "$REGION" --to-latest --quiet
+      - name: Smoke production
+        run: >
+          pnpm smoke "${{ vars.PROD_URL }}" --env production --build "${{ github.sha }}"
+          --schema "${{ steps.deploy.outputs.schema }}" --expect-no-password
+      - name: MCP smoke production
         run: pnpm exec tsx scripts/mcp-smoke.ts "${{ vars.PROD_URL }}"
