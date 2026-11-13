@@ -27,7 +27,12 @@ FNM_NODE=/c/Users/Halvadar/AppData/Roaming/fnm/node-versions/v24.22.1/installati
 [ -d "$FNM_NODE" ] && export PATH="$FNM_NODE:$PATH"
 
 [ -f .env.secrets ] || { echo "Missing .env.secrets (see the top of this script)." >&2; exit 1; }
-set -a; . ./.env.secrets; set +a
+# Read as KEY=value lines, not as shell code: values hold "&" and the like.
+while IFS= read -r line || [ -n "$line" ]; do
+  line=${line%$'\r'}
+  case "$line" in '' | '#'*) continue ;; esac
+  export "${line%%=*}=${line#*=}"
+done < .env.secrets
 for v in DATABASE_URL OWNER_EMAIL GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ANTHROPIC_API_KEY; do
   [ -n "${!v:-}" ] || { echo "$v is empty in .env.secrets." >&2; exit 1; }
 done
